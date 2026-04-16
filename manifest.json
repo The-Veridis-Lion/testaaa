@@ -1,0 +1,9 @@
+{
+    "display_name": "屏蔽词净化助手",
+    "loading_order": 10,
+    "js": "index.js",
+    "css": "style.css",
+    "author": "Assistant",
+    "version": "5.1.1",
+    "description": "物理切除内存与编辑框屏蔽词，防止 AI 复读。"
+}

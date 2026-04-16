@@ -1,0 +1,407 @@
+/* --- 屏蔽词汇管理 CSS (重构版：对齐优化版) --- */
+
+:root {
+    --bl-accent-color: var(--SmartThemeQuoteColor, rgba(148, 0, 211, 0.7));
+    --bl-accent-color-hover: var(--SmartThemeQuoteColor, rgba(148, 0, 211, 1));
+    --bl-danger-color: #ff4757;
+    --bl-background-popup: var(--SmartThemeBlurTintColor, rgba(255, 255, 255, 1)); 
+    --bl-background-secondary: rgba(0, 0, 0, 0.05);
+    --bl-border-color: var(--SmartThemeBorderColor, #dee2e6);
+    --bl-text-primary: var(--SmartThemeBodyColor, #343a40); 
+    --bl-text-secondary: #868e96; 
+    --bl-input-bg: var(--SmartThemeInputBackground, #ffffff); 
+}
+
+#bl-wand-btn { cursor: pointer !important; }
+
+#bl-purifier-popup {
+    position: fixed !important;
+    top: 10vh !important; 
+    left: 50% !important;
+    transform: translateX(-50%) !important; 
+    
+    width: 90% !important;
+    max-width: 680px !important; 
+    max-height: 85vh !important; 
+    flex-direction: column !important; 
+    
+    background: var(--bl-background-popup) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 16px !important; 
+    z-index: 999999 !important;
+    padding: 30px 35px !important; 
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15) !important;
+    box-sizing: border-box !important;
+    
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+}
+
+#bl-purifier-popup .bl-header {
+    display: flex !important; justify-content: space-between !important; align-items: center !important;
+    padding-bottom: 18px !important; border-bottom: 1px solid var(--bl-border-color) !important; margin: 0 !important;
+}
+#bl-purifier-popup .bl-title { font-size: 28px !important; font-weight: bold !important; margin: 0 !important; color: var(--bl-text-primary) !important; } 
+#bl-purifier-popup .bl-close {
+    background: none !important; border: none !important; color: var(--bl-text-secondary) !important;
+    font-size: 36px !important; line-height: 1 !important; cursor: pointer !important; transition: color 0.2s ease !important;
+    padding: 0 !important; margin-left: 10px !important;
+}
+#bl-purifier-popup .bl-close:hover { color: var(--bl-danger-color) !important; }
+
+.bl-input, .bl-textarea {
+    width: 100% !important;
+    padding: 14px 16px !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--bl-border-color) !important;
+    background: var(--bl-input-bg) !important;
+    color: var(--bl-text-primary) !important;
+    font-size: 18px !important; 
+    box-sizing: border-box !important;
+    outline: none !important;
+    font-family: inherit !important;
+}
+.bl-textarea { resize: vertical !important; }
+.bl-input:focus, .bl-textarea:focus { border-color: var(--bl-accent-color) !important; }
+
+.bl-add-rule-btn {
+    padding: 14px !important;
+    border-radius: 10px !important;
+    border: none !important;
+    background-color: var(--bl-accent-color) !important;
+    color: white !important;
+    font-weight: bold !important;
+    font-size: 17px !important;
+    cursor: pointer !important;
+    transition: opacity 0.2s !important;
+}
+.bl-add-rule-btn:hover { opacity: 0.8 !important; }
+
+#bl-purifier-popup .bl-footer {
+    margin-top: auto !important;
+    padding-top: 20px !important;
+    border-top: 1px solid var(--bl-border-color) !important;
+}
+.bl-deep-clean-btn {
+    width: 100% !important;
+    padding: 16px !important;
+    background: var(--bl-danger-color) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-size: 18px !important; 
+    font-weight: bold !important;
+    cursor: pointer !important;
+    transition: opacity 0.2s !important;
+    display: flex !important; justify-content: center !important; align-items: center !important;
+    gap: 10px !important;
+}
+.bl-deep-clean-btn:hover { opacity: 0.8 !important; }
+
+.bl-loading-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.85) !important;
+    z-index: 9999999 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    color: white !important;
+    backdrop-filter: blur(5px) !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+}
+
+.bl-loading-title {
+    margin-bottom: 20px !important;
+    font-size: 20px !important;
+    text-align: center !important;
+}
+
+.bl-progress-track {
+    width: min(560px, 88vw) !important;
+    height: 12px !important;
+    border-radius: 999px !important;
+    overflow: hidden !important;
+    border: 1px solid rgba(255, 255, 255, 0.35) !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    margin-top: 12px !important;
+}
+
+.bl-progress-fill {
+    width: 0%;
+    height: 100% !important;
+    background: linear-gradient(90deg, #7f5af0 0%, #2cb67d 100%) !important;
+    transition: width 0.2s ease !important;
+}
+
+.bl-progress-percent {
+    margin-top: 8px !important;
+    font-weight: bold !important;
+}
+
+.bl-icon-btn {
+    padding: 8px 14px !important;
+    min-height: 38px !important;
+    font-size: 16px !important;
+    line-height: 1 !important;
+    border-radius: 8px !important;
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    cursor: pointer !important;
+    color: var(--bl-text-primary) !important;
+}
+.bl-icon-btn:hover { background: var(--bl-border-color) !important; }
+
+.bl-bind-toggle {
+    color: #a0a7b4 !important;
+}
+
+.bl-bind-toggle.bl-bind-active {
+    color: var(--bl-accent-color) !important;
+    border-color: var(--bl-accent-color) !important;
+    background: color-mix(in srgb, var(--bl-accent-color) 15%, transparent) !important;
+}
+
+.bl-bind-toggle:disabled {
+    opacity: 0.45 !important;
+    cursor: not-allowed !important;
+}
+
+#bl-purifier-popup .bl-tools-bar > div:last-child {
+    width: 100% !important;
+    box-sizing: border-box !important;
+}
+.bl-tool-btn {
+    flex: 1 1 0% !important; 
+    padding: 9px 0 !important; 
+    border-radius: 8px !important;
+    border: 1px solid var(--bl-border-color) !important;
+    background: var(--bl-background-secondary) !important;
+    color: var(--bl-text-primary) !important;
+    cursor: pointer !important;
+    font-size: 15px !important; 
+    font-weight: 600 !important;
+    text-align: center !important;
+    transition: background 0.2s, opacity 0.2s !important;
+    white-space: nowrap !important; 
+}
+.bl-tool-btn:hover { background: var(--bl-border-color) !important; opacity: 0.9 !important; }
+
+#bl-tags-container::-webkit-scrollbar, #bl-edit-subrules-container::-webkit-scrollbar { width: 8px; }
+#bl-tags-container::-webkit-scrollbar-thumb, #bl-edit-subrules-container::-webkit-scrollbar-thumb { background: var(--bl-border-color); border-radius: 4px; }
+
+.bl-rule-card {
+    display: flex !important;
+    flex-direction: column !important; 
+    align-items: stretch !important;
+    width: 100% !important;
+    padding: 18px 20px !important; 
+    background: var(--bl-input-bg) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 10px !important;
+    margin-bottom: 12px !important;
+    box-sizing: border-box !important;
+    transition: border-color 0.2s !important;
+}
+.bl-rule-card:hover { border-color: var(--bl-accent-color) !important; }
+
+.bl-rule-card-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important; 
+    width: 100% !important;
+}
+
+.bl-rule-name { 
+    font-weight: bold !important; 
+    font-size: 18px !important; 
+    color: var(--bl-text-primary) !important; 
+    margin: 0 !important; 
+    line-height: 1.4 !important;
+    display: flex !important; 
+    align-items: center !important; 
+    /* --- 新增：强制换行，防止长文本撑破 flex 布局 --- */
+    word-break: break-all !important; 
+}
+
+.bl-rule-preview { 
+    font-size: 15px !important; 
+    color: var(--bl-text-secondary) !important; 
+    margin-top: 12px !important;
+    padding-top: 12px !important;
+    border-top: 1px dashed var(--bl-border-color) !important;
+    line-height: 1.5 !important;
+}
+
+.bl-rule-actions { 
+    display: flex !important; 
+    gap: 10px !important; 
+    align-items: center !important; 
+    margin-left: 10px !important; 
+    margin-top: 2px !important; 
+}
+
+.bl-rule-transfer, .bl-rule-edit, .bl-rule-del {
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    padding: 8px 12px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: all 0.2s !important;
+    color: var(--bl-text-primary) !important;
+}
+.bl-rule-transfer { font-size: 15px !important; }
+.bl-rule-edit { font-size: 15px !important; }
+.bl-rule-del { font-size: 15px !important; color: var(--bl-text-primary) !important;}
+.bl-rule-transfer:hover { background: #57606f !important; border-color: #57606f !important; color: white !important; }
+.bl-rule-edit:hover { background: var(--bl-accent-color) !important; border-color: var(--bl-accent-color) !important; color: white !important;}
+.bl-rule-del:hover { background: var(--bl-danger-color) !important; border-color: var(--bl-danger-color) !important; color: white !important; }
+
+#bl-rule-transfer-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.35) !important;
+    z-index: 10000000 !important;
+    display: none;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 16px !important;
+    box-sizing: border-box !important;
+}
+
+.bl-transfer-content {
+    width: min(420px, 96vw) !important;
+    background: var(--bl-background-popup) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 12px !important;
+    padding: 14px !important;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.35) !important;
+}
+
+.bl-transfer-btn {
+    flex: 1 !important;
+    padding: 9px 10px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--bl-border-color) !important;
+    background: var(--bl-background-secondary) !important;
+    color: var(--bl-text-primary) !important;
+    cursor: pointer !important;
+    transition: background 0.2s !important;
+}
+
+.bl-transfer-btn:hover {
+    background: var(--bl-border-color) !important;
+}
+
+/* 统一为低调的次级按钮样式 */
+.bl-transfer-copy, .bl-transfer-move {
+    background: var(--bl-background-secondary) !important;
+    border-color: var(--bl-border-color) !important;
+    color: var(--bl-text-primary) !important;
+}
+
+/* ================== 徽章样式 ================== */
+.bl-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important; 
+    font-size: 14px !important;   
+    margin-right: 12px !important;
+    font-weight: 800 !important;
+    color: white !important;
+    min-width: 50px !important;    
+    line-height: 1 !important;
+    margin-top: 3px !important; 
+    /* --- 新增：强制徽章不缩小，彻底锁死对齐位置 --- */
+    flex-shrink: 0 !important;
+}
+
+.bl-badge-text { background: #868e96 !important; } 
+.bl-badge-regex { background: var(--bl-accent-color) !important; }
+.bl-badge-simple { background: #0984e3 !important; }
+
+.bl-subrule-main {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: grid !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
+    column-gap: 10px !important;
+    align-items: flex-start !important;
+}
+
+.bl-subrule-text {
+    min-width: 0 !important;
+    font-size: 13px !important;
+    color: var(--bl-text-primary) !important;
+    line-height: 1.45 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+}
+
+/* --- 手机端微调 --- */
+@media screen and (max-width: 600px) {
+    #bl-purifier-popup { padding: 15px 20px !important; width: 92% !important; top: 8vh !important; max-width: 420px !important; border-radius: 12px !important;}
+    #bl-rule-transfer-modal {
+        align-items: flex-start !important;
+        background: transparent !important;
+        padding-top: calc(env(safe-area-inset-top, 0px) + 16vh) !important;
+    }
+    #bl-rule-transfer-modal .bl-transfer-content {
+        width: min(420px, 92vw) !important;
+    }
+    #bl-purifier-popup .bl-title { font-size: 18px !important; }
+    .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
+    .bl-tool-btn { font-size: 12px !important; padding: 7px 0 !important; }
+    #bl-purifier-popup .bl-preset-row {
+        display: grid !important;
+        grid-template-columns: 36px 36px minmax(0, 1fr) 36px 36px !important;
+        gap: 6px !important;
+        align-items: center !important;
+    }
+    #bl-purifier-popup .bl-preset-row .bl-icon-btn {
+        min-height: 36px !important;
+        min-width: 36px !important;
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    #bl-preset-select {
+        min-width: 0 !important;
+        width: 100% !important;
+        font-size: 13px !important;
+        padding: 8px 10px !important;
+    }
+    #bl-purifier-popup .bl-tool-grid {
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 6px !important;
+    }
+    #bl-purifier-popup .bl-tool-grid .bl-tool-btn {
+        min-height: 38px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        padding: 0 !important;
+    }
+    #bl-purifier-popup .bl-tool-grid .bl-tool-text {
+        display: none !important;
+    }
+    #bl-purifier-popup .bl-tool-grid .bl-tool-btn i {
+        margin: 0 !important;
+    }
+    .bl-rule-card { padding: 8px 10px !important; }
+    .bl-rule-name { font-size: 13px !important; }
+    .bl-rule-preview { font-size: 12px !important; }
+    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
+}
