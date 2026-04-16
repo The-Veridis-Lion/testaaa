@@ -16,7 +16,12 @@ export function setupUI() {
         <div id="bl-purifier-popup" style="display:none;">
             <div class="bl-header">
                 <h3 class="bl-title">全局屏蔽与映射规则</h3>
-                <button id="bl-close-btn" class="bl-close">&times;</button>
+                <div class="bl-header-tools">
+                    <button id="bl-visual-diff-toggle" class="bl-icon-btn bl-header-eye-btn" title="透视对比模式：显示净化前后差异">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button id="bl-close-btn" class="bl-close">&times;</button>
+                </div>
             </div>
             <div class="bl-visual-diff-toolbar" style="display:flex; justify-content:flex-end; margin:10px 0 0 0;">
                 <button id="bl-visual-diff-toggle" class="bl-icon-btn" title="透视对比模式：显示净化前后差异">
