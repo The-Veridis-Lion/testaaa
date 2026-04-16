@@ -3,7 +3,7 @@ import { deepClone, getCurrentCharacterContext, getPresetForCharacter, parseInpu
 import { performDeepCleanse, performGlobalCleanse } from './core.js';
 
 export function setupUI() {
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, .bl-visual-diff-toolbar').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -22,11 +22,6 @@ export function setupUI() {
                     </button>
                     <button id="bl-close-btn" class="bl-close">&times;</button>
                 </div>
-            </div>
-            <div class="bl-visual-diff-toolbar" style="display:flex; justify-content:flex-end; margin:10px 0 0 0;">
-                <button id="bl-visual-diff-toggle" class="bl-icon-btn" title="透视对比模式：显示净化前后差异">
-                    <i class="fa-solid fa-eye"></i><span style="margin-left:6px;">透视对比</span>
-                </button>
             </div>
             <div class="bl-tools-bar" style="display:flex; flex-direction:column; gap:8px; margin:10px 0 15px 0; border-bottom:1px solid var(--bl-border-color); padding-bottom:12px;">
                 <div class="bl-preset-row" style="display:flex; gap:8px; align-items:center;">
@@ -107,8 +102,12 @@ export function setupUI() {
 export function refreshVisualDiffToggleUI() {
     const $toggle = $('#bl-visual-diff-toggle');
     if (!$toggle.length) return;
-    $toggle.toggleClass('bl-bind-active', runtimeState.isVisualDiffEnabled);
-    $toggle.attr('title', runtimeState.isVisualDiffEnabled ? '透视对比模式已开启（点击关闭）' : '透视对比模式已关闭（点击开启）');
+    const isEnabled = runtimeState.isVisualDiffEnabled;
+    $toggle.toggleClass('bl-eye-active', isEnabled);
+    const $icon = $toggle.find('i');
+    $icon.toggleClass('fa-eye', !isEnabled);
+    $icon.toggleClass('fa-eye-slash', isEnabled);
+    $toggle.attr('title', isEnabled ? '透视对比模式已开启（点击关闭）' : '透视对比模式已关闭（点击开启）');
 }
 
 export function showDeepCleanOverlay() {

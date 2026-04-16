@@ -172,6 +172,13 @@
     justify-content: center !important;
 }
 
+.bl-header-eye-btn.bl-eye-active {
+    color: #2ed573 !important;
+    border-color: #2ed573 !important;
+    background: rgba(46, 213, 115, 0.12) !important;
+    box-shadow: 0 0 0 1px rgba(46, 213, 115, 0.35) inset !important;
+}
+
 .bl-bind-toggle {
     color: #a0a7b4 !important;
 }
