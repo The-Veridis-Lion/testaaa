@@ -7,6 +7,7 @@ import {
     renderSubrulesToModal,
     showConfirmModal,
     refreshCharacterBindingUI,
+    refreshVisualDiffToggleUI,
     applyCharacterPresetBinding,
     syncSubrulesFromDOM,
     openTransferModal,
@@ -23,6 +24,10 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
+    toggleVisualDiffMode,
+    toggleVisualDiff,
+    getLatestMessageIndex,
+    clearVisualDiffCache,
 } from './core.js';
 
 export function initRealtimeInterceptor() {
@@ -119,6 +124,17 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
+    $(document).off('click', '#bl-visual-diff-toggle').on('click', '#bl-visual-diff-toggle', () => {
+        const nextState = !runtimeState.isVisualDiffEnabled;
+        toggleVisualDiffMode(nextState);
+        if (!nextState) {
+            clearVisualDiffCache();
+        } else if (!runtimeState.isStreamingGeneration) {
+            const latestIndex = getLatestMessageIndex();
+            if (latestIndex >= 0) toggleVisualDiff(latestIndex, true);
+        }
+        refreshVisualDiffToggleUI();
+    });
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });
@@ -390,7 +406,13 @@ export function bindEvents() {
     };
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
-        setTimeout(() => performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true }), 120);
+        setTimeout(() => {
+            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+            if (runtimeState.isVisualDiffEnabled) {
+                const latestIndex = getLatestMessageIndex();
+                if (latestIndex >= 0) toggleVisualDiff(latestIndex, true);
+            }
+        }, 120);
     };
 
     if (event_types.MESSAGE_EDITED) eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
@@ -407,8 +429,16 @@ export function bindEvents() {
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_RECEIVED) eventSource.on(event_types.MESSAGE_RECEIVED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
+    if (event_types.MESSAGE_RECEIVED) eventSource.on(event_types.MESSAGE_RECEIVED, () => {
+        runtimeState.isVisualDiffEnabled = false;
+        clearVisualDiffCache();
+        refreshVisualDiffToggleUI();
+    });
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
+            runtimeState.isVisualDiffEnabled = false;
+            clearVisualDiffCache();
+            refreshVisualDiffToggleUI();
             applyCharacterPresetBinding(true);
             setTimeout(performGlobalCleanse, 120);
         });

@@ -41,6 +41,11 @@
     display: flex !important; justify-content: space-between !important; align-items: center !important;
     padding-bottom: 18px !important; border-bottom: 1px solid var(--bl-border-color) !important; margin: 0 !important;
 }
+#bl-purifier-popup .bl-header-tools {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
 #bl-purifier-popup .bl-title { font-size: 28px !important; font-weight: bold !important; margin: 0 !important; color: var(--bl-text-primary) !important; } 
 #bl-purifier-popup .bl-close {
     background: none !important; border: none !important; color: var(--bl-text-secondary) !important;
@@ -157,6 +162,23 @@
 }
 .bl-icon-btn:hover { background: var(--bl-border-color) !important; }
 
+.bl-header-eye-btn {
+    min-height: 34px !important;
+    min-width: 34px !important;
+    width: 34px !important;
+    padding: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.bl-header-eye-btn.bl-eye-active {
+    color: #2ed573 !important;
+    border-color: #2ed573 !important;
+    background: rgba(46, 213, 115, 0.12) !important;
+    box-shadow: 0 0 0 1px rgba(46, 213, 115, 0.35) inset !important;
+}
+
 .bl-bind-toggle {
     color: #a0a7b4 !important;
 }
@@ -227,6 +249,27 @@
     align-items: center !important; 
     /* --- 新增：强制换行，防止长文本撑破 flex 布局 --- */
     word-break: break-all !important; 
+}
+
+.bl-diff-del {
+    color: #ff4757 !important;
+    text-decoration: line-through !important;
+    background: rgba(255, 71, 87, 0.1) !important;
+    border-radius: 3px !important;
+    padding: 0 2px !important;
+}
+
+.bl-diff-ins {
+    color: #2ed573 !important;
+    text-decoration: none !important;
+    background: rgba(46, 213, 115, 0.1) !important;
+    border-radius: 3px !important;
+    padding: 0 2px !important;
+    font-weight: bold !important;
+}
+
+.bl-diff-wrapper {
+    display: inline !important;
 }
 
 .bl-rule-preview { 
