@@ -16,7 +16,12 @@ export function setupUI() {
         <div id="bl-purifier-popup" style="display:none;">
             <div class="bl-header">
                 <h3 class="bl-title">全局屏蔽与映射规则</h3>
-                <button id="bl-close-btn" class="bl-close">&times;</button>
+                <div class="bl-header-tools">
+                    <button id="bl-visual-diff-toggle" class="bl-icon-btn bl-header-eye-btn" title="透视对比模式：显示净化前后差异">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                    <button id="bl-close-btn" class="bl-close">&times;</button>
+                </div>
             </div>
             <div class="bl-tools-bar" style="display:flex; flex-direction:column; gap:8px; margin:10px 0 15px 0; border-bottom:1px solid var(--bl-border-color); padding-bottom:12px;">
                 <div class="bl-preset-row" style="display:flex; gap:8px; align-items:center;">
@@ -92,6 +97,13 @@ export function setupUI() {
             </div>
         </div>
     `);
+}
+
+export function refreshVisualDiffToggleUI() {
+    const $toggle = $('#bl-visual-diff-toggle');
+    if (!$toggle.length) return;
+    $toggle.toggleClass('bl-bind-active', runtimeState.isVisualDiffEnabled);
+    $toggle.attr('title', runtimeState.isVisualDiffEnabled ? '透视对比模式已开启（点击关闭）' : '透视对比模式已关闭（点击开启）');
 }
 
 export function showDeepCleanOverlay() {
@@ -239,6 +251,7 @@ export function updateToolbarUI() {
     }
     select.val(settings.activePreset || "");
     refreshCharacterBindingUI();
+    refreshVisualDiffToggleUI();
 }
 
 export function renderTags() {
