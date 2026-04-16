@@ -229,6 +229,27 @@
     word-break: break-all !important; 
 }
 
+.bl-diff-del {
+    color: #ff4757 !important;
+    text-decoration: line-through !important;
+    background: rgba(255, 71, 87, 0.1) !important;
+    border-radius: 3px !important;
+    padding: 0 2px !important;
+}
+
+.bl-diff-ins {
+    color: #2ed573 !important;
+    text-decoration: none !important;
+    background: rgba(46, 213, 115, 0.1) !important;
+    border-radius: 3px !important;
+    padding: 0 2px !important;
+    font-weight: bold !important;
+}
+
+.bl-diff-wrapper {
+    display: inline !important;
+}
+
 .bl-rule-preview { 
     font-size: 15px !important; 
     color: var(--bl-text-secondary) !important; 
