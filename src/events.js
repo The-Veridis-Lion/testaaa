@@ -7,7 +7,6 @@ import {
     renderSubrulesToModal,
     showConfirmModal,
     refreshCharacterBindingUI,
-    refreshVisualDiffToggleUI,
     applyCharacterPresetBinding,
     syncSubrulesFromDOM,
     openTransferModal,
@@ -24,7 +23,6 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
-    toggleVisualDiffMode,
 } from './core.js';
 
 export function initRealtimeInterceptor() {
@@ -45,12 +43,8 @@ export function initRealtimeInterceptor() {
                     if (node.nodeType === 3 || node.nodeType === 8) {
                         if (node.parentNode && isProtectedNode(node.parentNode)) continue;
                         const original = node.nodeValue;
-                        if (runtimeState.isVisualDiffEnabled) {
-                            purifyDOM(node.parentNode || document.getElementById('chat'));
-                        } else {
-                            const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
-                            if (original !== nextValue) node.nodeValue = nextValue;
-                        }
+                        const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+                        if (original !== nextValue) node.nodeValue = nextValue;
                     } else if (node.nodeType === 1) {
                         purifyDOM(node);
                     }
@@ -58,12 +52,8 @@ export function initRealtimeInterceptor() {
                 if (m.type === 'characterData') {
                     if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
                     const original = m.target.nodeValue;
-                    if (runtimeState.isVisualDiffEnabled) {
-                        purifyDOM(m.target.parentNode || document.getElementById('chat'));
-                    } else {
-                        const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
-                        if (original !== nextValue) m.target.nodeValue = nextValue;
-                    }
+                    const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+                    if (original !== nextValue) m.target.nodeValue = nextValue;
                 }
             }
         } finally {
@@ -129,10 +119,6 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
-    $(document).off('click', '#bl-visual-diff-toggle').on('click', '#bl-visual-diff-toggle', () => {
-        toggleVisualDiffMode(!runtimeState.isVisualDiffEnabled);
-        refreshVisualDiffToggleUI();
-    });
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });

@@ -11,7 +11,6 @@ export const defaultSettings = {
 
 export const runtimeState = {
     activeProcessors: [],
-    isVisualDiffEnabled: false,
     isRegexDirty: true,
     currentEditingIndex: -1,
     currentEditingSubrules: [],
