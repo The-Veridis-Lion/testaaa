@@ -497,15 +497,20 @@
 }
 
 /* ========================================================= */
-/* --- 任务1：侧边按钮居中与对齐优化 --- */
+/* --- 任务1：侧边按钮居中与对齐优化（修复飘到顶部的问题） --- */
 .bl-diff-btn-bottom {
+    position: absolute !important; /* 核心修复：开启绝对定位跟随父容器 */
+    bottom: 6px !important;        /* 垂直贴底，与原生滑动块平齐 */
+    right: 85px !important;        /* 水平向左偏移，避开原生的 < 1/15 > 滑动控件 */
+    z-index: 10 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    margin-right: 12px !important;
     font-size: 14px !important;
-    opacity: 0.65 !important;
+    opacity: 0.45 !important;      /* 稍微降低默认透明度，避免喧宾夺主 */
+    cursor: pointer !important;
     transition: opacity 0.2s, color 0.2s !important;
+    color: var(--bl-text-primary) !important;
 }
 
 .bl-diff-btn-bottom:hover {
