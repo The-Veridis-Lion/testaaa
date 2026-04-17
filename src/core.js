@@ -266,7 +266,6 @@ function ensureMessageDiffButton(index, messageNode) {
         }
     }
 
-    // 2. 注入到底部的侧边操作栏 (.swipeRightBlock)
     const swipeBlock = messageNode.querySelector('.swipeRightBlock');
     if (swipeBlock) {
         const existingBottom = swipeBlock.querySelector('.bl-diff-btn-bottom');
@@ -274,17 +273,18 @@ function ensureMessageDiffButton(index, messageNode) {
             if (existingBottom) existingBottom.remove();
         } else if (!existingBottom) {
             const btnBottom = document.createElement('div');
-            // 修复：去掉了 swipe_right 这个含有毒属性（强制右箭头）的 class
-            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
+            btnBottom.className = 'swipe_right bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
             btnBottom.title = '溯源净化前文 (尾部触发)';
             btnBottom.setAttribute('data-index', String(index));
             btnBottom.setAttribute('tabindex', '0');
             btnBottom.setAttribute('role', 'button');
+            btnBottom.style.marginTop = '10px';
             swipeBlock.appendChild(btnBottom);
         } else {
             existingBottom.setAttribute('data-index', String(index));
         }
     }
+}
 
 export function injectDiffButtons() {
     const chatEl = document.getElementById('chat');

@@ -536,18 +536,3 @@
     text-align: center;
     padding: 10px 0;
 }
-
-/* --- 底部侧边栏的小闹钟按钮样式 --- */
-.bl-diff-btn-bottom {
-    margin-top: 12px !important;    /* 和上面的页码拉开一点呼吸空间 */
-    font-size: 14px !important;     /* 保持和官方 UI 一致的大小 */
-    opacity: 0.5 !important;        /* 默认半透明，低调不刺眼 */
-    cursor: pointer !important;
-    text-align: center !important;  /* 确保图标在列中完美居中 */
-    transition: opacity 0.2s ease, color 0.2s ease !important;
-}
-
-.bl-diff-btn-bottom:hover {
-    opacity: 1 !important;          /* 鼠标悬浮时亮起 */
-    color: var(--bl-text-primary) !important;
-}
