@@ -16,17 +16,14 @@ import {
 } from './ui.js';
 import {
     buildProcessors,
-    performDeepCleanse,
     performGlobalCleanse,
-    purifyDOM,
-    isProtectedNode,
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
-    getDiffSnippetsForMessage,
-    clearDiffSnippetsCache,
-    injectDiffButtons,
 } from './core.js';
+import { performDeepCleanse } from './cleanse.js';
+import { purifyDOM, isProtectedNode } from './dom.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
