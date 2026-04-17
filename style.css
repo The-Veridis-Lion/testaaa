@@ -405,3 +405,98 @@
     .bl-rule-preview { font-size: 12px !important; }
     .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
 }
+
+.bl-diff-btn {
+    font-size: 14px !important;
+}
+
+#bl-diff-modal {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 10000000 !important;
+    background: rgba(0, 0, 0, 0.66) !important;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    box-sizing: border-box;
+}
+
+.bl-diff-modal-card {
+    width: min(860px, 96vw);
+    max-height: min(82vh, 900px);
+    background: var(--bl-background-popup);
+    border-radius: 12px;
+    border: 1px solid var(--bl-border-color);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+    display: flex;
+    flex-direction: column;
+}
+
+.bl-diff-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bl-border-color);
+}
+
+.bl-diff-modal-title {
+    margin: 0;
+    color: var(--bl-text-primary);
+    font-size: 16px;
+}
+
+.bl-diff-modal-close {
+    border: 0;
+    background: transparent;
+    color: var(--bl-text-secondary);
+    font-size: 26px;
+    cursor: pointer;
+    line-height: 1;
+}
+
+.bl-diff-modal-content {
+    padding: 12px 16px 16px;
+    overflow-y: auto;
+    max-height: min(70vh, 760px);
+    color: var(--bl-text-primary);
+}
+
+.bl-diff-snippet {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.bl-diff-snippet del {
+    color: #f06565;
+    background: rgba(240, 101, 101, 0.12);
+    text-decoration-thickness: 2px;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.bl-diff-snippet ins {
+    color: #37b24d;
+    background: rgba(55, 178, 77, 0.12);
+    text-decoration: none;
+    padding: 6px 8px;
+    border-radius: 6px;
+}
+
+.bl-diff-divider {
+    border: 0;
+    border-top: 1px dashed var(--bl-border-color);
+    margin: 12px 0;
+}
+
+.bl-diff-empty {
+    color: var(--bl-text-secondary);
+    font-size: 13px;
+    text-align: center;
+    padding: 10px 0;
+}
