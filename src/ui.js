@@ -3,7 +3,7 @@ import { deepClone, getCurrentCharacterContext, getPresetForCharacter, parseInpu
 import { performDeepCleanse, performGlobalCleanse } from './core.js';
 
 export function setupUI() {
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, .bl-visual-diff-toolbar').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -16,12 +16,7 @@ export function setupUI() {
         <div id="bl-purifier-popup" style="display:none;">
             <div class="bl-header">
                 <h3 class="bl-title">全局屏蔽与映射规则</h3>
-                <div class="bl-header-tools">
-                    <button id="bl-visual-diff-toggle" class="bl-icon-btn bl-header-eye-btn" title="透视对比模式：显示净化前后差异">
-                        <i class="fa-solid fa-eye"></i>
-                    </button>
-                    <button id="bl-close-btn" class="bl-close">&times;</button>
-                </div>
+                <button id="bl-close-btn" class="bl-close">&times;</button>
             </div>
             <div class="bl-tools-bar" style="display:flex; flex-direction:column; gap:8px; margin:10px 0 15px 0; border-bottom:1px solid var(--bl-border-color); padding-bottom:12px;">
                 <div class="bl-preset-row" style="display:flex; gap:8px; align-items:center;">
@@ -97,17 +92,6 @@ export function setupUI() {
             </div>
         </div>
     `);
-}
-
-export function refreshVisualDiffToggleUI() {
-    const $toggle = $('#bl-visual-diff-toggle');
-    if (!$toggle.length) return;
-    const isEnabled = runtimeState.isVisualDiffEnabled;
-    $toggle.toggleClass('bl-eye-active', isEnabled);
-    const $icon = $toggle.find('i');
-    $icon.toggleClass('fa-eye', !isEnabled);
-    $icon.toggleClass('fa-eye-slash', isEnabled);
-    $toggle.attr('title', isEnabled ? '透视对比模式已开启（点击关闭）' : '透视对比模式已关闭（点击开启）');
 }
 
 export function showDeepCleanOverlay() {
@@ -255,7 +239,6 @@ export function updateToolbarUI() {
     }
     select.val(settings.activePreset || "");
     refreshCharacterBindingUI();
-    refreshVisualDiffToggleUI();
 }
 
 export function renderTags() {

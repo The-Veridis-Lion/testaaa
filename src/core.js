@@ -144,189 +144,6 @@ export function applyVisualMask(originalText) {
     return applyReplacements(originalText, { deterministic: true });
 }
 
-function escapeHtml(text) {
-    return String(text ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function getReplacementForMatch(proc, procIndex, match, args, deterministic = true) {
-    if (proc.isRegexMode) {
-        const reps = proc.replacements;
-        if (!reps || reps.length === 0) return '';
-        const repKey = deterministic ? `${procIndex}|${match}` : '';
-        let rep = pickReplacement(reps, repKey);
-        rep = String(rep ?? '');
-        rep = rep.replace(/\$(\d+)/g, (m, g) => {
-            const idx = parseInt(g);
-            return args[idx - 1] !== undefined ? args[idx - 1] : m;
-        });
-        return rep;
-    }
-
-    const reps = proc.replacerMap[match];
-    if (!reps || reps.length === 0) return '';
-    const repKey = deterministic ? `${procIndex}|${match}` : '';
-    return String(pickReplacement(reps, repKey) ?? '');
-}
-
-function buildDiffSegments(originalText, options = {}) {
-    const deterministic = options.deterministic !== false;
-    const processors = buildProcessors();
-    let segments = [{ type: 'plain', text: String(originalText || '') }];
-    let hasDiff = false;
-
-    processors.forEach((proc, procIndex) => {
-        const nextSegments = [];
-
-        segments.forEach((segment) => {
-            if (segment.type !== 'plain' || !segment.text) {
-                nextSegments.push(segment);
-                return;
-            }
-
-            const text = segment.text;
-            const regex = proc.regex;
-            regex.lastIndex = 0;
-            let cursor = 0;
-            let match;
-            let segmentChanged = false;
-
-            while ((match = regex.exec(text)) !== null) {
-                const matchedText = match[0] ?? '';
-                const matchIndex = match.index ?? 0;
-                if (!matchedText) {
-                    regex.lastIndex += 1;
-                    continue;
-                }
-
-                if (matchIndex > cursor) {
-                    nextSegments.push({ type: 'plain', text: text.slice(cursor, matchIndex) });
-                }
-
-                const args = match.slice(1);
-                const replacement = getReplacementForMatch(proc, procIndex, matchedText, args, deterministic);
-                nextSegments.push({ type: 'diff', del: matchedText, ins: replacement });
-                hasDiff = true;
-                segmentChanged = true;
-                cursor = matchIndex + matchedText.length;
-            }
-
-            if (cursor < text.length) {
-                nextSegments.push({ type: 'plain', text: text.slice(cursor) });
-            } else if (!segmentChanged) {
-                nextSegments.push(segment);
-            }
-        });
-
-        segments = nextSegments;
-    });
-
-    return { segments, hasDiff };
-}
-
-export function applyDiffReplacementsHTML(originalText) {
-    if (typeof originalText !== 'string' || !originalText) return originalText;
-    const { segments, hasDiff } = buildDiffSegments(originalText, { deterministic: true });
-    if (!hasDiff) return originalText;
-
-    return segments.map((segment) => {
-        if (segment.type === 'plain') return escapeHtml(segment.text);
-        const delHtml = segment.del ? `<del class="bl-diff-del">${escapeHtml(segment.del)}</del>` : '';
-        const insHtml = segment.ins ? `<ins class="bl-diff-ins">${escapeHtml(segment.ins)}</ins>` : '';
-        return `${delHtml}${insHtml}`;
-    }).join('');
-}
-
-function createDiffFragment(originalText) {
-    const { segments, hasDiff } = buildDiffSegments(originalText, { deterministic: true });
-    if (!hasDiff) return null;
-    const fragment = document.createDocumentFragment();
-    segments.forEach((segment) => {
-        if (segment.type === 'plain') {
-            if (segment.text) fragment.appendChild(document.createTextNode(segment.text));
-            return;
-        }
-        if (segment.del) {
-            const delEl = document.createElement('del');
-            delEl.className = 'bl-diff-del';
-            delEl.textContent = segment.del;
-            fragment.appendChild(delEl);
-        }
-        if (segment.ins) {
-            const insEl = document.createElement('ins');
-            insEl.className = 'bl-diff-ins';
-            insEl.textContent = segment.ins;
-            fragment.appendChild(insEl);
-        }
-    });
-    return fragment;
-}
-
-function findMessageTextElement(index) {
-    const messageNode = getMessageDomNode(index);
-    if (!messageNode) return null;
-    return messageNode.querySelector('.mes_text');
-}
-
-export function clearVisualDiffCache() {
-    runtimeState.visualDiffCache.forEach((_, index) => {
-        const mesText = findMessageTextElement(index);
-        if (mesText) mesText.innerHTML = runtimeState.visualDiffCache.get(index);
-    });
-    runtimeState.visualDiffCache.clear();
-}
-
-export function toggleVisualDiff(index, enable) {
-    const msgIndex = Number(index);
-    if (!Number.isInteger(msgIndex) || msgIndex < 0) return false;
-    const mesText = findMessageTextElement(msgIndex);
-    if (!mesText) return false;
-
-    if (!enable) {
-        const cached = runtimeState.visualDiffCache.get(msgIndex);
-        if (typeof cached === 'string') {
-            mesText.innerHTML = cached;
-            runtimeState.visualDiffCache.delete(msgIndex);
-            return true;
-        }
-        return false;
-    }
-
-    if (!runtimeState.visualDiffCache.has(msgIndex)) {
-        runtimeState.visualDiffCache.set(msgIndex, mesText.innerHTML);
-    }
-
-    const walker = document.createTreeWalker(mesText, NodeFilter.SHOW_TEXT, null, false);
-    const textNodes = [];
-    let node;
-    while ((node = walker.nextNode())) {
-        if (!node.nodeValue || !node.parentNode) continue;
-        const parentTag = node.parentNode.nodeName;
-        if (parentTag === 'SCRIPT' || parentTag === 'STYLE') continue;
-        textNodes.push(node);
-    }
-
-    let hasChanges = false;
-    textNodes.forEach((textNode) => {
-        const original = textNode.nodeValue || '';
-        const fragment = createDiffFragment(original);
-        if (fragment && textNode.parentNode) {
-            textNode.parentNode.replaceChild(fragment, textNode);
-            hasChanges = true;
-        }
-    });
-
-    if (!hasChanges) {
-        mesText.innerHTML = runtimeState.visualDiffCache.get(msgIndex);
-        runtimeState.visualDiffCache.delete(msgIndex);
-    }
-    return hasChanges;
-}
-
 export function queueIncrementalChatSave() {
     const { saveChat } = getAppContext();
     runtimeState.pendingChatSave = true;
@@ -370,6 +187,8 @@ export function isProtectedNode(node) {
     ];
     if (node.id && promptIds.includes(node.id)) return true;
     if (node.id && node.id.startsWith('world_entry_content_')) return true;
+    const dataFor = typeof node.getAttribute === 'function' ? node.getAttribute('data-for') : '';
+    if (dataFor && dataFor.startsWith('world_entry_content_')) return true;
     if (node.tagName === 'TEXTAREA' && node.name === 'comment') return true;
     return false;
 }
@@ -594,10 +413,6 @@ export function purifyDOM(rootNode) {
             }
         }
     }
-}
-
-export function toggleVisualDiffMode(enabled) {
-    runtimeState.isVisualDiffEnabled = !!enabled;
 }
 
 export function getMessageIndexFromEvent(payload) {
