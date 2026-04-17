@@ -497,17 +497,49 @@
 }
 
 /* ========================================================= */
-/* --- 新增：全文模式的排版（去除所有多余边距，回归普通书本阅读感）--- */
+/* --- 任务1：侧边按钮居中与对齐优化 --- */
+.bl-diff-btn-bottom {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-right: 12px !important;
+    font-size: 14px !important;
+    opacity: 0.65 !important;
+    transition: opacity 0.2s, color 0.2s !important;
+}
+
+.bl-diff-btn-bottom:hover {
+    opacity: 1 !important;
+    color: var(--bl-accent-color) !important;
+}
+
+/* ========================================================= */
+/* --- 任务2 & 3：全文模式的段落级排版与高亮 --- */
 .bl-diff-full-text {
     font-size: 15px !important;
     line-height: 1.6 !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
     color: var(--bl-text-primary) !important;
     padding: 8px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
 }
 
-.bl-diff-full-text del {
+.bl-diff-full-normal {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+}
+
+.bl-diff-full-modified {
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    padding: 10px 14px !important;
+    background: var(--bl-background-secondary) !important;
+    border-left: 4px solid var(--bl-accent-color) !important;
+    border-radius: 6px !important;
+}
+
+.bl-diff-full-modified del {
     color: #e03131 !important;
     background: rgba(224, 49, 49, 0.08) !important;
     text-decoration: line-through !important;
@@ -515,7 +547,7 @@
     border-radius: 3px !important;
 }
 
-.bl-diff-full-text ins {
+.bl-diff-full-modified ins {
     color: #0ca678 !important;
     background: rgba(12, 166, 120, 0.08) !important;
     text-decoration: none !important;

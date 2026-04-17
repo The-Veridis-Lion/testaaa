@@ -219,8 +219,24 @@ function buildDiffSnippetsFromText(rawText) {
     let targetText = rawText;
     const contentMatch = rawText.match(/<content>([\s\S]*?)<\/content>/i);
     if (contentMatch) targetText = contentMatch[1].trim();
-    const cleanedFull = applyReplacements(targetText);
-    const fullDiff = getInlineDiff(targetText, cleanedFull);
+
+    const fullParts = targetText.split('\n');
+    const fullDiffBlocks = [];
+
+    for (let i = 0; i < fullParts.length; i++) {
+        const originalPart = fullParts[i].trim();
+        if (!originalPart) continue;
+
+        const cleanedPart = applyReplacements(originalPart);
+        if (cleanedPart !== originalPart) {
+            const inlineDiffHTML = getInlineDiff(originalPart, cleanedPart);
+            fullDiffBlocks.push(`<div class="bl-diff-full-modified">${inlineDiffHTML}</div>`);
+        } else {
+            fullDiffBlocks.push(`<div class="bl-diff-full-normal">${escapeHtml(originalPart)}</div>`);
+        }
+    }
+
+    const fullDiff = fullDiffBlocks.join('');
 
     return {
         cleanedText,
@@ -268,19 +284,20 @@ function ensureMessageDiffButton(index, messageNode) {
 
     const swipeBlock = messageNode.querySelector('.swipeRightBlock');
     if (swipeBlock) {
-        const existingBottom = swipeBlock.querySelector('.bl-diff-btn-bottom');
+        const parent = swipeBlock.parentNode;
+        const existingBottom = parent?.querySelector('.bl-diff-btn-bottom');
+
         if (!isEnabled || !hasSnippets) {
             if (existingBottom) existingBottom.remove();
-        } else if (!existingBottom) {
+        } else if (!existingBottom && parent) {
             const btnBottom = document.createElement('div');
-            btnBottom.className = 'swipe_right bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
+            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
             btnBottom.title = '溯源净化前文 (尾部触发)';
             btnBottom.setAttribute('data-index', String(index));
             btnBottom.setAttribute('tabindex', '0');
             btnBottom.setAttribute('role', 'button');
-            btnBottom.style.marginTop = '10px';
-            swipeBlock.appendChild(btnBottom);
-        } else {
+            parent.insertBefore(btnBottom, swipeBlock);
+        } else if (existingBottom) {
             existingBottom.setAttribute('data-index', String(index));
         }
     }
