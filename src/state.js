@@ -6,6 +6,7 @@ export const defaultSettings = {
     activePreset: "",
     defaultPreset: "",
     characterBindings: {},
+    enableVisualDiff: true,
     deepCleanTimeoutSec: 120
 };
 

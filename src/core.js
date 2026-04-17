@@ -187,13 +187,17 @@ function updateDiffSnippetCache(index, snippets) {
 
 function ensureMessageDiffButton(index, messageNode) {
     if (!messageNode || !Number.isInteger(index) || index < 0) return;
+
+    const { extension_settings } = getAppContext();
+    const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
     const cached = runtimeState.diffSnippetsCache.get(index);
     const hasSnippets = Array.isArray(cached) && cached.length > 0;
+
     const buttonArea = messageNode.querySelector('.mes_buttons');
     if (!buttonArea) return;
 
     const existing = buttonArea.querySelector('.bl-diff-btn');
-    if (!hasSnippets) {
+    if (!isEnabled || !hasSnippets) {
         if (existing) existing.remove();
         return;
     }
@@ -204,12 +208,15 @@ function ensureMessageDiffButton(index, messageNode) {
     }
 
     const button = document.createElement('div');
-    button.className = 'mes_button bl-diff-btn fa-solid fa-eye interactable';
-    button.title = '查看净化前文';
+    button.className = 'mes_button bl-diff-btn fa-solid fa-clock-rotate-left interactable';
+    button.title = '溯源净化前文 (透视模式)';
     button.setAttribute('data-index', String(index));
     button.setAttribute('tabindex', '0');
     button.setAttribute('role', 'button');
-    buttonArea.appendChild(button);
+
+    const editBtn = buttonArea.querySelector('.mes_edit');
+    if (editBtn) buttonArea.insertBefore(button, editBtn);
+    else buttonArea.appendChild(button);
 }
 
 export function injectDiffButtons() {

@@ -24,6 +24,7 @@ function ensureSettingsShape() {
     if (settings.activePreset === undefined) settings.activePreset = "";
     if (settings.defaultPreset === undefined) settings.defaultPreset = "";
     if (!settings.characterBindings || typeof settings.characterBindings !== 'object') settings.characterBindings = {};
+    if (settings.enableVisualDiff === undefined) settings.enableVisualDiff = true;
     cleanupInvalidPresetBindings();
 
     const timeoutSec = Number(settings.deepCleanTimeoutSec);

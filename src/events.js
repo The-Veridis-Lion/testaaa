@@ -123,6 +123,15 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
+    const settings = extension_settings[extensionName];
+    $('#bl-diff-global-toggle').prop('checked', settings.enableVisualDiff !== false);
+
+    $(document).off('change', '#bl-diff-global-toggle').on('change', '#bl-diff-global-toggle', function() {
+        settings.enableVisualDiff = $(this).prop('checked');
+        saveSettingsDebounced();
+        injectDiffButtons();
+    });
+
 
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
         const index = Number($(this).attr('data-index'));
