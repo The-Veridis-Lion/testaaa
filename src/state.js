@@ -21,6 +21,7 @@ export const runtimeState = {
     chatSaveInFlight: false,
     pendingChatSave: false,
     isBooted: false,
+    diffSnippetsCache: new Map(),
 };
 
 const appContext = {
