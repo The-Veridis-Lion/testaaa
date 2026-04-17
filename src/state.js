@@ -11,6 +11,7 @@ export const defaultSettings = {
 
 export const runtimeState = {
     activeProcessors: [],
+    diffMessageCache: new Map(),
     isRegexDirty: true,
     currentEditingIndex: -1,
     currentEditingSubrules: [],

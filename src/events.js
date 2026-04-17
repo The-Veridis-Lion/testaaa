@@ -23,6 +23,7 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
+    generateDiffHTML,
 } from './core.js';
 
 export function initRealtimeInterceptor() {
@@ -119,6 +120,18 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
+    $(document).off('click', '.bl-msg-diff-btn').on('click', '.bl-msg-diff-btn', function() {
+        const index = Number($(this).data('index'));
+        const originalText = runtimeState.diffMessageCache.get(index);
+        if (!originalText) return;
+        const diffHtml = generateDiffHTML(originalText);
+        $('#bl-diff-modal-content').html(diffHtml);
+        $('#bl-diff-modal').fadeIn(200).css('display', 'flex');
+    });
+    $(document).off('click', '#bl-diff-close-btn').on('click', '#bl-diff-close-btn', () => $('#bl-diff-modal').fadeOut(150));
+    $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) {
+        if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').fadeOut(150);
+    });
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });
@@ -409,6 +422,8 @@ export function bindEvents() {
     if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
+            runtimeState.diffMessageCache.clear();
+            $('#bl-diff-modal').hide();
             applyCharacterPresetBinding(true);
             setTimeout(performGlobalCleanse, 120);
         });

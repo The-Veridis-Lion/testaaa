@@ -413,6 +413,8 @@ export function purifyDOM(rootNode) {
             }
         }
     }
+
+    appendDiffButtons(rootNode);
 }
 
 export function getMessageIndexFromEvent(payload) {
@@ -449,6 +451,7 @@ export function cleanseMessageDataAtIndex(index) {
     const msg = chat[index];
     if (!msg || typeof msg !== 'object') return false;
     let changed = false;
+    const originalMesText = typeof msg.mes === 'string' ? String(msg.mes) : null;
 
     if (typeof msg.mes === 'string') {
         const cleaned = applyReplacements(msg.mes);
@@ -476,7 +479,101 @@ export function cleanseMessageDataAtIndex(index) {
         }
     }
 
+    if (changed && typeof originalMesText === 'string') runtimeState.diffMessageCache.set(index, originalMesText);
+    else runtimeState.diffMessageCache.delete(index);
+
     return changed;
+}
+
+function escapeHtml(text) {
+    return String(text ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+export function generateDiffHTML(originalText) {
+    if (typeof originalText !== 'string' || !originalText) return '';
+    const processors = buildProcessors();
+    if (!Array.isArray(processors) || processors.length === 0) return `<pre>${escapeHtml(originalText)}</pre>`;
+
+    let text = originalText;
+    let tokenId = 0;
+    const tokenMap = new Map();
+    const createToken = (html) => {
+        const token = `\u0000BL_DIFF_${tokenId++}\u0000`;
+        tokenMap.set(token, html);
+        return token;
+    };
+
+    processors.forEach((proc, procIndex) => {
+        text = text.replace(proc.regex, (match, ...args) => {
+            let replacement = '';
+            if (proc.isRegexMode) {
+                const reps = proc.replacements;
+                if (!reps || reps.length === 0) replacement = '';
+                else {
+                    replacement = pickReplacement(reps, `${procIndex}|${match}`);
+                    replacement = String(replacement ?? '').replace(/\$(\d+)/g, (m, g) => {
+                        const idx = parseInt(g, 10);
+                        return args[idx - 1] !== undefined ? args[idx - 1] : m;
+                    });
+                }
+            } else {
+                const reps = proc.replacerMap?.[match];
+                replacement = (!reps || reps.length === 0) ? '' : String(pickReplacement(reps, `${procIndex}|${match}`) ?? '');
+            }
+
+            const delHtml = `<del class="bl-diff-del">${escapeHtml(match)}</del>`;
+            const insHtml = replacement ? `<ins class="bl-diff-ins">${escapeHtml(replacement)}</ins>` : '';
+            return createToken(`${delHtml}${insHtml}`);
+        });
+    });
+
+    let safeHtml = escapeHtml(text);
+    tokenMap.forEach((html, token) => {
+        safeHtml = safeHtml.replace(token, html);
+    });
+    return `<div class="bl-diff-content">${safeHtml}</div>`;
+}
+
+function getMesIndexFromNode(mesNode) {
+    if (!mesNode || !mesNode.getAttribute) return -1;
+    const candidates = [
+        mesNode.getAttribute('mesid'),
+        mesNode.getAttribute('data-mesid'),
+        mesNode.getAttribute('messageid'),
+        mesNode.getAttribute('data-message-id'),
+    ];
+    for (const value of candidates) {
+        const num = Number(value);
+        if (Number.isInteger(num) && num >= 0) return num;
+    }
+    return -1;
+}
+
+export function appendDiffButtons(rootNode = document) {
+    if (!rootNode || !rootNode.querySelectorAll) return;
+    const mesNodes = rootNode.matches?.('.mes') ? [rootNode] : rootNode.querySelectorAll('.mes');
+    if (!mesNodes || mesNodes.length === 0) return;
+
+    for (let i = 0; i < mesNodes.length; i++) {
+        const mesNode = mesNodes[i];
+        const index = getMesIndexFromNode(mesNode);
+        if (index < 0 || !runtimeState.diffMessageCache.has(index)) continue;
+        if (mesNode.querySelector(`.bl-msg-diff-btn[data-index="${index}"]`)) continue;
+
+        const target = mesNode.querySelector('.mes_buttons') || mesNode.querySelector('.mes_text');
+        if (!target) continue;
+
+        const btn = document.createElement('span');
+        btn.className = 'bl-msg-diff-btn';
+        btn.dataset.index = String(index);
+        btn.innerHTML = '<i class="fa-solid fa-eye"></i> 透视';
+        target.appendChild(btn);
+    }
 }
 
 export function performIncrementalCleanse(payload, options = {}) {

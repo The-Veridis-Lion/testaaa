@@ -3,7 +3,7 @@ import { deepClone, getCurrentCharacterContext, getPresetForCharacter, parseInpu
 import { performDeepCleanse, performGlobalCleanse } from './core.js';
 
 export function setupUI() {
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -89,6 +89,18 @@ export function setupUI() {
                     <button id="bl-transfer-move" class="bl-transfer-btn bl-transfer-move">转移到该存档</button>
                     <button id="bl-transfer-cancel" class="bl-transfer-btn">取消</button>
                 </div>
+            </div>
+        </div>
+    `);
+
+    $('body').append(`
+        <div id="bl-diff-modal" style="display:none;">
+            <div class="bl-diff-modal-dialog">
+                <div class="bl-diff-modal-header">
+                    <h3 class="bl-diff-modal-title">透视对比</h3>
+                    <button id="bl-diff-close-btn" class="bl-diff-close" type="button">&times;</button>
+                </div>
+                <div id="bl-diff-modal-content" class="bl-diff-modal-content"></div>
             </div>
         </div>
     `);
