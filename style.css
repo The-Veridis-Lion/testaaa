@@ -464,7 +464,7 @@
     color: var(--bl-text-primary);
 }
 
-/* --- 优化后的行内差异比对 UI --- */
+/* --- 原来的行内高亮片段（带边框和底色背景） --- */
 .bl-diff-snippet {
     display: block !important;
     line-height: 1.8 !important;
@@ -484,7 +484,6 @@
     padding: 2px 4px !important;
     border-radius: 4px !important;
     margin: 0 2px !important;
-    font-size: 0.95em !important;
 }
 
 .bl-diff-snippet ins {
@@ -495,6 +494,34 @@
     border-radius: 4px !important;
     margin: 0 2px !important;
     font-weight: bold !important;
+}
+
+/* ========================================================= */
+/* --- 新增：全文模式的排版（去除所有多余边距，回归普通书本阅读感）--- */
+.bl-diff-full-text {
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    color: var(--bl-text-primary) !important;
+    padding: 8px !important;
+}
+
+.bl-diff-full-text del {
+    color: #e03131 !important;
+    background: rgba(224, 49, 49, 0.08) !important;
+    text-decoration: line-through !important;
+    padding: 0 3px !important;
+    border-radius: 3px !important;
+}
+
+.bl-diff-full-text ins {
+    color: #0ca678 !important;
+    background: rgba(12, 166, 120, 0.08) !important;
+    text-decoration: none !important;
+    padding: 0 3px !important;
+    border-radius: 3px !important;
+    font-weight: 600 !important;
 }
 
 .bl-diff-divider {

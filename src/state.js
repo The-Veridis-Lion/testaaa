@@ -7,6 +7,7 @@ export const defaultSettings = {
     defaultPreset: "",
     characterBindings: {},
     enableVisualDiff: true,
+    diffViewMode: "snippet",
     deepCleanTimeoutSec: 120
 };
 
@@ -23,6 +24,7 @@ export const runtimeState = {
     pendingChatSave: false,
     isBooted: false,
     diffSnippetsCache: new Map(),
+    currentDiffIndex: undefined,
 };
 
 const appContext = {

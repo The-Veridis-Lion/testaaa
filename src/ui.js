@@ -105,7 +105,12 @@ export function setupUI() {
             <div class="bl-diff-modal-card">
                 <div class="bl-diff-modal-header">
                     <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i> 净化前文透视</h3>
-                    <button id="bl-diff-modal-close" class="bl-diff-modal-close" aria-label="关闭">&times;</button>
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <button id="bl-diff-mode-toggle" class="bl-icon-btn" style="padding: 6px 12px; min-height: 30px; font-size: 13px;" title="切换视图模式">
+                            <i id="bl-diff-mode-icon" class="fa-solid fa-file-lines"></i> <span id="bl-diff-mode-text">全文模式</span>
+                        </button>
+                        <button id="bl-diff-modal-close" class="bl-diff-modal-close" aria-label="关闭">&times;</button>
+                    </div>
                 </div>
                 <div id="bl-diff-modal-content" class="bl-diff-modal-content"></div>
             </div>

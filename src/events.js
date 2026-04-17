@@ -133,17 +133,47 @@ export function bindEvents() {
     });
 
 
+    function renderDiffModalContent(index) {
+        const { extension_settings } = getAppContext();
+        const settings = extension_settings[extensionName];
+        const mode = settings.diffViewMode || 'snippet';
+        const cached = getDiffSnippetsForMessage(index);
+        if (!cached) return;
+
+        const contentEl = $('#bl-diff-modal-content');
+
+        if (mode === 'full') {
+            contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || "当前消息无正文差异。"}</div>`);
+            $('#bl-diff-mode-text').text('切回片段');
+            $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-list-ul');
+        } else {
+            const html = cached.snippets.length > 0
+                ? cached.snippets.join('<hr class="bl-diff-divider">')
+                : '<div class="bl-diff-empty">当前消息没有可展示的净化片段。</div>';
+            contentEl.html(html);
+            $('#bl-diff-mode-text').text('全文模式');
+            $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-file-lines');
+        }
+    }
+
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
         const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
 
-        const snippets = getDiffSnippetsForMessage(index);
-        const html = snippets.length > 0
-            ? snippets.join('<hr class="bl-diff-divider">')
-            : '<div class="bl-diff-empty">当前消息没有可展示的净化片段。</div>';
-
-        $('#bl-diff-modal-content').html(html);
+        runtimeState.currentDiffIndex = index;
+        renderDiffModalContent(index);
         $('#bl-diff-modal').css('display', 'flex');
+    });
+
+    $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
+        const { extension_settings, saveSettingsDebounced } = getAppContext();
+        const settings = extension_settings[extensionName];
+        settings.diffViewMode = settings.diffViewMode === 'full' ? 'snippet' : 'full';
+        saveSettingsDebounced();
+
+        if (runtimeState.currentDiffIndex !== undefined) {
+            renderDiffModalContent(runtimeState.currentDiffIndex);
+        }
     });
 
     $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => $('#bl-diff-modal').hide());
@@ -453,6 +483,7 @@ export function bindEvents() {
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
             clearDiffSnippetsCache();
+            runtimeState.currentDiffIndex = undefined;
             $('#bl-diff-modal').hide();
             applyCharacterPresetBinding(true);
             setTimeout(performGlobalCleanse, 120);
