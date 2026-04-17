@@ -154,6 +154,49 @@ function escapeHtml(value = '') {
         .replace(/'/g, '&#39;');
 }
 
+function getInlineDiff(oldStr, newStr) {
+    if (oldStr === newStr) return escapeHtml(oldStr);
+
+    const oldChars = Array.from(oldStr);
+    const newChars = Array.from(newStr);
+    const m = oldChars.length;
+    const n = newChars.length;
+
+    const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            if (oldChars[i - 1] === newChars[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+
+    let i = m;
+    let j = n;
+    const diff = [];
+
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && oldChars[i - 1] === newChars[j - 1]) {
+            diff.push(escapeHtml(oldChars[i - 1]));
+            i--;
+            j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+            diff.push(`<ins>${escapeHtml(newChars[j - 1])}</ins>`);
+            j--;
+        } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+            diff.push(`<del>${escapeHtml(oldChars[i - 1])}</del>`);
+            i--;
+        }
+    }
+
+    return diff.reverse().join('')
+        .replace(/<\/ins><ins>/g, '')
+        .replace(/<\/del><del>/g, '');
+}
+
 function buildDiffSnippetsFromText(rawText) {
     if (typeof rawText !== 'string') return { cleanedText: rawText, snippets: [] };
     const parts = rawText.split('\n');
@@ -166,7 +209,8 @@ function buildDiffSnippetsFromText(rawText) {
         cleanedParts[i] = cleanedPart;
 
         if (cleanedPart !== originalPart) {
-            snippets.push(`<div class="bl-diff-snippet"><del>${escapeHtml(originalPart)}</del><ins>${escapeHtml(cleanedPart)}</ins></div>`);
+            const inlineDiffHTML = getInlineDiff(originalPart, cleanedPart);
+            snippets.push(`<div class="bl-diff-snippet">${inlineDiffHTML}</div>`);
         }
     }
 

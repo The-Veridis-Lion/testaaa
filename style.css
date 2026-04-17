@@ -464,28 +464,37 @@
     color: var(--bl-text-primary);
 }
 
+/* --- 优化后的行内差异比对 UI --- */
 .bl-diff-snippet {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    white-space: pre-wrap;
-    word-break: break-word;
+    display: block !important;
+    line-height: 1.8 !important;
+    white-space: pre-wrap !important;
+    word-break: break-word !important;
+    padding: 12px 14px !important;
+    background: var(--bl-background-secondary) !important;
+    border-radius: 8px !important;
+    border-left: 3px solid var(--bl-border-color) !important;
 }
 
 .bl-diff-snippet del {
-    color: #f06565;
-    background: rgba(240, 101, 101, 0.12);
-    text-decoration-thickness: 2px;
-    padding: 6px 8px;
-    border-radius: 6px;
+    color: #e03131 !important;
+    background: rgba(224, 49, 49, 0.12) !important;
+    text-decoration: line-through !important;
+    text-decoration-thickness: 2px !important;
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    margin: 0 2px !important;
+    font-size: 0.95em !important;
 }
 
 .bl-diff-snippet ins {
-    color: #37b24d;
-    background: rgba(55, 178, 77, 0.12);
-    text-decoration: none;
-    padding: 6px 8px;
-    border-radius: 6px;
+    color: #0ca678 !important;
+    background: rgba(12, 166, 120, 0.12) !important;
+    text-decoration: none !important;
+    padding: 2px 4px !important;
+    border-radius: 4px !important;
+    margin: 0 2px !important;
+    font-weight: bold !important;
 }
 
 .bl-diff-divider {
