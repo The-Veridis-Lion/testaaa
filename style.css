@@ -407,7 +407,7 @@
 }
 
 .bl-diff-btn {
-    font-size: 14px !important;
+    font-size: inherit !important;
 }
 
 #bl-diff-modal {
@@ -498,16 +498,16 @@
 
 /* ========================================================= */
 /* --- 任务1：侧边按钮居中与对齐优化（修复飘到顶部的问题） --- */
+/* 尾部按钮样式更新 */
 .bl-diff-btn-bottom {
-    position: absolute !important; /* 核心修复：开启绝对定位跟随父容器 */
-    bottom: 6px !important;        /* 垂直贴底，与原生滑动块平齐 */
-    right: 85px !important;        /* 水平向左偏移，避开原生的 < 1/15 > 滑动控件 */
+    position: absolute !important;
+    bottom: 6px !important;
+    right: 48px !important; /* 【核心修改】从 85px 缩小到 48px，让它贴近 2/2 页码 */
     z-index: 10 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 14px !important;
-    opacity: 0.45 !important;      /* 稍微降低默认透明度，避免喧宾夺主 */
+    opacity: 0.45 !important;
     cursor: pointer !important;
     transition: opacity 0.2s, color 0.2s !important;
     color: var(--bl-text-primary) !important;
@@ -521,29 +521,35 @@
 /* ========================================================= */
 /* --- 任务2 & 3：全文模式的段落级排版与高亮 --- */
 .bl-diff-full-text {
-    font-size: 15px !important;
-    line-height: 1.6 !important;
     color: var(--bl-text-primary) !important;
     padding: 8px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 12px !important; 
 }
 
+/* 无修改的正常段落：保持小字号，稍微透明一点，方便快速翻阅不累眼 */
 .bl-diff-full-normal {
+    font-size: 14px !important; 
+    line-height: 1.5 !important;
     white-space: pre-wrap !important;
     word-break: break-word !important;
+    opacity: 0.85 !important; 
 }
 
+/* 包含修改的段落：字号放大，行高拉开，和片段模式的排版看齐，超级醒目！ */
 .bl-diff-full-modified {
+    font-size: 16px !important; /* 放大字号 */
+    line-height: 1.8 !important; /* 拉大行高 */
     white-space: pre-wrap !important;
     word-break: break-word !important;
-    padding: 10px 14px !important;
+    padding: 12px 14px !important; /* 加大内边距 */
     background: var(--bl-background-secondary) !important;
     border-left: 4px solid var(--bl-accent-color) !important;
     border-radius: 6px !important;
 }
 
+/* 差异字体的颜色与背景 */
 .bl-diff-full-modified del {
     color: #e03131 !important;
     background: rgba(224, 49, 49, 0.08) !important;
@@ -559,17 +565,4 @@
     padding: 0 3px !important;
     border-radius: 3px !important;
     font-weight: 600 !important;
-}
-
-.bl-diff-divider {
-    border: 0;
-    border-top: 1px dashed var(--bl-border-color);
-    margin: 12px 0;
-}
-
-.bl-diff-empty {
-    color: var(--bl-text-secondary);
-    font-size: 13px;
-    text-align: center;
-    padding: 10px 0;
 }
