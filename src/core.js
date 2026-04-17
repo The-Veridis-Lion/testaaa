@@ -271,7 +271,9 @@ export function cleanseMessageDataAtIndex(index) {
         }
     }
 
-    updateDiffSnippetCache(index, { snippets: allSnippets, fullDiff: mainFullDiff });
+    // 使用 Set 对完全相同的片段 HTML 进行去重
+    const uniqueSnippets = Array.from(new Set(allSnippets));
+    updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
     return changed;
 }
 
