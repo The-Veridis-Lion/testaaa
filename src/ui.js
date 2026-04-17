@@ -3,7 +3,7 @@ import { deepClone, getCurrentCharacterContext, getPresetForCharacter, parseInpu
 import { performDeepCleanse, performGlobalCleanse } from './core.js';
 
 export function setupUI() {
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -35,8 +35,15 @@ export function setupUI() {
             </div>
             <button id="bl-open-new-rule-btn" class="bl-add-rule-btn" style="width:100%; margin-bottom:10px;"><i class="fas fa-folder-plus"></i> 新增规则组 (合集)</button>
             <div id="bl-tags-container" style="max-height:220px; overflow-y:auto; padding-right:5px;"></div>
-            <div class="bl-footer">
-                <button id="bl-deep-clean-btn" class="bl-deep-clean-btn"><i class="fas fa-broom"></i> 深度屏蔽与替换</button>
+            <div class="bl-footer" style="display:flex; justify-content:space-between; align-items:center; gap:15px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <label class="bl-toggle-switch" title="开启后，被修改过的消息旁会显示溯源按钮">
+                        <input type="checkbox" id="bl-diff-global-toggle">
+                        <span class="bl-toggle-slider"></span>
+                    </label>
+                    <span style="font-size:13px; color:var(--bl-text-secondary); font-weight:bold;">透视模式</span>
+                </div>
+                <button id="bl-deep-clean-btn" class="bl-deep-clean-btn" style="flex:1; width:auto;"><i class="fas fa-broom"></i> 深度清理</button>
             </div>
         </div>`);
 
@@ -89,6 +96,18 @@ export function setupUI() {
                     <button id="bl-transfer-move" class="bl-transfer-btn bl-transfer-move">转移到该存档</button>
                     <button id="bl-transfer-cancel" class="bl-transfer-btn">取消</button>
                 </div>
+            </div>
+        </div>
+    `);
+
+    $('body').append(`
+        <div id="bl-diff-modal" style="display:none;">
+            <div class="bl-diff-modal-card">
+                <div class="bl-diff-modal-header">
+                    <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i> 净化前文透视</h3>
+                    <button id="bl-diff-modal-close" class="bl-diff-modal-close" aria-label="关闭">&times;</button>
+                </div>
+                <div id="bl-diff-modal-content" class="bl-diff-modal-content"></div>
             </div>
         </div>
     `);
