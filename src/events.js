@@ -23,6 +23,9 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
+    getDiffSnippetsForMessage,
+    clearDiffSnippetsCache,
+    injectDiffButtons,
 } from './core.js';
 
 export function initRealtimeInterceptor() {
@@ -58,6 +61,7 @@ export function initRealtimeInterceptor() {
             }
         } finally {
             chatObserver.takeRecords();
+            injectDiffButtons();
             isPurifying = false;
         }
     });
@@ -119,6 +123,33 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
+    const settings = extension_settings[extensionName];
+    $('#bl-diff-global-toggle').prop('checked', settings.enableVisualDiff !== false);
+
+    $(document).off('change', '#bl-diff-global-toggle').on('change', '#bl-diff-global-toggle', function() {
+        settings.enableVisualDiff = $(this).prop('checked');
+        saveSettingsDebounced();
+        injectDiffButtons();
+    });
+
+
+    $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
+        const index = Number($(this).attr('data-index'));
+        if (!Number.isInteger(index) || index < 0) return;
+
+        const snippets = getDiffSnippetsForMessage(index);
+        const html = snippets.length > 0
+            ? snippets.join('<hr class="bl-diff-divider">')
+            : '<div class="bl-diff-empty">当前消息没有可展示的净化片段。</div>';
+
+        $('#bl-diff-modal-content').html(html);
+        $('#bl-diff-modal').css('display', 'flex');
+    });
+
+    $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => $('#bl-diff-modal').hide());
+    $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) {
+        if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').hide();
+    });
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });
@@ -409,6 +440,8 @@ export function bindEvents() {
     if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
+            clearDiffSnippetsCache();
+            $('#bl-diff-modal').hide();
             applyCharacterPresetBinding(true);
             setTimeout(performGlobalCleanse, 120);
         });
