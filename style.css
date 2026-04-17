@@ -566,3 +566,35 @@
     border-radius: 3px !important;
     font-weight: 600 !important;
 }
+
+/* ========================================================= */
+/* --- 手机端高度与软键盘适配 (防遮挡与防顶部被裁) --- */
+@media screen and (max-width: 600px) {
+    
+    /* 修复规则编辑弹窗（由于它是竖向Flex，需修改 justify-content） */
+    #bl-rule-edit-modal {
+        justify-content: flex-start !important;
+        padding-top: calc(env(safe-area-inset-top, 0px) + 8vh) !important;
+    }
+    
+    /* 修复全文透视弹窗（由于它是横向Flex，需修改 align-items） */
+    #bl-diff-modal {
+        align-items: flex-start !important;
+        padding-top: calc(env(safe-area-inset-top, 0px) + 8vh) !important;
+    }
+
+    /* 限制内部卡片在手机端绝对不能超过屏幕，并保证居中 */
+    #bl-rule-edit-modal > div,
+    .bl-diff-modal-card {
+        margin: 0 auto !important;
+        max-height: 82vh !important; 
+        /* 软键盘弹起时，允许卡片内部滑动 */
+        overflow-y: auto !important; 
+    }
+    
+    /* 微调主面板，防止在手机端过于贴近顶部 */
+    #bl-purifier-popup {
+        top: 8vh !important; 
+        max-height: 85vh !important;
+    }
+}
