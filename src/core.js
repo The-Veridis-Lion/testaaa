@@ -359,7 +359,9 @@ export function performGlobalCleanse() {
                 }
             }
 
-            updateDiffSnippetCache(index, { snippets: allSnippets, fullDiff: mainFullDiff });
+            // 同样在这里加上去重逻辑
+            const uniqueSnippets = Array.from(new Set(allSnippets));
+            updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
 
             if (msgChanged) {
                 chatChanged = true;
