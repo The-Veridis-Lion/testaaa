@@ -1,6 +1,7 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { deepClone, getCurrentCharacterContext, getPresetForCharacter, parseInputToWords } from './utils.js';
-import { performDeepCleanse, performGlobalCleanse } from './core.js';
+import { performGlobalCleanse } from './core.js';
+import { performDeepCleanse } from './cleanse.js';
 
 export function setupUI() {
     $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal').remove();

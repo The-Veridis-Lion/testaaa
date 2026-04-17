@@ -1,7 +1,13 @@
-import { defaultSettings, extensionName, getAppContext, runtimeState } from './state.js';
+import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
-import { showDeepCleanOverlay, updateDeepCleanOverlay } from './ui.js';
+import { deepCleanObjectSync } from './cleanse.js';
+import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, updateDiffSnippetCache } from './diff.js';
+import { getMessageDomNode, purifyDOM } from './dom.js';
 
+/**
+ * 根据当前规则构建净化处理器（文本/正则/简易语法）。
+ * @returns {Array} 可复用的处理器数组。
+ */
 export function buildProcessors() {
     if (!runtimeState.isRegexDirty) return runtimeState.activeProcessors;
     const { extension_settings } = getAppContext();
@@ -59,9 +65,11 @@ export function buildProcessors() {
                     if (t) {
                         try {
                             let escaped = t.replace(/[.+^$()[\]\\]/g, '\\$&');
+                            // 解析简易语法中的 {A,B} 备选分组。
                             escaped = escaped.replace(/\{([^}]+)\}/g, (match, group) => {
                                 return '(?:' + group.split(',').map(s => s.trim()).join('|') + ')';
                             });
+                            // 解析简易语法中的 * 通配符为受限匹配片段。
                             escaped = escaped.replace(/\*/g, buildSimpleWildcardPattern());
 
                             let testRegex = new RegExp(escaped, 'gmu');
@@ -93,6 +101,12 @@ export function buildProcessors() {
     return runtimeState.activeProcessors;
 }
 
+/**
+ * 从替换词列表中选择一个替换值（可选确定性模式）。
+ * @param {string[]} replacements 候选替换词列表。
+ * @param {string} [deterministicKey=""] 确定性模式键。
+ * @returns {string} 最终替换词。
+ */
 export function pickReplacement(replacements, deterministicKey = "") {
     if (!Array.isArray(replacements) || replacements.length === 0) return '';
     if (!deterministicKey) {
@@ -109,6 +123,12 @@ export function pickReplacement(replacements, deterministicKey = "") {
     return replacements[idx];
 }
 
+/**
+ * 对文本应用规则替换。
+ * @param {string} originalText 原始文本。
+ * @param {{deterministic?: boolean}} [options={}] 替换选项。
+ * @returns {string} 替换后的文本。
+ */
 export function applyReplacements(originalText, options = {}) {
     if (typeof originalText !== 'string' || !originalText) return originalText;
     const deterministic = options.deterministic === true;
@@ -139,203 +159,20 @@ export function applyReplacements(originalText, options = {}) {
     return text;
 }
 
+/**
+ * 在流式展示场景下执行确定性视觉替换。
+ * @param {string} originalText 原始文本。
+ * @returns {string} 视觉掩码后的文本。
+ */
 export function applyVisualMask(originalText) {
     if (typeof originalText !== 'string' || !originalText) return originalText;
     return applyReplacements(originalText, { deterministic: true });
 }
 
-
-function escapeHtml(value = '') {
-    return String(value)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
-function getInlineDiff(oldStr, newStr) {
-    if (oldStr === newStr) return escapeHtml(oldStr);
-    if (!oldStr && !newStr) return "";
-
-    const oldChars = Array.from(oldStr);
-    const newChars = Array.from(newStr);
-    const m = oldChars.length;
-    const n = newChars.length;
-
-    const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
-
-    for (let i = 1; i <= m; i++) {
-        for (let j = 1; j <= n; j++) {
-            if (oldChars[i - 1] === newChars[j - 1]) {
-                dp[i][j] = dp[i - 1][j - 1] + 1;
-            } else {
-                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
-            }
-        }
-    }
-
-    let i = m;
-    let j = n;
-    const diff = [];
-    while (i > 0 || j > 0) {
-        if (i > 0 && j > 0 && oldChars[i - 1] === newChars[j - 1]) {
-            diff.push(escapeHtml(oldChars[i - 1]));
-            i--;
-            j--;
-        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-            diff.push(`<ins>${escapeHtml(newChars[j - 1])}</ins>`);
-            j--;
-        } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-            diff.push(`<del>${escapeHtml(oldChars[i - 1])}</del>`);
-            i--;
-        }
-    }
-
-    return diff.reverse().join('')
-        .replace(/<\/ins><ins>/g, '')
-        .replace(/<\/del><del>/g, '');
-}
-
-function buildDiffSnippetsFromText(rawText) {
-    if (typeof rawText !== 'string') return { cleanedText: rawText, snippets: [], fullDiff: "" };
-    const parts = rawText.split('\n');
-    const cleanedParts = new Array(parts.length);
-    const snippets = [];
-
-    for (let i = 0; i < parts.length; i++) {
-        const originalPart = parts[i];
-        const cleanedPart = applyReplacements(originalPart);
-        cleanedParts[i] = cleanedPart;
-
-        if (cleanedPart !== originalPart) {
-            const inlineDiffHTML = getInlineDiff(originalPart, cleanedPart);
-            snippets.push(`<div class="bl-diff-snippet">${inlineDiffHTML}</div>`);
-        }
-    }
-
-    const cleanedText = cleanedParts.join('\n');
-
-    let targetText = rawText;
-    const contentMatch = rawText.match(/<content>([\s\S]*?)<\/content>/i);
-    if (contentMatch) targetText = contentMatch[1].trim();
-
-    const fullParts = targetText.split('\n');
-    const fullDiffBlocks = [];
-
-    for (let i = 0; i < fullParts.length; i++) {
-        const originalPart = fullParts[i].trim();
-        if (!originalPart) continue;
-
-        const cleanedPart = applyReplacements(originalPart);
-        if (cleanedPart !== originalPart) {
-            const inlineDiffHTML = getInlineDiff(originalPart, cleanedPart);
-            fullDiffBlocks.push(`<div class="bl-diff-full-modified">${inlineDiffHTML}</div>`);
-        } else {
-            fullDiffBlocks.push(`<div class="bl-diff-full-normal">${escapeHtml(originalPart)}</div>`);
-        }
-    }
-
-    const fullDiff = fullDiffBlocks.join('');
-
-    return {
-        cleanedText,
-        snippets,
-        fullDiff,
-    };
-}
-
-function updateDiffSnippetCache(index, cacheData) {
-    if (!Number.isInteger(index) || index < 0) return;
-    if (!cacheData || ((!Array.isArray(cacheData.snippets) || cacheData.snippets.length === 0) && !cacheData.fullDiff)) {
-        runtimeState.diffSnippetsCache.delete(index);
-        return;
-    }
-    runtimeState.diffSnippetsCache.set(index, cacheData);
-}
-
-function ensureMessageDiffButton(index, messageNode) {
-    if (!messageNode || !Number.isInteger(index) || index < 0) return;
-
-    const { extension_settings } = getAppContext();
-    const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
-    const cached = runtimeState.diffSnippetsCache.get(index);
-    const hasSnippets = !!(cached && ((Array.isArray(cached.snippets) && cached.snippets.length > 0) || cached.fullDiff !== ""));
-
-    const buttonArea = messageNode.querySelector('.mes_buttons');
-    if (buttonArea) {
-        const existing = buttonArea.querySelector('.bl-diff-btn-top');
-        if (!isEnabled || !hasSnippets) {
-            if (existing) existing.remove();
-        } else if (!existing) {
-            const button = document.createElement('div');
-            button.className = 'mes_button bl-diff-btn bl-diff-btn-top fa-solid fa-clock-rotate-left interactable';
-            button.title = '溯源净化前文';
-            button.setAttribute('data-index', String(index));
-            button.setAttribute('tabindex', '0');
-            button.setAttribute('role', 'button');
-            const editBtn = buttonArea.querySelector('.mes_edit');
-            if (editBtn) buttonArea.insertBefore(button, editBtn);
-            else buttonArea.appendChild(button);
-        } else {
-            existing.setAttribute('data-index', String(index));
-        }
-    }
-
-    const swipeBlock = messageNode.querySelector('.swipeRightBlock');
-    if (swipeBlock) {
-        const parent = swipeBlock.parentNode;
-        const existingBottom = parent?.querySelector('.bl-diff-btn-bottom');
-
-        if (!isEnabled || !hasSnippets) {
-            if (existingBottom) existingBottom.remove();
-        } else if (!existingBottom && parent) {
-            const btnBottom = document.createElement('div');
-            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
-            btnBottom.title = '溯源净化前文 (尾部触发)';
-            btnBottom.setAttribute('data-index', String(index));
-            btnBottom.setAttribute('tabindex', '0');
-            btnBottom.setAttribute('role', 'button');
-            parent.insertBefore(btnBottom, swipeBlock);
-        } else if (existingBottom) {
-            existingBottom.setAttribute('data-index', String(index));
-        }
-    }
-}
-
-export function injectDiffButtons() {
-    const chatEl = document.getElementById('chat');
-    if (!chatEl) return;
-    const messageNodes = chatEl.querySelectorAll('.mes');
-    for (let i = 0; i < messageNodes.length; i++) {
-        const node = messageNodes[i];
-        const attrs = [node.getAttribute('mesid'), node.getAttribute('data-mesid'), node.getAttribute('messageid'), node.getAttribute('data-message-id')];
-        let index = -1;
-        for (const raw of attrs) {
-            const n = Number(raw);
-            if (Number.isInteger(n) && n >= 0) {
-                index = n;
-                break;
-            }
-        }
-        if (index < 0) index = i;
-        ensureMessageDiffButton(index, node);
-    }
-}
-
-export function getDiffSnippetsForMessage(index) {
-    const cached = runtimeState.diffSnippetsCache.get(index);
-    if (!cached || typeof cached !== 'object') return { snippets: [], fullDiff: '' };
-    return {
-        snippets: Array.isArray(cached.snippets) ? cached.snippets : [],
-        fullDiff: String(cached.fullDiff || ''),
-    };
-}
-
-export function clearDiffSnippetsCache() {
-    runtimeState.diffSnippetsCache.clear();
-}
-
+/**
+ * 排队执行增量聊天保存，合并短时间内的重复请求。
+ * @returns {void}
+ */
 export function queueIncrementalChatSave() {
     const { saveChat } = getAppContext();
     runtimeState.pendingChatSave = true;
@@ -365,248 +202,11 @@ export function queueIncrementalChatSave() {
     }, 180);
 }
 
-export function isProtectedNode(node) {
-    if (!node || !node.closest) return false;
-    if (node.closest('#bl-purifier-popup, #bl-batch-popup, #bl-confirm-modal, #bl-rule-edit-modal, #bl-rule-transfer-modal, #bl-diff-modal')) return true;
-    if (node.closest('#advanced_formatting, #api_settings')) return true;
-    if ((node.id && node.id.includes('shujuku_v120-')) || node.closest('[id*="shujuku_v120-"]')) return true;
-
-    const promptIds = [
-        'system_prompt', 'post_history_prompt', 'floating_prompt', 'nsfw_prompt', 'author_note', 'jailbreak_prompt',
-        'chat_completions_system_prompt', 'chat_completions_jailbreak_prompt', 'completion_prompt_manager_popup_entry_form_prompt',
-        'completion_prompt_manager_popup_entry_form_name', 'description_textarea', 'personality_textarea', 'scenario_textarea',
-        'mes_example_textarea', 'first_mes_textarea', 'creator_notes_textarea'
-    ];
-    if (node.id && promptIds.includes(node.id)) return true;
-    if (node.id && node.id.startsWith('world_entry_content_')) return true;
-    const dataFor = typeof node.getAttribute === 'function' ? node.getAttribute('data-for') : '';
-    if (dataFor && dataFor.startsWith('world_entry_content_')) return true;
-    if (node.tagName === 'TEXTAREA' && node.name === 'comment') return true;
-    return false;
-}
-
-export function shouldSkipDbExtensionField(pathKeys = [], isGlobalSettings = false) {
-    if (!isGlobalSettings || pathKeys.length < 2) return false;
-    const rootNamespace = String(pathKeys[0] || '');
-    if (!rootNamespace.includes('shujuku_v120')) return false;
-    const currentKey = String(pathKeys[pathKeys.length - 1] || '');
-    return /(Prompt|Settings|Template)/.test(currentKey);
-}
-
-function shouldSkipDbExtensionFieldByMeta(depth, rootNamespace, currentKey, isGlobalSettings = false) {
-    if (!isGlobalSettings || depth < 2) return false;
-    const rootNs = String(rootNamespace || '');
-    if (!rootNs.includes('shujuku_v120')) return false;
-    const key = String(currentKey || '');
-    return /(Prompt|Settings|Template)/.test(key);
-}
-
-export function deepCleanObjectSync(rootObj) {
-    if (!rootObj || typeof rootObj !== 'object') return 0;
-    let changes = 0;
-    const stack = [rootObj];
-    const seen = new Set();
-
-    while (stack.length > 0) {
-        const current = stack.pop();
-        if (!current || seen.has(current)) continue;
-        seen.add(current);
-
-        for (let key in current) {
-            if (!Object.prototype.hasOwnProperty.call(current, key)) continue;
-            const val = current[key];
-            if (typeof val === 'string') {
-                const cleaned = applyReplacements(val);
-                if (cleaned !== val) {
-                    current[key] = cleaned;
-                    changes++;
-                }
-            } else if (val && typeof val === 'object') {
-                stack.push(val);
-            }
-        }
-    }
-    return changes;
-}
-
-export async function safeDeepScrub(rootObj, isGlobalSettings = false, options = {}) {
-    let changes = 0;
-    if (!rootObj || typeof rootObj !== 'object') return changes;
-    const stack = [{ node: rootObj, depth: 0, rootNamespace: '' }];
-    const seen = new Set();
-    buildProcessors();
-
-    const onProgress = typeof options.onProgress === 'function' ? options.onProgress : null;
-    const deadline = Number.isFinite(options.deadline) ? options.deadline : Infinity;
-    let iterations = 0;
-
-    while (stack.length > 0) {
-        if (Date.now() > deadline) throw new Error('DEEP_CLEAN_TIMEOUT');
-
-        if (++iterations % 500 === 0) {
-            if (onProgress) onProgress({ visited: seen.size, pending: stack.length, changes });
-            await new Promise(r => setTimeout(r, 0));
-        }
-
-        const currentItem = stack.pop();
-        const current = currentItem?.node;
-        const depth = currentItem?.depth || 0;
-        const rootNamespace = currentItem?.rootNamespace || '';
-        if (!current || seen.has(current)) continue;
-        seen.add(current);
-
-        try {
-            for (let key in current) {
-                if (Object.prototype.hasOwnProperty.call(current, key)) {
-                    if (isGlobalSettings && key === extensionName) continue;
-                    const nextDepth = depth + 1;
-                    const nextRootNamespace = depth === 0 ? key : rootNamespace;
-                    if (shouldSkipDbExtensionFieldByMeta(nextDepth, nextRootNamespace, key, isGlobalSettings)) continue;
-                    const val = current[key];
-                    if (typeof val === 'string') {
-                        const cleaned = applyReplacements(val);
-                        if (val !== cleaned) {
-                            current[key] = cleaned;
-                            changes++;
-                        }
-                    } else if (val !== null && typeof val === 'object') {
-                        stack.push({ node: val, depth: nextDepth, rootNamespace: nextRootNamespace });
-                    }
-                }
-            }
-        } catch (e) { }
-    }
-
-    if (onProgress) onProgress({ visited: seen.size, pending: stack.length, changes });
-    return changes;
-}
-
-export function getDeepCleanTimeoutMs() {
-    const { extension_settings } = getAppContext();
-    const raw = Number(extension_settings[extensionName]?.deepCleanTimeoutSec);
-    const safeSeconds = Number.isFinite(raw) ? Math.min(Math.max(raw, 10), 1800) : defaultSettings.deepCleanTimeoutSec;
-    return safeSeconds * 1000;
-}
-
-export async function performDeepCleanse() {
-    const { chat, chat_metadata, extension_settings, saveChat, saveSettingsDebounced } = getAppContext();
-    buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) {
-        alert('没有开启的屏蔽规则，无需清理。');
-        return;
-    }
-
-    showDeepCleanOverlay();
-    await new Promise(r => setTimeout(r, 100));
-
-    try {
-        let scrubbedItems = 0;
-        const timeoutMs = getDeepCleanTimeoutMs();
-        const startAt = Date.now();
-        const deadline = startAt + timeoutMs;
-
-        const phases = [];
-        if (chat && Array.isArray(chat)) phases.push({ label: '聊天记录', root: chat, isGlobalSettings: false });
-        if (typeof chat_metadata === 'object' && chat_metadata !== null) phases.push({ label: '聊天元数据', root: chat_metadata, isGlobalSettings: false });
-        if (typeof extension_settings === 'object' && extension_settings !== null) phases.push({ label: '插件设置', root: extension_settings, isGlobalSettings: true });
-        if (typeof window.characters !== 'undefined' && Array.isArray(window.characters)) phases.push({ label: '角色卡', root: window.characters, isGlobalSettings: false });
-        if (typeof window.world_info !== 'undefined' && window.world_info !== null) phases.push({ label: '世界书', root: window.world_info, isGlobalSettings: false });
-        if (typeof window.power_user !== 'undefined' && window.power_user !== null && window.power_user.personas) phases.push({ label: '人设', root: window.power_user.personas, isGlobalSettings: false });
-
-        for (let i = 0; i < phases.length; i++) {
-            const phase = phases[i];
-            const phaseBase = i / phases.length;
-            const phaseSpan = 1 / phases.length;
-
-            scrubbedItems += await safeDeepScrub(phase.root, phase.isGlobalSettings, {
-                deadline,
-                onProgress: ({ visited, pending, changes }) => {
-                    const elapsed = ((Date.now() - startAt) / 1000).toFixed(1);
-                    const dynamic = (visited + pending > 0) ? (visited / (visited + pending)) : 0;
-                    updateDeepCleanOverlay(
-                        phaseBase + dynamic * phaseSpan,
-                        `正在清理 ${phase.label}（已扫描 ${visited}，剩余队列 ${pending}，命中 ${changes}）｜耗时 ${elapsed}s / 超时 ${Math.round(timeoutMs / 1000)}s`
-                    );
-                }
-            });
-
-            updateDeepCleanOverlay((i + 1) / phases.length, `已完成 ${phase.label}，准备进入下一阶段...`);
-        }
-
-        updateDeepCleanOverlay(0.97, '正在同步数据到磁盘，请稍候。');
-
-        if (scrubbedItems > 0) {
-            const saveChatPromise = saveChat();
-            if (saveChatPromise instanceof Promise) await saveChatPromise;
-
-            saveSettingsDebounced();
-            const remainingMs = Math.max(300, Math.min(2000, deadline - Date.now()));
-            await new Promise(r => setTimeout(r, remainingMs));
-
-            updateDeepCleanOverlay(1, '清理完成，正在准备刷新页面...');
-            await new Promise(r => setTimeout(r, 180));
-            $('#bl-loading-overlay').remove();
-
-            alert(`清理完成，共处理 ${scrubbedItems} 处匹配项。\n\n页面即将刷新，请在刷新后将系统预设切换回常用预设！`);
-            location.reload();
-        } else {
-            updateDeepCleanOverlay(1, '未发现残留，任务结束。');
-            await new Promise(r => setTimeout(r, 260));
-            $('#bl-loading-overlay').remove();
-            alert('未发现需要替换的数据残留。');
-        }
-    } catch (e) {
-        console.error('[Ultimate Purifier] 深度清理出错:', e);
-        $('#bl-loading-overlay').remove();
-        if (e && e.message === 'DEEP_CLEAN_TIMEOUT') {
-            const timeoutSec = Math.round(getDeepCleanTimeoutMs() / 1000);
-            alert(`清理超时（${timeoutSec}s）已自动中止。\n建议减少规则范围或调大 deepCleanTimeoutSec 后重试。`);
-        } else {
-            alert('清理失败，请查看控制台。');
-        }
-    }
-}
-
-export function purifyDOM(rootNode) {
-    if (!rootNode) return;
-    buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) return;
-
-    const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, null, false);
-
-    let node;
-    while (node = walker.nextNode()) {
-        const parent = node.parentNode;
-        if (parent && (isProtectedNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
-
-        const original = node.nodeValue || '';
-        const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
-        if (original !== nextValue) node.nodeValue = nextValue;
-    }
-
-    if (rootNode.nodeType === 1) {
-        if (rootNode.matches && rootNode.matches('input, textarea')) {
-            const input = rootNode;
-            if (!(isProtectedNode(input) || document.activeElement === input)) {
-                const originalVal = input.value || '';
-                const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
-                if (originalVal !== nextVal) input.value = nextVal;
-            }
-        }
-
-        if (rootNode.querySelectorAll) {
-            const inputs = rootNode.querySelectorAll('input, textarea');
-            for (let i = 0; i < inputs.length; i++) {
-                const input = inputs[i];
-                if (isProtectedNode(input) || document.activeElement === input) continue;
-                const originalVal = input.value || '';
-                const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
-                if (originalVal !== nextVal) input.value = nextVal;
-            }
-        }
-    }
-}
-
+/**
+ * 从事件负载中解析消息索引。
+ * @param {number|object} payload 事件载荷或直接索引。
+ * @returns {number} 解析出的索引，失败返回 -1。
+ */
 export function getMessageIndexFromEvent(payload) {
     if (Number.isInteger(payload)) return payload;
     if (!payload || typeof payload !== 'object') return -1;
@@ -618,23 +218,20 @@ export function getMessageIndexFromEvent(payload) {
     return -1;
 }
 
+/**
+ * 获取当前聊天中的最后一条消息索引。
+ * @returns {number} 最新消息索引，不存在则为 -1。
+ */
 export function getLatestMessageIndex() {
     const { chat } = getAppContext();
     return Array.isArray(chat) && chat.length > 0 ? chat.length - 1 : -1;
 }
 
-export function getMessageDomNode(index) {
-    const chatEl = document.getElementById('chat');
-    if (!chatEl) return null;
-    const selectors = [`.mes[mesid="${index}"]`, `.mes[data-mesid="${index}"]`, `.mes[messageid="${index}"]`, `.mes[data-message-id="${index}"]`];
-    for (const selector of selectors) {
-        const node = chatEl.querySelector(selector);
-        if (node) return node;
-    }
-    const allMes = chatEl.querySelectorAll('.mes');
-    return allMes.length > 0 ? allMes[allMes.length - 1] : null;
-}
-
+/**
+ * 清理指定索引消息的数据并更新差异缓存。
+ * @param {number} index 消息索引。
+ * @returns {boolean} 是否发生数据变更。
+ */
 export function cleanseMessageDataAtIndex(index) {
     const { chat } = getAppContext();
     if (!Array.isArray(chat) || index < 0 || index >= chat.length) return false;
@@ -678,7 +275,12 @@ export function cleanseMessageDataAtIndex(index) {
     return changed;
 }
 
-
+/**
+ * 执行增量净化：处理单条消息并刷新对应 DOM。
+ * @param {number|object} payload 事件载荷或消息索引。
+ * @param {{visualOnly?: boolean, fallbackLatest?: boolean}} [options={}] 控制选项。
+ * @returns {void}
+ */
 export function performIncrementalCleanse(payload, options = {}) {
     const { chat } = getAppContext();
     buildProcessors();
@@ -704,6 +306,10 @@ export function performIncrementalCleanse(payload, options = {}) {
     }
 }
 
+/**
+ * 执行全局净化：遍历聊天数据、同步 UI 并刷新差异按钮。
+ * @returns {void}
+ */
 export function performGlobalCleanse() {
     const { chat, saveChat } = getAppContext();
     buildProcessors();
