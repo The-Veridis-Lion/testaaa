@@ -144,6 +144,154 @@ export function applyVisualMask(originalText) {
     return applyReplacements(originalText, { deterministic: true });
 }
 
+
+function escapeHtml(value = '') {
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function getInlineDiff(oldStr, newStr) {
+    if (oldStr === newStr) return escapeHtml(oldStr);
+
+    const oldChars = Array.from(oldStr);
+    const newChars = Array.from(newStr);
+    const m = oldChars.length;
+    const n = newChars.length;
+
+    const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
+
+    for (let i = 1; i <= m; i++) {
+        for (let j = 1; j <= n; j++) {
+            if (oldChars[i - 1] === newChars[j - 1]) {
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            } else {
+                dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+            }
+        }
+    }
+
+    let i = m;
+    let j = n;
+    const diff = [];
+
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && oldChars[i - 1] === newChars[j - 1]) {
+            diff.push(escapeHtml(oldChars[i - 1]));
+            i--;
+            j--;
+        } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+            diff.push(`<ins>${escapeHtml(newChars[j - 1])}</ins>`);
+            j--;
+        } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
+            diff.push(`<del>${escapeHtml(oldChars[i - 1])}</del>`);
+            i--;
+        }
+    }
+
+    return diff.reverse().join('')
+        .replace(/<\/ins><ins>/g, '')
+        .replace(/<\/del><del>/g, '');
+}
+
+function buildDiffSnippetsFromText(rawText) {
+    if (typeof rawText !== 'string') return { cleanedText: rawText, snippets: [] };
+    const parts = rawText.split('\n');
+    const cleanedParts = new Array(parts.length);
+    const snippets = [];
+
+    for (let i = 0; i < parts.length; i++) {
+        const originalPart = parts[i];
+        const cleanedPart = applyReplacements(originalPart);
+        cleanedParts[i] = cleanedPart;
+
+        if (cleanedPart !== originalPart) {
+            const inlineDiffHTML = getInlineDiff(originalPart, cleanedPart);
+            snippets.push(`<div class="bl-diff-snippet">${inlineDiffHTML}</div>`);
+        }
+    }
+
+    return {
+        cleanedText: cleanedParts.join('\n'),
+        snippets,
+    };
+}
+
+function updateDiffSnippetCache(index, snippets) {
+    if (!Number.isInteger(index) || index < 0) return;
+    if (!Array.isArray(snippets) || snippets.length === 0) {
+        runtimeState.diffSnippetsCache.delete(index);
+        return;
+    }
+    runtimeState.diffSnippetsCache.set(index, snippets);
+}
+
+function ensureMessageDiffButton(index, messageNode) {
+    if (!messageNode || !Number.isInteger(index) || index < 0) return;
+
+    const { extension_settings } = getAppContext();
+    const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
+    const cached = runtimeState.diffSnippetsCache.get(index);
+    const hasSnippets = Array.isArray(cached) && cached.length > 0;
+
+    const buttonArea = messageNode.querySelector('.mes_buttons');
+    if (!buttonArea) return;
+
+    const existing = buttonArea.querySelector('.bl-diff-btn');
+    if (!isEnabled || !hasSnippets) {
+        if (existing) existing.remove();
+        return;
+    }
+
+    if (existing) {
+        existing.setAttribute('data-index', String(index));
+        return;
+    }
+
+    const button = document.createElement('div');
+    button.className = 'mes_button bl-diff-btn fa-solid fa-clock-rotate-left interactable';
+    button.title = '溯源净化前文 (透视模式)';
+    button.setAttribute('data-index', String(index));
+    button.setAttribute('tabindex', '0');
+    button.setAttribute('role', 'button');
+
+    const editBtn = buttonArea.querySelector('.mes_edit');
+    if (editBtn) buttonArea.insertBefore(button, editBtn);
+    else buttonArea.appendChild(button);
+}
+
+export function injectDiffButtons() {
+    const chatEl = document.getElementById('chat');
+    if (!chatEl) return;
+    const messageNodes = chatEl.querySelectorAll('.mes');
+    for (let i = 0; i < messageNodes.length; i++) {
+        const node = messageNodes[i];
+        const attrs = [node.getAttribute('mesid'), node.getAttribute('data-mesid'), node.getAttribute('messageid'), node.getAttribute('data-message-id')];
+        let index = -1;
+        for (const raw of attrs) {
+            const n = Number(raw);
+            if (Number.isInteger(n) && n >= 0) {
+                index = n;
+                break;
+            }
+        }
+        if (index < 0) index = i;
+        ensureMessageDiffButton(index, node);
+    }
+}
+
+export function getDiffSnippetsForMessage(index) {
+    const cached = runtimeState.diffSnippetsCache.get(index);
+    return Array.isArray(cached) ? cached : [];
+}
+
+export function clearDiffSnippetsCache() {
+    runtimeState.diffSnippetsCache.clear();
+}
+
 export function queueIncrementalChatSave() {
     const { saveChat } = getAppContext();
     runtimeState.pendingChatSave = true;
@@ -175,7 +323,7 @@ export function queueIncrementalChatSave() {
 
 export function isProtectedNode(node) {
     if (!node || !node.closest) return false;
-    if (node.closest('#bl-purifier-popup, #bl-batch-popup, #bl-confirm-modal, #bl-rule-edit-modal, #bl-rule-transfer-modal')) return true;
+    if (node.closest('#bl-purifier-popup, #bl-batch-popup, #bl-confirm-modal, #bl-rule-edit-modal, #bl-rule-transfer-modal, #bl-diff-modal')) return true;
     if (node.closest('#advanced_formatting, #api_settings')) return true;
     if ((node.id && node.id.includes('shujuku_v120-')) || node.closest('[id*="shujuku_v120-"]')) return true;
 
@@ -449,11 +597,13 @@ export function cleanseMessageDataAtIndex(index) {
     const msg = chat[index];
     if (!msg || typeof msg !== 'object') return false;
     let changed = false;
+    const snippets = [];
 
     if (typeof msg.mes === 'string') {
-        const cleaned = applyReplacements(msg.mes);
-        if (cleaned !== msg.mes) {
-            msg.mes = cleaned;
+        const { cleanedText, snippets: mesSnippets } = buildDiffSnippetsFromText(msg.mes);
+        snippets.push(...mesSnippets);
+        if (cleanedText !== msg.mes) {
+            msg.mes = cleanedText;
             changed = true;
         }
     }
@@ -461,23 +611,27 @@ export function cleanseMessageDataAtIndex(index) {
     if (Array.isArray(msg.swipes)) {
         for (let i = 0; i < msg.swipes.length; i++) {
             if (typeof msg.swipes[i] === 'string') {
-                const cleanedSwipe = applyReplacements(msg.swipes[i]);
-                if (cleanedSwipe !== msg.swipes[i]) {
-                    msg.swipes[i] = cleanedSwipe;
+                const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
+                snippets.push(...swipeSnippets);
+                if (cleanedText !== msg.swipes[i]) {
+                    msg.swipes[i] = cleanedText;
                     changed = true;
                 }
             } else if (msg.swipes[i] && typeof msg.swipes[i] === 'object' && typeof msg.swipes[i].mes === 'string') {
-                const cleanedSwipeObj = applyReplacements(msg.swipes[i].mes);
-                if (cleanedSwipeObj !== msg.swipes[i].mes) {
-                    msg.swipes[i].mes = cleanedSwipeObj;
+                const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                snippets.push(...swipeObjSnippets);
+                if (cleanedText !== msg.swipes[i].mes) {
+                    msg.swipes[i].mes = cleanedText;
                     changed = true;
                 }
             }
         }
     }
 
+    updateDiffSnippetCache(index, snippets);
     return changed;
 }
+
 
 export function performIncrementalCleanse(payload, options = {}) {
     const { chat } = getAppContext();
@@ -491,7 +645,10 @@ export function performIncrementalCleanse(payload, options = {}) {
 
     const dataChanged = options.visualOnly ? false : cleanseMessageDataAtIndex(index);
     const messageNode = getMessageDomNode(index);
-    if (messageNode) purifyDOM(messageNode);
+    if (messageNode) {
+        purifyDOM(messageNode);
+        ensureMessageDiffButton(index, messageNode);
+    }
 
     if (dataChanged) {
         try {
@@ -504,17 +661,24 @@ export function performIncrementalCleanse(payload, options = {}) {
 export function performGlobalCleanse() {
     const { chat, saveChat } = getAppContext();
     buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) return;
+    if (runtimeState.activeProcessors.length === 0) {
+        clearDiffSnippetsCache();
+        injectDiffButtons();
+        return;
+    }
     let chatChanged = false;
+    clearDiffSnippetsCache();
 
     if (chat && Array.isArray(chat)) {
         chat.forEach((msg, index) => {
             let msgChanged = false;
+            const snippets = [];
 
             if (typeof msg.mes === 'string') {
-                const cleaned = applyReplacements(msg.mes);
-                if (msg.mes !== cleaned) {
-                    msg.mes = cleaned;
+                const { cleanedText, snippets: mesSnippets } = buildDiffSnippetsFromText(msg.mes);
+                snippets.push(...mesSnippets);
+                if (msg.mes !== cleanedText) {
+                    msg.mes = cleanedText;
                     msgChanged = true;
                 }
             }
@@ -522,20 +686,24 @@ export function performGlobalCleanse() {
             if (msg.swipes && Array.isArray(msg.swipes)) {
                 for (let i = 0; i < msg.swipes.length; i++) {
                     if (typeof msg.swipes[i] === 'string') {
-                        const cleanedSwipe = applyReplacements(msg.swipes[i]);
-                        if (msg.swipes[i] !== cleanedSwipe) {
-                            msg.swipes[i] = cleanedSwipe;
+                        const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
+                        snippets.push(...swipeSnippets);
+                        if (msg.swipes[i] !== cleanedText) {
+                            msg.swipes[i] = cleanedText;
                             msgChanged = true;
                         }
                     } else if (typeof msg.swipes[i] === 'object' && msg.swipes[i] !== null && typeof msg.swipes[i].mes === 'string') {
-                        const cleanedSwipe = applyReplacements(msg.swipes[i].mes);
-                        if (msg.swipes[i].mes !== cleanedSwipe) {
-                            msg.swipes[i].mes = cleanedSwipe;
+                        const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                        snippets.push(...swipeObjSnippets);
+                        if (msg.swipes[i].mes !== cleanedText) {
+                            msg.swipes[i].mes = cleanedText;
                             msgChanged = true;
                         }
                     }
                 }
             }
+
+            updateDiffSnippetCache(index, snippets);
 
             if (msgChanged) {
                 chatChanged = true;
@@ -565,4 +733,5 @@ export function performGlobalCleanse() {
         }
     }
     purifyDOM(document.getElementById('chat'));
+    injectDiffButtons();
 }
