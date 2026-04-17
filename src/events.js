@@ -419,14 +419,26 @@ export function bindEvents() {
         if (!runtimeState.isStreamingGeneration) return;
         performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true });
     };
+
+    let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
-        setTimeout(() => performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true }), 120);
+        if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
+        delayedCleanseTimer = setTimeout(() => {
+            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+        }, 150);
     };
 
-    if (event_types.MESSAGE_EDITED) eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
-        setTimeout(() => performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true }), 0);
-    });
+    let editCleanseTimer = null;
+    if (event_types.MESSAGE_EDITED) {
+        eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
+            if (editCleanseTimer) clearTimeout(editCleanseTimer);
+            editCleanseTimer = setTimeout(() => {
+                performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+            }, 100);
+        });
+    }
+
     if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; });
     if (event_types.STREAM_TOKEN_RECEIVED) {
         eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
