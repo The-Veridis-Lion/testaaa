@@ -120,6 +120,7 @@ export function setupUI() {
             </div>
         </div>
     `);
+} // <--- 之前就是漏掉了这个大括号导致报错！！！
 
 export function showDeepCleanOverlay() {
     $('body').append(`
