@@ -220,6 +220,26 @@ export function bindEvents() {
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });
 
+    $(document).off('click', '.bl-rule-move-up').on('click', '.bl-rule-move-up', function() {
+        const index = Number($(this).data('index'));
+        const rules = extension_settings[extensionName].rules || [];
+        if (index <= 0 || index >= rules.length) return;
+        [rules[index - 1], rules[index]] = [rules[index], rules[index - 1]];
+        runtimeState.isRegexDirty = true;
+        saveSettingsDebounced();
+        renderTags();
+    });
+
+    $(document).off('click', '.bl-rule-move-down').on('click', '.bl-rule-move-down', function() {
+        const index = Number($(this).data('index'));
+        const rules = extension_settings[extensionName].rules || [];
+        if (index < 0 || index >= rules.length - 1) return;
+        [rules[index], rules[index + 1]] = [rules[index + 1], rules[index]];
+        runtimeState.isRegexDirty = true;
+        saveSettingsDebounced();
+        renderTags();
+    });
+
     $(document).off('change', '.bl-rule-toggle').on('change', '.bl-rule-toggle', function() {
         const index = $(this).data('index');
         extension_settings[extensionName].rules[index].enabled = $(this).prop('checked');
@@ -242,6 +262,22 @@ export function bindEvents() {
         renderSubrulesToModal();
         const container = $('#bl-edit-subrules-container');
         container.scrollTop(container[0].scrollHeight);
+    });
+
+    $(document).off('click', '.bl-move-subrule-up-btn').on('click', '.bl-move-subrule-up-btn', function() {
+        syncSubrulesFromDOM();
+        const index = Number($(this).data('index'));
+        if (index <= 0 || index >= runtimeState.currentEditingSubrules.length) return;
+        [runtimeState.currentEditingSubrules[index - 1], runtimeState.currentEditingSubrules[index]] = [runtimeState.currentEditingSubrules[index], runtimeState.currentEditingSubrules[index - 1]];
+        renderSubrulesToModal();
+    });
+
+    $(document).off('click', '.bl-move-subrule-down-btn').on('click', '.bl-move-subrule-down-btn', function() {
+        syncSubrulesFromDOM();
+        const index = Number($(this).data('index'));
+        if (index < 0 || index >= runtimeState.currentEditingSubrules.length - 1) return;
+        [runtimeState.currentEditingSubrules[index], runtimeState.currentEditingSubrules[index + 1]] = [runtimeState.currentEditingSubrules[index + 1], runtimeState.currentEditingSubrules[index]];
+        renderSubrulesToModal();
     });
 
     $(document).off('click', '.bl-edit-subrule-btn').on('click', '.bl-edit-subrule-btn', function() {
