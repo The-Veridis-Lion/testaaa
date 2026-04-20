@@ -19,11 +19,11 @@ export function setupUI() {
                 <h3 class="bl-title">全局屏蔽与映射规则</h3>
                 <button id="bl-close-btn" class="bl-close">&times;</button>
             </div>
-            <div class="bl-tools-bar" style="display:flex; flex-direction:column; gap:8px; margin:10px 0 15px 0; border-bottom:1px solid var(--bl-border-color); padding-bottom:12px;">
-                <div class="bl-preset-row" style="display:flex; gap:8px; align-items:center;">
+            <div class="bl-tools-bar">
+                <div class="bl-preset-row">
                     <button id="bl-default-toggle" title="设为默认预设（未单独绑定角色时自动使用）" class="bl-icon-btn bl-bind-toggle"><i class="fas fa-star"></i></button>
                     <button id="bl-character-bind-toggle" title="将当前角色绑定到当前预设" class="bl-icon-btn bl-bind-toggle"><i class="fas fa-link-slash"></i></button>
-                    <select id="bl-preset-select" style="flex:1; padding:9px 12px; min-height:38px; border-radius:6px; border:1px solid var(--bl-border-color); background:var(--bl-input-bg); color:var(--bl-text-primary); outline:none; font-family:inherit;"></select>
+                    <select id="bl-preset-select"></select>
                     <button id="bl-preset-rename" title="重命名存档" class="bl-icon-btn"><i class="fas fa-pen"></i></button>
                     <button id="bl-preset-delete" title="删除存档" class="bl-icon-btn" style="color:var(--bl-danger-color);"><i class="fas fa-trash"></i></button>
                 </div>
@@ -34,54 +34,54 @@ export function setupUI() {
                     <button class="bl-tool-btn" id="bl-preset-export" title="导出"><i class="fas fa-file-export"></i><span class="bl-tool-text"> 导出</span></button>
                 </div>
             </div>
-            <button id="bl-open-new-rule-btn" class="bl-add-rule-btn" style="width:100%; margin-bottom:10px;"><i class="fas fa-folder-plus"></i> 新增规则组 (合集)</button>
-            <div id="bl-tags-container" style="max-height:220px; overflow-y:auto; padding-right:5px;"></div>
-            <div class="bl-footer" style="display:flex; justify-content:space-between; align-items:center; gap:15px;">
-                <div style="display:flex; align-items:center; gap:8px;">
+            <button id="bl-open-new-rule-btn" class="bl-add-rule-btn"><i class="fas fa-folder-plus"></i> 新增规则组 (合集)</button>
+            <div id="bl-tags-container"></div>
+            <div class="bl-footer">
+                <div class="bl-footer-meta">
                     <label class="bl-toggle-switch" title="开启后，被修改过的消息旁会显示溯源按钮">
                         <input type="checkbox" id="bl-diff-global-toggle">
                         <span class="bl-toggle-slider"></span>
                     </label>
-                    <span style="font-size:13px; color:var(--bl-text-secondary); font-weight:bold;">透视模式</span>
+                    <span class="bl-footer-meta-text">透视模式</span>
                 </div>
-                <button id="bl-deep-clean-btn" class="bl-deep-clean-btn" style="flex:1; width:auto;"><i class="fas fa-broom"></i> 深度清理</button>
+                <button id="bl-deep-clean-btn" class="bl-deep-clean-btn"><i class="fas fa-broom"></i> 深度清理</button>
             </div>
         </div>`);
 
     $('body').append(`
-        <div id="bl-rule-edit-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); z-index:9999999; flex-direction:column; justify-content:center; align-items:center; font-family:inherit; backdrop-filter:blur(4px);">
-            <div style="background:var(--bl-background-popup); padding:20px 25px; border-radius:12px; width:90%; max-width:460px; max-height:85vh; display:flex; flex-direction:column; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--bl-border-color); box-sizing:border-box;">
-                <h3 id="bl-edit-modal-title" style="margin:0 0 12px 0; font-size:18px; color:var(--bl-text-primary); flex-shrink:0;">编辑规则合集</h3>
-                <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:12px; flex-shrink:0;">
-                    <label style="font-size:13px; color:var(--bl-text-secondary);">规则组合集名称</label>
+        <div id="bl-rule-edit-modal" class="bl-modal-shell">
+            <div class="bl-modal-card bl-edit-modal-card">
+                <h3 id="bl-edit-modal-title" class="bl-edit-modal-title">编辑规则合集</h3>
+                <div class="bl-edit-field">
+                    <label class="bl-field-label">规则组合集名称</label>
                     <input type="text" id="bl-edit-name" class="bl-input" placeholder="例如：程度副词与认知失能净化">
                 </div>
-                <label style="font-size:13px; color:var(--bl-text-secondary); margin-bottom:6px; flex-shrink:0;">映射规则列表</label>
-                <div id="bl-edit-subrules-container" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:8px; padding-right:5px; margin-bottom:10px;"></div>
-                <button id="bl-add-subrule-btn" style="flex-shrink:0; padding:10px; border-radius:8px; background:var(--bl-background-secondary); border:1px dashed var(--bl-border-color); color:var(--bl-text-primary); cursor:pointer; font-size:13px; font-weight:bold; transition: opacity 0.2s; margin-bottom:12px;"><i class="fas fa-plus"></i> 添加一组新映射</button>
-                <div style="display:flex; justify-content:space-between; gap:10px; flex-shrink:0;">
-                    <button id="bl-edit-cancel" style="flex:1; padding:10px; border-radius:8px; background:var(--bl-background-secondary); border:1px solid var(--bl-border-color); color:var(--bl-text-primary); cursor:pointer; font-weight:bold;">取消</button>
-                    <button id="bl-edit-save" style="flex:1; padding:10px; border-radius:8px; background:var(--bl-accent-color); border:none; color:white; font-weight:bold; cursor:pointer;"><i class="fas fa-check"></i> 保存合集</button>
+                <label class="bl-field-label" style="margin-bottom:6px; flex-shrink:0;">映射规则列表</label>
+                <div id="bl-edit-subrules-container"></div>
+                <button id="bl-add-subrule-btn" class="bl-ghost-btn" style="flex-shrink:0; margin-bottom:12px;"><i class="fas fa-plus"></i> 添加一组新映射</button>
+                <div class="bl-modal-actions">
+                    <button id="bl-edit-cancel" class="bl-secondary-btn">取消</button>
+                    <button id="bl-edit-save" class="bl-primary-btn"><i class="fas fa-check"></i> 保存合集</button>
                 </div>
             </div>
         </div>
     `);
 
     $('body').append(`
-        <div id="bl-confirm-modal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.65); z-index:9999999; flex-direction:column; justify-content:center; align-items:center; font-family:inherit; backdrop-filter:blur(4px);">
-            <div style="background:var(--bl-background-popup); padding:30px; border-radius:12px; max-width:450px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--bl-border-color);">
-                <h3 style="color:var(--bl-danger-color); margin-top:0; font-size: 22px;">⚠️ 深度清理警告</h3>
-                <p style="font-size:15px; color:var(--bl-text-primary); line-height:1.6; margin:0 0 25px 0; text-align:left;">
+        <div id="bl-confirm-modal" class="bl-modal-shell">
+            <div class="bl-modal-card bl-confirm-card">
+                <h3 class="bl-confirm-title">⚠️ 深度清理警告</h3>
+                <p class="bl-confirm-text">
                     深度清理会永久洗刷角色卡、世界书、人设、全部历史记录及<strong>当前选中的预设</strong>。
                     为了防止深度清理修改或误伤您的以上内容，请在此刻：
                     <br><br>
-                    👉 <strong style="color:var(--bl-danger-color); background:var(--bl-background-secondary); padding:6px 10px; border-radius:6px; display:inline-block; margin-bottom:10px; border: 1px solid var(--bl-border-color);">将SillyTavern当前的预设切换至「Default」或废弃预设！<br>将插件预设切换至不含名词句式规则(已在贴内提供)。</strong>
+                    👉 <strong class="bl-warning-callout">将SillyTavern当前的预设切换至「Default」或废弃预设！<br>将插件预设切换至不含名词句式规则(已在贴内提供)。</strong>
                     <br>
-                    <span style="font-size:13px; color:var(--bl-text-secondary);">清理完成后页面会刷新，届时可切回原预设即可保证预设安全。</span>
+                    <span class="bl-field-label">清理完成后页面会刷新，届时可切回原预设即可保证预设安全。</span>
                 </p>
-                <div style="display:flex; justify-content:space-between; gap:15px;">
-                    <button id="bl-modal-cancel" style="flex:1; padding:12px; border:1px solid var(--bl-border-color); border-radius:8px; background:var(--bl-background-secondary); color:var(--bl-text-primary); cursor:pointer; font-weight:bold; transition: opacity 0.2s;">取消返回</button>
-                    <button id="bl-modal-confirm" disabled style="flex:1; padding:12px; border:none; border-radius:8px; background:var(--bl-background-secondary); color:var(--bl-text-secondary); cursor:not-allowed; font-weight:bold; transition: opacity 0.2s; opacity: 0.6;">我已阅读警告，已完成切换 (3s)</button>
+                <div class="bl-modal-actions" style="gap:15px;">
+                    <button id="bl-modal-cancel" class="bl-secondary-btn" style="padding:12px;">取消返回</button>
+                    <button id="bl-modal-confirm" disabled class="bl-primary-btn" style="padding:12px;">我已阅读警告，已完成切换 (3s)</button>
                 </div>
             </div>
         </div>
@@ -90,7 +90,7 @@ export function setupUI() {
     $('body').append(`
         <div id="bl-rule-transfer-modal" style="display:none;">
             <div class="bl-transfer-content">
-                <h3 style="margin:0 0 10px 0; font-size:16px; color:var(--bl-text-primary);"><i class="fas fa-copy"></i> 复制 / 转移规则合集</h3>
+                <h3 class="bl-edit-modal-title" style="margin-bottom:10px !important; font-size:16px !important;"><i class="fas fa-copy"></i> 复制 / 转移规则合集</h3>
                 <select id="bl-transfer-target" class="bl-input" style="font-size:14px; padding:8px 10px; margin-bottom:12px;"></select>
                 <div style="display:flex; gap:8px;">
                     <button id="bl-transfer-copy" class="bl-transfer-btn bl-transfer-copy">复制到该存档</button>
@@ -146,7 +146,7 @@ export function showConfirmModal(onConfirm = () => performDeepCleanse()) {
     const $cancelBtn = $('#bl-modal-cancel');
 
     $modal.css('display', 'flex');
-    $confirmBtn.prop('disabled', true).css({ background: '#660000', color: '#aaa', cursor: 'not-allowed' });
+    $confirmBtn.prop('disabled', true).addClass('is-disabled');
 
     let timeLeft = 3;
     $confirmBtn.text(`确认清理 (${timeLeft}s)`);
@@ -158,9 +158,8 @@ export function showConfirmModal(onConfirm = () => performDeepCleanse()) {
         } else {
             clearInterval(timer);
             $confirmBtn.prop('disabled', false)
-                .css({ background: '#d32f2f', color: 'white', cursor: 'pointer' })
+                .removeClass('is-disabled')
                 .text('我已切换，确认清理！');
-            $confirmBtn.hover(function() { $(this).css('background', '#f44336'); }, function() { $(this).css('background', '#d32f2f'); });
         }
     }, 1000);
 
@@ -347,7 +346,7 @@ export function renderSubrulesToModal() {
         if (!isEditing) {
             let badgeHTML = '';
             if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex">正则</span>';
-            else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple" style="background:#0984e3; color:white;">简易</span>';
+            else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple">简易</span>';
             else badgeHTML = '<span class="bl-badge bl-badge-text">普通</span>';
 
             let tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
@@ -355,16 +354,20 @@ export function renderSubrulesToModal() {
             if (!rPreview) rPreview = '【直接删除】';
 
             container.append(`
-                <div class="bl-subrule-summary" style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:10px; background:var(--bl-background-secondary); border:1px solid var(--bl-border-color); border-radius:8px;">
-                    <div class="bl-subrule-main">
-                        ${badgeHTML}
+                <div class="bl-subrule-summary">
+                    <div class="bl-subrule-summary-head">
+                        <div class="bl-subrule-main">
+                            ${badgeHTML}
+                        </div>
+                        <div class="bl-subrule-summary-actions">
+                            <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="展开编辑"><i class="fas fa-pen" style="font-size:12px;"></i></button>
+                            <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除" style="color:var(--bl-danger-color);"><i class="fas fa-trash" style="font-size:12px;"></i></button>
+                        </div>
+                    </div>
+                    <div class="bl-subrule-summary-body">
                         <div class="bl-subrule-text">
                             <b>${tPreview}</b> <i class="fas fa-arrow-right" style="color:var(--bl-text-secondary); font-size:11px; margin:0 4px;"></i> <span>${rPreview}</span>
                         </div>
-                    </div>
-                    <div style="display:flex; gap:6px; flex-shrink:0;">
-                        <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="展开编辑"><i class="fas fa-pen" style="font-size:12px;"></i></button>
-                        <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除" style="color:var(--bl-danger-color);"><i class="fas fa-trash" style="font-size:12px;"></i></button>
                     </div>
                 </div>
             `);
@@ -385,20 +388,20 @@ export function renderSubrulesToModal() {
             }
 
             container.append(`
-                <div class="bl-subrule-row" style="display:flex; flex-direction:column; gap:8px; padding:12px; background:var(--bl-background-popup); border:1px dashed var(--bl-accent-color); border-radius:8px; position:relative;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <select class="bl-sub-mode bl-input" style="width:auto; padding:6px; font-size:12px;">
+                <div class="bl-subrule-row">
+                    <div class="bl-subrule-row-head">
+                        <select class="bl-sub-mode bl-input bl-subrule-mode-select">
                             <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
                             <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
                             <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
                         </select>
-                        <div style="display:flex; gap:6px;">
+                        <div class="bl-subrule-summary-actions">
                             <button class="bl-save-subrule-btn bl-icon-btn" data-index="${i}" title="完成并折叠" style="color:var(--bl-accent-color);"><i class="fas fa-check"></i></button>
                             <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除此组" style="color:var(--bl-danger-color);"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
                     <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
-                    <div style="text-align:center; font-size:12px; color:var(--bl-text-secondary); line-height:1;"><i class="fas fa-arrow-down"></i> 随机替换为 <i class="fas fa-arrow-down"></i></div>
+                    <div class="bl-subrule-flow-label"><i class="fas fa-arrow-down"></i> 随机替换为 <i class="fas fa-arrow-down"></i></div>
                     <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
                 </div>
             `);
