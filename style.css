@@ -1,1047 +1,176 @@
-/* --- 屏蔽词汇管理 CSS (重构版：对齐优化版) --- */
-
-:root {
-    --bl-accent-color: var(--SmartThemeQuoteColor, rgba(148, 0, 211, 0.7));
-    --bl-accent-color-hover: color-mix(in srgb, var(--bl-accent-color) 82%, white 18%);
-    --bl-danger-color: var(--SmartThemeEmColor, #ff4757);
-    --bl-deep-clean-bg: #a55a5a;
-    --bl-deep-clean-hover: #955050;
-    --bl-deep-clean-active: #844747;
-    --bl-background-popup: var(--SmartThemeBlurTintColor, rgba(255, 255, 255, 0.96));
-    --bl-background-secondary: color-mix(in srgb, var(--SmartThemeBodyColor, #343a40) 8%, transparent);
-    --bl-background-tertiary: color-mix(in srgb, var(--SmartThemeBodyColor, #343a40) 12%, transparent);
-    --bl-border-color: var(--SmartThemeBorderColor, #dee2e6);
-    --bl-text-primary: var(--SmartThemeBodyColor, #343a40);
-    --bl-text-secondary: color-mix(in srgb, var(--SmartThemeBodyColor, #343a40) 68%, transparent);
-    --bl-input-bg: var(--SmartThemeInputBackground, rgba(255, 255, 255, 0.94));
-    --bl-overlay-bg: color-mix(in srgb, black 58%, transparent);
-    --bl-success-color: var(--SmartThemeUnderlineColor, #0ca678);
-    --bl-danger-soft: color-mix(in srgb, var(--bl-danger-color) 16%, transparent);
-    --bl-success-soft: color-mix(in srgb, var(--bl-success-color) 16%, transparent);
-    --bl-panel-shadow: 0 10px 30px color-mix(in srgb, black 18%, transparent);
-    --bl-chip-text: var(--SmartThemeBlurTintColor, #ffffff);
-}
-
-#bl-wand-btn { cursor: pointer !important; }
-
-#bl-purifier-popup {
-    position: fixed !important;
-    top: 10vh !important; 
-    left: 50% !important;
-    transform: translateX(-50%) !important; 
-    
-    width: 90% !important;
-    max-width: 680px !important; 
-    max-height: 85vh !important; 
-    flex-direction: column !important; 
-    
-    background: var(--bl-background-popup) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    border-radius: 16px !important; 
-    z-index: 999999 !important;
-    padding: 30px 35px !important; 
-    box-shadow: var(--bl-panel-shadow) !important;
-    box-sizing: border-box !important;
-    
-    backdrop-filter: blur(20px) !important;
-    -webkit-backdrop-filter: blur(20px) !important;
-}
-
-#bl-purifier-popup .bl-header {
-    display: flex !important; justify-content: space-between !important; align-items: center !important;
-    padding-bottom: 18px !important; border-bottom: 1px solid var(--bl-border-color) !important; margin: 0 !important;
-}
-#bl-purifier-popup .bl-title { font-size: 28px !important; font-weight: bold !important; margin: 0 !important; color: var(--bl-text-primary) !important; } 
-#bl-purifier-popup .bl-close {
-    background: none !important; border: none !important; color: var(--bl-text-secondary) !important;
-    font-size: 36px !important; line-height: 1 !important; cursor: pointer !important; transition: color 0.2s ease !important;
-    padding: 0 !important; margin-left: 10px !important;
-}
-#bl-purifier-popup .bl-close:hover { color: var(--bl-danger-color) !important; }
-
-.bl-input, .bl-textarea {
-    width: 100% !important;
-    padding: 14px 16px !important;
-    border-radius: 10px !important;
-    border: 1px solid var(--bl-border-color) !important;
-    background: var(--bl-input-bg) !important;
-    color: var(--bl-text-primary) !important;
-    font-size: 18px !important; 
-    box-sizing: border-box !important;
-    outline: none !important;
-    font-family: inherit !important;
-}
-.bl-textarea { resize: vertical !important; }
-.bl-input:focus, .bl-textarea:focus { border-color: var(--bl-accent-color) !important; }
-
-
-.bl-danger-btn { color: var(--bl-danger-color) !important; }
-.bl-accent-btn { color: var(--bl-accent-color) !important; }
-.bl-add-subrule-btn { flex-shrink: 0 !important; margin-bottom: 12px !important; }
-.bl-scroll-region { flex: 1 1 auto !important; min-height: 0 !important; overflow-y: auto !important; padding-right: 5px !important; }
-.bl-empty-state {
-    opacity: 0.58 !important;
-    width: 100% !important;
-    text-align: center !important;
-    font-size: 13px !important;
-    padding: 20px 0 !important;
-    color: var(--bl-text-secondary) !important;
-}
-
-.bl-add-rule-btn {
-    padding: 14px !important;
-    border-radius: 10px !important;
-    border: none !important;
-    background-color: var(--bl-accent-color) !important;
-    color: white !important;
-    font-weight: bold !important;
-    font-size: 17px !important;
-    cursor: pointer !important;
-    transition: opacity 0.2s !important;
-}
-.bl-add-rule-btn:hover { background-color: var(--bl-accent-color-hover) !important; }
-
-#bl-purifier-popup .bl-footer {
-    margin-top: auto !important;
-    padding-top: 20px !important;
-    border-top: 1px solid var(--bl-border-color) !important;
-}
-.bl-deep-clean-btn {
-    width: 100% !important;
-    padding: 16px !important;
-    background: var(--bl-deep-clean-bg) !important;
-    color: #fff !important;
-    border: none !important;
-    border-radius: 10px !important;
-    font-size: 18px !important; 
-    font-weight: bold !important;
-    cursor: pointer !important;
-    transition: opacity 0.2s !important;
-    display: flex !important; justify-content: center !important; align-items: center !important;
-    gap: 10px !important;
-}
-.bl-deep-clean-btn:hover { background: var(--bl-deep-clean-hover) !important; }
-.bl-deep-clean-btn:active { background: var(--bl-deep-clean-active) !important; }
-
-.bl-loading-overlay {
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    background: rgba(0, 0, 0, 0.85) !important;
-    z-index: 9999999 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-    color: white !important;
-    backdrop-filter: blur(5px) !important;
-    padding: 20px !important;
-    box-sizing: border-box !important;
-}
-
-.bl-loading-title {
-    margin-bottom: 20px !important;
-    font-size: 20px !important;
-    text-align: center !important;
-}
-
-.bl-progress-track {
-    width: min(560px, 88vw) !important;
-    height: 12px !important;
-    border-radius: 999px !important;
-    overflow: hidden !important;
-    border: 1px solid rgba(255, 255, 255, 0.35) !important;
-    background: rgba(255, 255, 255, 0.2) !important;
-    margin-top: 12px !important;
-}
-
-.bl-progress-fill {
-    width: 0%;
-    height: 100% !important;
-    background: linear-gradient(90deg, #7f5af0 0%, #2cb67d 100%) !important;
-    transition: width 0.2s ease !important;
-}
-
-.bl-progress-percent {
-    margin-top: 8px !important;
-    font-weight: bold !important;
-}
-
-.bl-icon-btn {
-    padding: 8px 14px !important;
-    min-height: 38px !important;
-    font-size: 16px !important;
-    line-height: 1 !important;
-    border-radius: 8px !important;
-    background: var(--bl-background-secondary) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    cursor: pointer !important;
-    color: var(--bl-text-primary) !important;
-}
-.bl-icon-btn:hover { background: var(--bl-border-color) !important; }
-
-.bl-bind-toggle {
-    color: var(--bl-text-secondary) !important;
-}
-
-.bl-bind-toggle.bl-bind-active {
-    color: var(--bl-accent-color) !important;
-    border-color: var(--bl-accent-color) !important;
-    background: color-mix(in srgb, var(--bl-accent-color) 15%, transparent) !important;
-}
-
-.bl-bind-toggle:disabled {
-    opacity: 0.45 !important;
-    cursor: not-allowed !important;
-}
-
-#bl-purifier-popup .bl-tools-bar > div:last-child {
-    width: 100% !important;
-    box-sizing: border-box !important;
-}
-.bl-tool-btn {
-    flex: 1 1 0% !important; 
-    padding: 9px 0 !important; 
-    border-radius: 8px !important;
-    border: 1px solid var(--bl-border-color) !important;
-    background: var(--bl-background-secondary) !important;
-    color: var(--bl-text-primary) !important;
-    cursor: pointer !important;
-    font-size: 15px !important; 
-    font-weight: 600 !important;
-    text-align: center !important;
-    transition: background 0.2s, opacity 0.2s !important;
-    white-space: nowrap !important; 
-}
-.bl-tool-btn:hover { background: var(--bl-background-tertiary) !important; opacity: 1 !important; }
-
-#bl-tags-container::-webkit-scrollbar, #bl-edit-subrules-container::-webkit-scrollbar { width: 8px; }
-#bl-tags-container::-webkit-scrollbar-thumb, #bl-edit-subrules-container::-webkit-scrollbar-thumb { background: var(--bl-border-color); border-radius: 4px; }
-
-.bl-rule-card {
-    display: flex !important;
-    flex-direction: column !important; 
-    align-items: stretch !important;
-    width: 100% !important;
-    padding: 18px 20px !important; 
-    background: var(--bl-input-bg) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    border-radius: 10px !important;
-    margin-bottom: 12px !important;
-    box-sizing: border-box !important;
-    transition: border-color 0.2s !important;
-}
-.bl-rule-card:hover { border-color: var(--bl-accent-color) !important; }
-
-.bl-rule-card-header {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important; 
-    width: 100% !important;
-}
-
-.bl-rule-name { 
-    font-weight: bold !important; 
-    font-size: 18px !important; 
-    color: var(--bl-text-primary) !important; 
-    margin: 0 !important; 
-    line-height: 1.4 !important;
-    display: flex !important; 
-    align-items: center !important; 
-    /* --- 新增：强制换行，防止长文本撑破 flex 布局 --- */
-    word-break: break-all !important; 
-}
-
-.bl-rule-preview { 
-    font-size: 15px !important; 
-    color: var(--bl-text-secondary) !important; 
-    margin-top: 12px !important;
-    padding-top: 12px !important;
-    border-top: 1px dashed var(--bl-border-color) !important;
-    line-height: 1.5 !important;
-}
-
-.bl-rule-actions { 
-    display: flex !important; 
-    gap: 10px !important; 
-    align-items: center !important; 
-    margin-left: 10px !important; 
-    margin-top: 2px !important; 
-}
-
-.bl-rule-transfer, .bl-rule-edit, .bl-rule-del {
-    background: var(--bl-background-secondary) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    border-radius: 8px !important;
-    cursor: pointer !important;
-    padding: 8px 12px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    transition: all 0.2s !important;
-    color: var(--bl-text-primary) !important;
-}
-.bl-rule-transfer { font-size: 15px !important; }
-.bl-rule-edit { font-size: 15px !important; }
-.bl-rule-del { font-size: 15px !important; color: var(--bl-text-primary) !important;}
-.bl-rule-transfer:hover { background: var(--bl-background-tertiary) !important; border-color: var(--bl-border-color) !important; color: var(--bl-text-primary) !important; }
-.bl-rule-edit:hover { background: var(--bl-accent-color) !important; border-color: var(--bl-accent-color) !important; color: white !important;}
-.bl-rule-del:hover { background: var(--bl-danger-color) !important; border-color: var(--bl-danger-color) !important; color: white !important; }
-
-#bl-rule-transfer-modal {
-    position: fixed !important;
-    inset: 0 !important;
-    background: rgba(0, 0, 0, 0.35) !important;
-    z-index: 10000000 !important;
-    display: none;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 16px !important;
-    box-sizing: border-box !important;
-}
-
-.bl-transfer-content {
-    width: min(420px, 96vw) !important;
-    background: var(--bl-background-popup) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    border-radius: 12px !important;
-    padding: 14px !important;
-    box-shadow: 0 12px 24px rgba(0,0,0,0.35) !important;
-}
-
-.bl-transfer-btn {
-    flex: 1 !important;
-    padding: 9px 10px !important;
-    border-radius: 8px !important;
-    border: 1px solid var(--bl-border-color) !important;
-    background: var(--bl-background-secondary) !important;
-    color: var(--bl-text-primary) !important;
-    cursor: pointer !important;
-    transition: background 0.2s !important;
-}
-
-.bl-transfer-btn:hover {
-    background: var(--bl-background-tertiary) !important;
-}
-
-/* 统一为低调的次级按钮样式 */
-.bl-transfer-copy, .bl-transfer-move {
-    background: var(--bl-background-secondary) !important;
-    border-color: var(--bl-border-color) !important;
-    color: var(--bl-text-primary) !important;
-}
-
-/* ================== 徽章样式 ================== */
-.bl-badge {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    padding: 4px 10px !important;
-    border-radius: 4px !important; 
-    font-size: 14px !important;   
-    margin-right: 12px !important;
-    font-weight: 800 !important;
-    color: white !important;
-    min-width: 50px !important;    
-    line-height: 1 !important;
-    margin-top: 3px !important; 
-    /* --- 新增：强制徽章不缩小，彻底锁死对齐位置 --- */
-    flex-shrink: 0 !important;
-}
-
-.bl-badge-text { background: var(--bl-text-secondary) !important; color: var(--bl-background-popup) !important; } 
-.bl-badge-regex { background: var(--bl-accent-color) !important; color: var(--bl-chip-text) !important; }
-.bl-badge-simple { background: color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%) !important; color: var(--bl-chip-text) !important; }
-
-.bl-subrule-main {
-    flex: 1 !important;
-    min-width: 0 !important;
-    display: grid !important;
-    grid-template-columns: auto minmax(0, 1fr) !important;
-    column-gap: 10px !important;
-    align-items: flex-start !important;
-}
-
-.bl-subrule-text {
-    min-width: 0 !important;
-    font-size: 13px !important;
-    color: var(--bl-text-primary) !important;
-    line-height: 1.45 !important;
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-}
-
-
-#bl-purifier-popup .bl-tools-bar {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    margin: 10px 0 14px 0 !important;
-    border-bottom: 1px solid var(--bl-border-color) !important;
-    padding-bottom: 12px !important;
-}
-
-#bl-purifier-popup .bl-preset-row {
-    display: flex !important;
-    gap: 8px !important;
-    align-items: center !important;
-}
-
-#bl-preset-select {
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
-    min-height: 38px !important;
-    padding: 9px 36px 9px 12px !important;
-    border-radius: 8px !important;
-    border: 1px solid var(--bl-border-color) !important;
-    background-color: var(--bl-input-bg) !important;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
-    background-repeat: no-repeat !important;
-    background-position: right 12px center !important;
-    background-size: 14px !important;
-    color: var(--bl-text-primary) !important;
-    outline: none !important;
-    font-family: inherit !important;
-    appearance: none !important;
-    -webkit-appearance: none !important;
-}
-
-#bl-preset-select:hover,
-#bl-preset-select:focus {
-    border-color: var(--bl-accent-color) !important;
-}
-
-#bl-open-new-rule-btn {
-    width: 100% !important;
-    margin-bottom: 10px !important;
-}
-
-#bl-tags-container {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    padding-right: 5px !important;
-}
-
-#bl-purifier-popup .bl-footer {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    gap: 15px !important;
-}
-
-.bl-footer-meta {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-}
-
-.bl-footer-meta-text {
-    font-size: 13px !important;
-    color: var(--bl-text-secondary) !important;
-    font-weight: bold !important;
-}
-
-#bl-deep-clean-btn {
-    flex: 1 1 auto !important;
-    width: auto !important;
-}
-
-.bl-modal-shell {
-    display: none;
-    position: fixed !important;
-    inset: 0 !important;
-    width: 100vw !important;
-    height: 100vh !important;
-    background: var(--bl-overlay-bg) !important;
-    z-index: 9999999 !important;
-    flex-direction: column !important;
-    justify-content: center !important;
-    align-items: center !important;
-    font-family: inherit !important;
-    backdrop-filter: blur(4px) !important;
-}
-
-.bl-modal-card {
-    background: var(--bl-background-popup) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    box-shadow: var(--bl-panel-shadow) !important;
-    box-sizing: border-box !important;
-    color: var(--bl-text-primary) !important;
-}
-
-.bl-edit-modal-card {
-    padding: 20px 25px !important;
-    border-radius: 12px !important;
-    width: 90% !important;
-    max-width: 460px !important;
-    max-height: 85vh !important;
-    display: flex !important;
-    flex-direction: column !important;
-}
-
-.bl-edit-modal-title {
-    margin: 0 0 12px 0 !important;
-    font-size: 18px !important;
-    color: var(--bl-text-primary) !important;
-    flex-shrink: 0 !important;
-}
-
-.bl-edit-field {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 4px !important;
-    margin-bottom: 12px !important;
-    flex-shrink: 0 !important;
-}
-
-.bl-field-label {
-    font-size: 13px !important;
-    color: var(--bl-text-secondary) !important;
-}
-
-#bl-edit-subrules-container {
-    flex: 1 !important;
-    min-height: 0 !important;
-    overflow-y: auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    padding-right: 5px !important;
-    margin-bottom: 10px !important;
-}
-
-.bl-ghost-btn {
-    padding: 10px !important;
-    border-radius: 8px !important;
-    background: var(--bl-background-secondary) !important;
-    border: 1px dashed var(--bl-border-color) !important;
-    color: var(--bl-text-primary) !important;
-    cursor: pointer !important;
-    font-size: 13px !important;
-    font-weight: bold !important;
-    transition: background 0.2s ease, border-color 0.2s ease !important;
-}
-
-.bl-ghost-btn:hover {
-    background: var(--bl-background-tertiary) !important;
-    border-color: var(--bl-accent-color) !important;
-}
-
-.bl-modal-actions {
-    display: flex !important;
-    justify-content: space-between !important;
-    gap: 10px !important;
-    flex-shrink: 0 !important;
-}
-
-.bl-secondary-btn,
-.bl-primary-btn {
-    flex: 1 !important;
-    padding: 10px !important;
-    border-radius: 8px !important;
-    cursor: pointer !important;
-    font-weight: bold !important;
-}
-
-.bl-secondary-btn {
-    background: var(--bl-background-secondary) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    color: var(--bl-text-primary) !important;
-}
-
-.bl-secondary-btn:hover {
-    background: var(--bl-background-tertiary) !important;
-}
-
-.bl-primary-btn {
-    background: var(--bl-accent-color) !important;
-    border: none !important;
-    color: var(--bl-chip-text) !important;
-}
-
-.bl-primary-btn:hover {
-    background: var(--bl-accent-color-hover) !important;
-}
-
-.bl-confirm-card {
-    padding: 26px !important;
-    border-radius: 12px !important;
-    max-width: 450px !important;
-    text-align: center !important;
-}
-
-.bl-confirm-title {
-    color: var(--bl-danger-color) !important;
-    margin-top: 0 !important;
-    font-size: 22px !important;
-}
-
-.bl-confirm-text {
-    font-size: 15px !important;
-    color: var(--bl-text-primary) !important;
-    line-height: 1.6 !important;
-    margin: 0 0 25px 0 !important;
-    text-align: left !important;
-}
-
-.bl-warning-callout {
-    color: var(--bl-danger-color) !important;
-    background: var(--bl-background-secondary) !important;
-    padding: 6px 10px !important;
-    border-radius: 6px !important;
-    display: inline-block !important;
-    margin-bottom: 10px !important;
-    border: 1px solid var(--bl-border-color) !important;
-}
-
-.bl-primary-btn:disabled,
-.bl-primary-btn.is-disabled {
-    background: var(--bl-background-secondary) !important;
-    color: var(--bl-text-secondary) !important;
-    cursor: not-allowed !important;
-    opacity: 0.7 !important;
-}
-
-.bl-subrule-summary {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    padding: 10px !important;
-    background: var(--bl-background-secondary) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    border-radius: 8px !important;
-}
-
-.bl-subrule-summary-head {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    gap: 8px !important;
-}
-
-.bl-subrule-summary-actions {
-    display: flex !important;
-    gap: 6px !important;
-    flex-shrink: 0 !important;
-}
-
-.bl-subrule-summary-body {
-    width: 100% !important;
-    min-width: 0 !important;
-}
-
-.bl-subrule-row {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    padding: 12px !important;
-    background: var(--bl-background-popup) !important;
-    border: 1px dashed var(--bl-accent-color) !important;
-    border-radius: 8px !important;
-    position: relative !important;
-}
-
-.bl-subrule-row-head {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    gap: 8px !important;
-}
-
-.bl-subrule-mode-select {
-    width: auto !important;
-    max-width: 100% !important;
-    padding: 6px 28px 6px 8px !important;
-    font-size: 12px !important;
-}
-
-.bl-subrule-flow-label {
-    text-align: center !important;
-    font-size: 12px !important;
-    color: var(--bl-text-secondary) !important;
-    line-height: 1 !important;
-}
-
-/* --- 手机端微调 --- */
-@media screen and (max-width: 600px) {
-    #bl-purifier-popup { padding: 14px 16px !important; width: 92% !important; top: 7vh !important; max-width: 420px !important; border-radius: 12px !important; max-height: 78vh !important;}
-    #bl-rule-transfer-modal {
-        align-items: flex-start !important;
-        background: transparent !important;
-        padding-top: calc(env(safe-area-inset-top, 0px) + 16vh) !important;
-    }
-    #bl-rule-transfer-modal .bl-transfer-content {
-        width: min(420px, 92vw) !important;
-    }
-    #bl-purifier-popup .bl-title { font-size: 18px !important; }
-    .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
-    .bl-tool-btn { font-size: 12px !important; padding: 6px 0 !important; }
-    #bl-purifier-popup .bl-preset-row {
-        display: grid !important;
-        grid-template-columns: 36px 36px minmax(0, 1fr) 36px 36px !important;
-        gap: 6px !important;
-        align-items: center !important;
-    }
-    #bl-purifier-popup .bl-preset-row .bl-icon-btn {
-        min-height: 36px !important;
-        min-width: 36px !important;
-        padding: 0 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-    #bl-preset-select {
-        min-width: 0 !important;
-        width: 100% !important;
-        font-size: 13px !important;
-        padding: 8px 32px 8px 10px !important;
-        background-position: right 10px center !important;
-    }
-    #bl-purifier-popup .bl-tool-grid {
-        display: grid !important;
-        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-        gap: 6px !important;
-    }
-    #bl-purifier-popup .bl-tool-grid .bl-tool-btn {
-        min-height: 38px !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        padding: 0 !important;
-    }
-    #bl-purifier-popup .bl-tool-grid .bl-tool-text {
-        display: none !important;
-    }
-    #bl-purifier-popup .bl-tool-grid .bl-tool-btn i {
-        margin: 0 !important;
-    }
-    .bl-rule-card { padding: 8px 10px !important; }
-    #bl-purifier-popup .bl-tools-bar { margin: 8px 0 10px 0 !important; padding-bottom: 10px !important; gap: 6px !important; }
-    #bl-purifier-popup .bl-footer { gap: 10px !important; align-items: stretch !important; }
-    .bl-footer-meta { flex-shrink: 0 !important; }
-    .bl-footer-meta-text { font-size: 12px !important; }
-    .bl-deep-clean-btn { padding: 11px 12px !important; font-size: 14px !important; gap: 8px !important; }
-    .bl-add-rule-btn { padding: 11px 12px !important; font-size: 14px !important; }
-    .bl-icon-btn { min-height: 36px !important; }
-    .bl-subrule-summary-head { align-items: flex-start !important; }
-    .bl-subrule-row-head { align-items: flex-start !important; flex-direction: column !important; }
-    .bl-subrule-mode-select { width: 100% !important; }
-    .bl-rule-name { font-size: 13px !important; }
-    .bl-rule-preview { font-size: 12px !important; }
-    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
-}
-
-.bl-diff-btn {
-    font-size: inherit !important;
-}
-
-#bl-diff-modal {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 10000000 !important;
-    background: var(--bl-overlay-bg) !important;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 12px;
-    box-sizing: border-box;
-}
-
-.bl-diff-modal-card {
-    width: min(860px, 96vw);
-    max-height: min(82vh, 900px);
-    background: var(--bl-background-popup);
-    border-radius: 12px;
-    border: 1px solid var(--bl-border-color);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
-    display: flex;
-    flex-direction: column;
-}
-
-.bl-diff-modal-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--bl-border-color);
-}
-
-.bl-diff-modal-title {
-    margin: 0;
-    color: var(--bl-text-primary);
-    font-size: 16px;
-}
-
-.bl-diff-modal-close {
-    border: 0;
-    background: transparent;
-    color: var(--bl-text-secondary);
-    font-size: 26px;
-    cursor: pointer;
-    line-height: 1;
-}
-
-.bl-diff-modal-content {
-    padding: 12px 16px 16px;
-    overflow-y: auto;
-    max-height: min(70vh, 760px);
-    color: var(--bl-text-primary);
-}
-
-/* --- 原来的行内高亮片段（带边框和底色背景） --- */
-.bl-diff-snippet {
-    display: block !important;
-    line-height: 1.8 !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
-    padding: 12px 14px !important;
-    background: var(--bl-background-secondary) !important;
-    border-radius: 8px !important;
-    border-left: 3px solid var(--bl-border-color) !important;
-}
-
-.bl-diff-snippet del {
-    color: var(--bl-danger-color) !important;
-    background: var(--bl-danger-soft) !important;
-    text-decoration: line-through !important;
-    text-decoration-thickness: 2px !important;
-    padding: 2px 4px !important;
-    border-radius: 4px !important;
-    margin: 0 2px !important;
-}
-
-.bl-diff-snippet ins {
-    color: var(--bl-success-color) !important;
-    background: var(--bl-success-soft) !important;
-    text-decoration: none !important;
-    padding: 2px 4px !important;
-    border-radius: 4px !important;
-    margin: 0 2px !important;
-    font-weight: bold !important;
-}
-
-/* ========================================================= */
-/* --- 任务1：侧边按钮居中与对齐优化（修复飘到顶部的问题） --- */
-/* 尾部按钮样式更新 */
-.bl-diff-btn-bottom {
-    position: absolute !important;
-    bottom: 6px !important;
-    right: 48px !important; /* 【核心修改】从 85px 缩小到 48px，让它贴近 2/2 页码 */
-    z-index: 10 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    opacity: 0.45 !important;
-    cursor: pointer !important;
-    transition: opacity 0.2s, color 0.2s !important;
-    color: var(--bl-text-primary) !important;
-}
-
-.bl-diff-btn-bottom:hover {
-    opacity: 1 !important;
-    color: var(--bl-accent-color) !important;
-}
-
-/* ========================================================= */
-/* --- 任务2 & 3：全文模式的段落级排版与高亮 --- */
-.bl-diff-full-text {
-    color: var(--bl-text-primary) !important;
-    padding: 8px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 12px !important; 
-}
-
-/* 无修改的正常段落：保持小字号，稍微透明一点，方便快速翻阅不累眼 */
-.bl-diff-full-normal {
-    font-size: 14px !important; 
-    line-height: 1.5 !important;
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
-    opacity: 0.85 !important; 
-}
-
-/* 包含修改的段落：字号放大，行高拉开，和片段模式的排版看齐，超级醒目！ */
-.bl-diff-full-modified {
-    font-size: 16px !important; /* 放大字号 */
-    line-height: 1.8 !important; /* 拉大行高 */
-    white-space: pre-wrap !important;
-    word-break: break-word !important;
-    padding: 12px 14px !important; /* 加大内边距 */
-    background: var(--bl-background-secondary) !important;
-    border-left: 4px solid var(--bl-accent-color) !important;
-    border-radius: 6px !important;
-}
-
-/* 差异字体的颜色与背景 */
-.bl-diff-full-modified del {
-    color: #e03131 !important;
-    background: rgba(224, 49, 49, 0.08) !important;
-    text-decoration: line-through !important;
-    padding: 0 3px !important;
-    border-radius: 3px !important;
-}
-
-.bl-diff-full-modified ins {
-    color: #0ca678 !important;
-    background: rgba(12, 166, 120, 0.08) !important;
-    text-decoration: none !important;
-    padding: 0 3px !important;
-    border-radius: 3px !important;
-    font-weight: 600 !important;
-}
-
-/* ========================================================= */
-/* --- 手机端高度与软键盘适配 (修复遮罩未覆盖与高度过大) --- */
-@media screen and (max-width: 600px) {
-    
-    /* 1. 修复全屏灰色遮罩：死死锁住 100% 屏幕，绝对不留缝隙 */
-    #bl-rule-edit-modal,
-    #bl-diff-modal {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        padding: 0 !important; 
-        background: rgba(0, 0, 0, 0.65) !important; 
-        z-index: 10000000 !important; /* 加上无敌层级，防止被底下的主界面挡住 */
-    }
-
-    #bl-diff-modal {
-        align-items: flex-start !important; 
-        justify-content: center !important; 
-    }
-
-    #bl-rule-edit-modal {
-        align-items: center !important; /* 修复方向反转：保证水平居中 */
-        justify-content: flex-start !important; /* 修复方向反转：保证靠上对齐 */
-    }
-
-    /* 2. 控制弹窗本体：缩短高度、完美居中 */
-    #bl-rule-edit-modal > div,
-    .bl-diff-modal-card {
-        width: 90% !important;       
-        max-height: 68vh !important; 
-        margin: calc(env(safe-area-inset-top, 0px) + 12vh) 0 0 0 !important;
-        /* 👇 修复 Safari 压扁 Bug：删除了原有的 overflow-y，强制设为自动撑开 */
-        height: auto !important; 
-    }
-    
-    /* 3. 保持净化主面板的显示比例 */
-    #bl-purifier-popup {
-        top: 8vh !important; 
-        max-height: 80vh !important;
-    }
-}
-
-
-.bl-badge-compact {
-    font-size: 9px !important;
-    padding: 2px 4px !important;
-    min-width: auto !important;
-}
-
-.bl-rule-card-main {
-    display: flex !important;
-    align-items: center !important;
-    gap: 8px !important;
-    flex: 1 !important;
-    min-width: 0 !important;
-    overflow: hidden !important;
-}
-
-.bl-rule-toggle-wrap { flex-shrink: 0 !important; }
-
-.bl-rule-name {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    white-space: nowrap !important;
-}
-
-.bl-rule-count {
-    font-size: 11px !important;
-    font-weight: normal !important;
-    opacity: 0.72 !important;
-}
-
-.bl-rule-preview-row {
-    display: flex !important;
-    align-items: center !important;
-    gap: 4px !important;
-    margin-bottom: 5px !important;
-    overflow: hidden !important;
-    white-space: nowrap !important;
-}
-
-.bl-rule-preview-source {
-    color: var(--bl-text-primary) !important;
-    margin-right: 4px !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    max-width: 55% !important;
-}
-
-.bl-rule-preview-arrow {
-    font-size: 10px !important;
-    margin: 0 6px !important;
-    opacity: 0.6 !important;
-    flex-shrink: 0 !important;
-    color: var(--bl-text-secondary) !important;
-}
-
-.bl-rule-preview-target {
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
-    flex: 1 !important;
-}
-
-.bl-rule-preview-more,
-.bl-rule-preview-empty {
-    font-size: 12px !important;
-    color: var(--bl-text-secondary) !important;
-}
-.bl-rule-preview-more {
-    margin-top: 6px !important;
-    opacity: 0.8 !important;
-    text-align: center !important;
-    font-size: 11px !important;
-}
-
-.bl-rule-actions button,
-.bl-subrule-summary-actions button {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-
-.bl-rule-move-up:disabled,
-.bl-rule-move-down:disabled,
-.bl-move-subrule-up-btn:disabled,
-.bl-move-subrule-down-btn:disabled {
-    opacity: 0.38 !important;
-    cursor: not-allowed !important;
-}
-
-.bl-inline-arrow {
-    color: var(--bl-text-secondary) !important;
-    font-size: 11px !important;
-    margin: 0 4px !important;
-}
-
-.bl-confirm-actions { gap: 15px !important; }
-.bl-confirm-btn { padding: 12px !important; }
-.bl-transfer-title { margin-bottom: 10px !important; font-size: 16px !important; }
-.bl-transfer-target { font-size: 14px !important; padding: 8px 36px 8px 10px !important; margin-bottom: 12px !important; }
-.bl-transfer-actions { display: flex !important; gap: 8px !important; }
-.bl-diff-header-actions { display: flex !important; align-items: center !important; gap: 12px !important; }
-.bl-diff-header-btn { padding: 6px 12px !important; min-height: 30px !important; font-size: 13px !important; }
-
-@media screen and (max-width: 600px) {
-    .bl-transfer-actions { flex-wrap: wrap !important; }
-    .bl-transfer-actions > .bl-transfer-btn { flex: 1 1 calc(50% - 4px) !important; }
-}
+# 🧩 插件简介
+
+这是一个用于**实时净化与深度清理文本内容**的关键词过滤插件。当前版本已支持多种匹配模式、规则合集管理、全域数据洗刷、移动端适配，以及更完整的安全防护与兼容处理，适用于日常聊天净化、规则替换和存档清理等场景。
+
+---
+
+# 📚 更新日志目录
+
+- [🚀 大更新](#-大更新)
+
+  - [🚀 v6.0 净化前文透视与可视化](#-v60-净化前文透视与可视化)
+  - [🚀 v5.0 异步清理与跨存档转移](#-v50-异步清理与跨存档转移)
+  - [🧩 v4.0 三擎驱动与全域净化](#-v40-三擎驱动与全域净化)
+  - [⚙️ v3.0 规则系统重构与界面升级](#️-v30-规则系统重构与界面升级)
+  - [📦 v2.1 - v2.0 深度清理与批量管理升级](#-v21---v20-深度清理与批量管理升级)
+- [✨ 小更新](#-小更新)
+  - [🚀 v5.2 角色绑定与流式稳定替换](#-v52-角色绑定与流式稳定替换)
+  - [📱 v4.3 小剧场兼容与清理警告强化](#-v43-小剧场兼容与清理警告强化)
+  - [🔒 v4.2 安全防线与排版升级](#-v42-安全防线与排版升级)
+  - [🛡️ v3.2 核心防护与安全锁](#️-v32-核心防护与安全锁)
+- [📜 版权声明](#-版权声明)
+
+---
+
+# 🚀 大更新
+
+## 🚀 v6.0 净化前文透视与可视化
+
+### 🔍 透视模式 (Visual Diff)
+* **溯源修改前内容**：支持在聊天记录中回看被净化前的原始语句。
+* **高亮差异增删**：以可视化方式标记新增与删除内容，快速定位净化影响范围。
+
+### 🖥️ 双屏模式切换
+* **片段提取模式**：聚焦展示发生变化的关键片段。
+* **全文模式**：一键切换到完整上下文，对照净化前后全文内容。
+
+### 📱 移动端全面适配
+* **差异面板显示优化**：针对移动屏幕重排 Diff 面板布局。
+* **软键盘遮挡修复**：修复输入时面板被遮挡的问题，提升移动端可操作性。
+
+---
+
+## 🚀 v5.0 异步清理与跨存档转移
+
+### ⏱️ 深度清理与性能进化
+* **异步防卡死机制**：深度清理改为分片执行，大幅降低浏览器假死风险。
+* **可视化进度展示**：新增进度面板，清理阶段与命中状态一目了然。
+* **智能超时保护**：支持超时自动中止，避免长时间卡住无法操作。
+
+### 🔒 兼容性与安全增强
+* **全局防递归保护**：净化过程加入状态锁，避免互相触发导致循环崩溃。
+* **数据库级兼容**：现已支持与数据库外置类插件协同使用。
+* **旧版格式自动兼容**：导入时可自动识别并转换早期遗留规则格式。
+
+### 🔀 规则管理升级
+* **规则跨存档转移**：支持将规则合集一键复制或移动至其他预设。
+* **更智能的词条解析**：目标词与替换词分开处理，导入与编辑更准确。
+* **移动端排版修复**：优化长文本显示，避免超长内容撑破界面。
+
+---
+
+## 🧩 v4.0 三擎驱动与全域净化
+
+### ⚙️ 核心能力升级
+* **三大净化引擎**：支持普通文本、专业正则与简易组合三种模式，可覆盖从基础替换到复杂规则匹配的多类需求。
+
+### 🗂️ 规则与预设系统重构
+* **多组规则管理**：支持按合集分组管理，并可独立开关。
+* **完整预设体系**：支持新建、重命名、本地保存，以及 JSON 导入导出。
+* **可视化编辑面板**：新增独立编辑界面，可直接预览规则模式与映射关系，长规则也更易查看和维护。
+
+### 🪐 深度清理范围扩展
+* **全域数据净化**：深度清理不再局限于聊天记录，现已支持同步洗刷角色卡、世界书与用户自身人设等内容。
+
+---
+
+## ⚙️ v3.0 规则系统重构与界面升级
+
+### 🧠 规则逻辑升级
+* **多对多规则映射**：从单一屏蔽词列表升级为规则组，可为一组目标词配置一组替换词。
+* **随机替换机制**：命中目标词后可随机抽取替换内容；未设置替换词时则默认删除。
+* **旧数据自动迁移**：旧版屏蔽词可自动无损转换为新版规则结构。
+
+### 🖥️ 展示与交互优化
+* **全新垂直排版**：规则展示改为更直观的上下结构。
+* **长内容完整浏览**：支持横向滚动，不再依赖省略号截断超长规则。
+
+### ⚡ 性能优化
+* **正则缓存机制**：降低高频输入场景下的重复计算开销，持续使用更流畅。
+
+---
+
+## 📦 v2.1 - v2.0 深度清理与批量管理升级
+
+### 🧹 核心清理能力
+* **全频段拦截**：可实时监控聊天、思维链与 HTML 注释，命中后即时清理。
+* **表格深度兼容**：支持清理表格插件中的单元格、输入框与底层存储内容。
+* **深度清理模式**：可同时洗刷聊天记录、插件私有数据与扩展设置，并自动避开自身配置，防止误删。
+
+### ✍️ 输入与批量管理优化
+* **无感输入保护**：净化时自动跳过当前正在输入的区域，避免跳光标与打字卡顿。
+* **批量导入支持**：支持一次性添加多个屏蔽词，并识别空格、逗号、顿号与换行等多种分隔方式。
+* **自动查重过滤**：批量导入时会自动跳过空行与重复词汇。
+
+### 🖼️ 界面与体验提升
+* **独立批量输入弹窗**：编辑长列表更方便，同时保留原有单独添加与深度清理功能。
+* **移动端适配与单例保护**：优化弹窗表现并修复重复绑定问题，确保逻辑只运行一次。
+* **清理后自动刷新**：完成深度清理后自动重载页面，保证前端显示与底层数据同步。
+
+---
+
+# ✨ 小更新
+
+## 🚀 v5.2 角色绑定与流式稳定替换
+
+### 🧷 预设绑定能力
+* **默认预设绑定**：新增“默认预设”配置，角色无单独绑定时自动套用。
+* **角色卡单独绑定**：可在聊天界面直接为当前角色绑定专属预设，切换角色时自动切换。
+* **绑定数据自清理**：重命名、删除预设时会同步维护绑定关系，防止悬空引用。
+
+### 🧩 简易语法优化
+* **`*` 限制在短句内**：通配符遇到句号、逗号、分号、换行等停顿符即停止，不再跨句乱删。
+
+### 📺 流式显示逻辑优化
+* **视觉替换稳定化**：流式输出中改为稳定替换策略，命中后不会在多次渲染中反复变词。
+
+---
+
+## 📱 v4.3 小剧场兼容与清理警告强化
+
+### 🎭 扩展兼容
+* **支持回声小剧场兼容**：进一步提升与扩展生态的协同能力。
+
+### ⚠️ 清理提醒升级
+* **明确洗刷范围**：深度清理弹窗会直接说明角色卡、世界书、人设与历史记录等永久处理范围。
+* **强化操作警告**：在原有提醒基础上，进一步要求先切换到更安全的预设后再执行清理。
+
+---
+
+## 🔒 v4.2 安全防线与排版升级
+
+### 🛡️ 规则安全补丁
+* **空匹配自动拦截**：会自动忽略可匹配空字符的危险规则，避免死循环与卡死问题。
+
+### 📲 流式输出优化
+* **文本节点强制合并**：针对移动端流式输出中的文本碎裂问题进行处理，提升长句命中率。
+
+### 🎨 界面排版优化
+* **大屏显示更舒适**：放大弹窗与字号。长规则名自动换行，模式徽章宽度与对齐方式更稳定。
+
+---
+
+## 🛡️ v3.2 核心防护与安全锁
+
+### 🧱 核心防护区
+* **全局 UI 白名单**：将预设菜单、状态栏、抽屉、弹窗与角色编辑界面划入保护范围，避免系统关键区域被误处理。
+* **智能输入放行**：在保护区内输入内容时会自动跳过净化，修改预设或设置时不会再被误替换。
+
+### ⚠️ 深度清理安全锁
+* **倒计时二次确认**：新增确认弹窗与倒计时提醒，降低误触深度清理的风险。
+* **操作引导补充**：清理与同步完成后会提示安全切换流程，减少误操作带来的配置损失。
+
+### 🔧 底层兼容优化
+* **滑动分支全面兼容**：重写清理逻辑后，可同时适配新旧结构下的滑动分支内容。
+* **智能标点剥离**：录入目标词时可自动处理常见中英文引号，减少因输入格式不统一造成的匹配失效。
+
+---
+
+# 📜 版权声明
+
+本插件允许在**修改后**进行二次发布，但请遵守以下规则：
+
+* **禁止直接二传本体**：未修改版本不得原样转载、搬运或二次发布。
+* **修改后二传需署名**：如进行二次修改与发布，需保留原作者署名，并附上原 **Discord** 与 **GitHub** 链接。
+* **禁止墙内社交媒体传播**：不得将本插件本体或修改版发布至墙内社交媒体平台。
+* **预设修改欢迎**：预设相关的更新与修改不受上述限制。
