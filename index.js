@@ -95,7 +95,6 @@ jQuery(() => {
         initRealtimeInterceptor();
         updateToolbarUI();
         applyCharacterPresetBinding(true);
-        performGlobalCleanse();
     };
 
     if (typeof eventSource !== 'undefined' && event_types.APP_READY) {

@@ -31,6 +31,11 @@ export const runtimeState = {
     pendingDiffButtonIndices: new Set(),
     diffButtonSyncScheduled: false,
     lastFinalCleanseMeta: { index: -1, at: 0 },
+    diffStatusMap: new Map(),
+    diffBuildTimers: new Map(),
+    diffRawSourceMap: new Map(),
+    currentStreamingDiffIndex: -1,
+    diffLimit: 3,
 };
 
 const appContext = {

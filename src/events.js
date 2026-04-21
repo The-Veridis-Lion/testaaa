@@ -23,7 +23,7 @@ import {
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -150,17 +150,24 @@ export function bindEvents() {
         saveSettingsDebounced();
         injectDiffButtons();
     });
-
-
     function renderDiffModalContent(index) {
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         const mode = settings.diffViewMode || 'snippet';
-        const cached = getDiffSnippetsForMessage(index);
-        if (!cached) return;
-
+        const state = getDiffState(index);
         const contentEl = $('#bl-diff-modal-content');
 
+        if (state === 'pending') {
+            contentEl.html(`
+                <div class="bl-diff-loading-wrap">
+                    <div class="bl-diff-spinner" aria-hidden="true"></div>
+                    <div class="bl-diff-loading-text">Loading...</div>
+                </div>
+            `);
+            return;
+        }
+
+        const cached = getDiffSnippetsForMessage(index);
         if (mode === 'full') {
             contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || "当前消息无正文差异。"}</div>`);
             $('#bl-diff-mode-text').text('切回片段');
@@ -182,7 +189,9 @@ export function bindEvents() {
         const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
 
-        // --- 新增：同步收纳按钮的图标和文本状态 ---
+        const state = getDiffState(index);
+        if (state === 'streaming') return;
+
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         if (settings.diffButtonInExtraMenu) {
@@ -192,12 +201,21 @@ export function bindEvents() {
             $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-ellipsis');
             $('#bl-diff-pos-text').text('收纳按钮');
         }
-        // ------------------------------------------
 
         runtimeState.currentDiffIndex = index;
         renderDiffModalContent(index);
         $('#bl-diff-modal').css('display', 'flex');
     });
+
+
+    if (window.__blDiffStateHandler) document.removeEventListener('bl:diff-state-changed', window.__blDiffStateHandler);
+    window.__blDiffStateHandler = (evt) => {
+        const detail = evt?.detail;
+        if (!detail) return;
+        if (runtimeState.currentDiffIndex === detail.index && $('#bl-diff-modal').is(':visible')) renderDiffModalContent(detail.index);
+        injectDiffButtonsForIndices([detail.index, detail.index - 1, detail.index - 2, detail.index - 3]);
+    };
+    document.addEventListener('bl:diff-state-changed', window.__blDiffStateHandler);
 
     $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
@@ -542,6 +560,7 @@ export function bindEvents() {
     let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
+        runtimeState.currentStreamingDiffIndex = -1;
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
             const index = (() => {
@@ -553,7 +572,7 @@ export function bindEvents() {
             if (index >= 0 && runtimeState.lastFinalCleanseMeta.index === index && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
             performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
             runtimeState.lastFinalCleanseMeta = { index, at: now };
-            if (index >= 0) injectDiffButtonsForIndices([index]);
+            if (index >= 0) injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
         }, 150);
     };
 
@@ -567,10 +586,17 @@ export function bindEvents() {
         });
     }
 
-    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; });
+    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; runtimeState.currentStreamingDiffIndex = -1; });
     if (event_types.STREAM_TOKEN_RECEIVED) {
-        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, () => {
+        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
             runtimeState.isStreamingGeneration = true;
+            let index = getMessageIndexFromEvent(payload);
+            if (index < 0) index = getLatestMessageIndex();
+            if (index >= 0 && runtimeState.currentStreamingDiffIndex !== index && isDiffEligibleIndex(index)) {
+                runtimeState.currentStreamingDiffIndex = index;
+                setDiffState(index, 'streaming');
+                injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+            }
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
@@ -580,7 +606,12 @@ export function bindEvents() {
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
             clearDiffSnippetsCache();
+            runtimeState.diffStatusMap.clear();
+            runtimeState.diffRawSourceMap.clear();
+            for (const timer of runtimeState.diffBuildTimers.values()) clearTimeout(timer);
+            runtimeState.diffBuildTimers.clear();
             runtimeState.currentDiffIndex = undefined;
+            runtimeState.currentStreamingDiffIndex = -1;
             $('#bl-diff-modal').hide();
             applyCharacterPresetBinding(true);
             setTimeout(performGlobalCleanse, 120);
