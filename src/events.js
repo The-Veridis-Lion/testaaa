@@ -558,19 +558,32 @@ export function bindEvents() {
         input.click();
     });
 
+    const resolveEventIndex = (payload) => {
+        let idx = getMessageIndexFromEvent(payload);
+        if (idx < 0) idx = getLatestMessageIndex();
+        return idx;
+    };
+
+    const markDiffPending = (payload) => {
+        const index = resolveEventIndex(payload);
+        if (index < 0 || !isDiffEligibleIndex(index)) return;
+        if (runtimeState.currentStreamingDiffIndex === index) runtimeState.currentStreamingDiffIndex = -1;
+        setDiffState(index, 'pending');
+        injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+    };
+
     let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
         runtimeState.currentStreamingDiffIndex = -1;
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
-            const index = (() => {
-                let idx = getMessageIndexFromEvent(payload);
-                if (idx < 0) idx = getLatestMessageIndex();
-                return idx;
-            })();
+            const index = resolveEventIndex(payload);
             const now = Date.now();
             if (index >= 0 && runtimeState.lastFinalCleanseMeta.index === index && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
+            if (index >= 0 && isDiffEligibleIndex(index) && getDiffState(index) === 'streaming') {
+                setDiffState(index, 'pending');
+            }
             performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
             runtimeState.lastFinalCleanseMeta = { index, at: now };
             if (index >= 0) injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
@@ -602,7 +615,18 @@ export function bindEvents() {
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
-    if (event_types.MESSAGE_RECEIVED) eventSource.on(event_types.MESSAGE_RECEIVED, delayedIncrementalCleanse);
+    if (event_types.MESSAGE_RECEIVED) {
+        eventSource.on(event_types.MESSAGE_RECEIVED, (payload) => {
+            markDiffPending(payload);
+            delayedIncrementalCleanse(payload);
+        });
+    }
+    if (event_types.CHARACTER_MESSAGE_RENDERED) {
+        eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (payload) => {
+            markDiffPending(payload);
+            delayedIncrementalCleanse(payload);
+        });
+    }
     if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
