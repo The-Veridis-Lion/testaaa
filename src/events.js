@@ -23,7 +23,7 @@ import {
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex, ensureDiffButtonsForMessageNode } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -74,6 +74,7 @@ export function initRealtimeInterceptor() {
                 if (!node) continue;
                 if ((node.nodeType === 3 || node.nodeType === 8) && node.parentNode && isProtectedNode(node.parentNode)) continue;
                 if (node.nodeType === 1 && isProtectedNode(node)) continue;
+                if (node.nodeType === 1) ensureDiffButtonsForMessageNode(node);
                 runtimeState.pendingMutationNodes.add(node);
             }
             if (m.type === 'characterData') {
@@ -157,7 +158,7 @@ export function bindEvents() {
         const state = getDiffState(index);
         const contentEl = $('#bl-diff-modal-content');
 
-        if (state === 'pending') {
+        if (state === 'pending' || state === 'idle') {
             contentEl.html(`
                 <div class="bl-diff-loading-wrap">
                     <div class="bl-diff-spinner" aria-hidden="true"></div>

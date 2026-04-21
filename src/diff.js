@@ -153,12 +153,32 @@ function applyButtonState(button, index) {
     }
 }
 
+function resolveIndexFromMessageNode(messageNode) {
+    if (!messageNode) return -1;
+    const attrs = [messageNode.getAttribute('mesid'), messageNode.getAttribute('data-mesid'), messageNode.getAttribute('messageid'), messageNode.getAttribute('data-message-id')];
+    for (const raw of attrs) {
+        const n = Number(raw);
+        if (Number.isInteger(n) && n >= 0) return n;
+    }
+    const chatEl = document.getElementById('chat');
+    if (!chatEl) return -1;
+    const allMes = Array.from(chatEl.querySelectorAll('.mes'));
+    return allMes.indexOf(messageNode);
+}
+
 export function ensureMessageDiffButton(index, messageNode) {
     if (!messageNode || !Number.isInteger(index) || index < 0) return;
     const { extension_settings } = getAppContext();
     const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
     const isTopInExtra = extension_settings[extensionName]?.diffButtonInExtraMenu === true;
     const shouldShow = isEnabled && isDiffEligibleIndex(index);
+
+    if (shouldShow && getDiffState(index) === 'idle') {
+        const inferredState = runtimeState.isStreamingGeneration && (runtimeState.currentStreamingDiffIndex === -1 || runtimeState.currentStreamingDiffIndex === index)
+            ? 'streaming'
+            : 'pending';
+        runtimeState.diffStatusMap.set(index, inferredState);
+    }
 
     const buttonArea = messageNode.querySelector('.mes_buttons');
     if (buttonArea) {
@@ -201,6 +221,22 @@ export function ensureMessageDiffButton(index, messageNode) {
             applyButtonState(existingBottom, index);
         }
     }
+}
+
+
+export function ensureDiffButtonsForMessageNode(messageNode) {
+    if (!messageNode || messageNode.nodeType !== 1) return;
+    if (messageNode.classList?.contains('mes')) {
+        const index = resolveIndexFromMessageNode(messageNode);
+        if (index >= 0) ensureMessageDiffButton(index, messageNode);
+        return;
+    }
+    const nestedMessages = messageNode.querySelectorAll?.('.mes');
+    if (!nestedMessages || nestedMessages.length === 0) return;
+    nestedMessages.forEach((node) => {
+        const index = resolveIndexFromMessageNode(node);
+        if (index >= 0) ensureMessageDiffButton(index, node);
+    });
 }
 
 export function injectDiffButtons() {
