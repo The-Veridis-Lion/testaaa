@@ -241,6 +241,27 @@ export function injectDiffButtons() {
     }
 }
 
+export function injectDiffButtonsForIndices(indices) {
+    if (!indices || typeof indices[Symbol.iterator] !== 'function') return;
+    for (const rawIndex of indices) {
+        const index = Number(rawIndex);
+        if (!Number.isInteger(index) || index < 0) continue;
+        const chatEl = document.getElementById('chat');
+        if (!chatEl) return;
+        const selectors = [`.mes[mesid="${index}"]`, `.mes[data-mesid="${index}"]`, `.mes[messageid="${index}"]`, `.mes[data-message-id="${index}"]`];
+        let node = null;
+        for (const selector of selectors) {
+            node = chatEl.querySelector(selector);
+            if (node) break;
+        }
+        if (!node) {
+            const allMes = chatEl.querySelectorAll('.mes');
+            node = allMes[index] || null;
+        }
+        if (node) ensureMessageDiffButton(index, node);
+    }
+}
+
 /**
  * 获取指定消息的差异缓存数据。
  * @param {number} index 消息索引。

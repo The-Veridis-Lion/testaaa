@@ -22,45 +22,67 @@ import {
     performIncrementalCleanse,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
-import { purifyDOM, isProtectedNode } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons } from './diff.js';
+import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
 
-    const chatObserver = new MutationObserver((mutations) => {
+    const flushPendingMutations = () => {
+        runtimeState.mutationFlushScheduled = false;
         if (isPurifying) return;
 
         buildProcessors();
-        if (runtimeState.activeProcessors.length === 0) return;
+        if (runtimeState.activeProcessors.length === 0) {
+            runtimeState.pendingMutationNodes.clear();
+            return;
+        }
+
+        const pendingNodes = Array.from(runtimeState.pendingMutationNodes);
+        runtimeState.pendingMutationNodes.clear();
+        if (pendingNodes.length === 0) return;
 
         isPurifying = true;
         try {
-            for (let mi = 0; mi < mutations.length; mi++) {
-                const m = mutations[mi];
-                for (let ni = 0; ni < m.addedNodes.length; ni++) {
-                    const node = m.addedNodes[ni];
-                    if (node.nodeType === 3 || node.nodeType === 8) {
-                        if (node.parentNode && isProtectedNode(node.parentNode)) continue;
-                        const original = node.nodeValue;
-                        const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
-                        if (original !== nextValue) node.nodeValue = nextValue;
-                    } else if (node.nodeType === 1) {
-                        purifyDOM(node);
-                    }
-                }
-                if (m.type === 'characterData') {
-                    if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
-                    const original = m.target.nodeValue;
-                    const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
-                    if (original !== nextValue) m.target.nodeValue = nextValue;
+            for (let i = 0; i < pendingNodes.length; i++) {
+                const node = pendingNodes[i];
+                if (!node) continue;
+                if (node.nodeType === 3 || node.nodeType === 8) purifyTextNode(node);
+                else if (node.nodeType === 1 || node.nodeType === 11) {
+                    if (runtimeState.isStreamingGeneration) purifyTextSubtree(node);
+                    else purifyDOM(node);
                 }
             }
         } finally {
-            chatObserver.takeRecords();
-            injectDiffButtons();
             isPurifying = false;
         }
+    };
+
+    const scheduleMutationFlush = () => {
+        if (runtimeState.mutationFlushScheduled) return;
+        runtimeState.mutationFlushScheduled = true;
+        requestAnimationFrame(flushPendingMutations);
+    };
+
+    const chatObserver = new MutationObserver((mutations) => {
+        if (isPurifying) return;
+
+        for (let mi = 0; mi < mutations.length; mi++) {
+            const m = mutations[mi];
+            for (let ni = 0; ni < m.addedNodes.length; ni++) {
+                const node = m.addedNodes[ni];
+                if (!node) continue;
+                if ((node.nodeType === 3 || node.nodeType === 8) && node.parentNode && isProtectedNode(node.parentNode)) continue;
+                if (node.nodeType === 1 && isProtectedNode(node)) continue;
+                runtimeState.pendingMutationNodes.add(node);
+            }
+            if (m.type === 'characterData') {
+                if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
+                runtimeState.pendingMutationNodes.add(m.target);
+            }
+        }
+
+        if (runtimeState.pendingMutationNodes.size > 0) scheduleMutationFlush();
     });
 
     const chatEl = document.getElementById('chat');
@@ -517,17 +539,21 @@ export function bindEvents() {
         input.click();
     });
 
-    const visualMaskLatestOnly = (payload) => {
-        if (!runtimeState.isStreamingGeneration) return;
-        performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true });
-    };
-
     let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
+            const index = (() => {
+                let idx = getMessageIndexFromEvent(payload);
+                if (idx < 0) idx = getLatestMessageIndex();
+                return idx;
+            })();
+            const now = Date.now();
+            if (index >= 0 && runtimeState.lastFinalCleanseMeta.index === index && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
             performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+            runtimeState.lastFinalCleanseMeta = { index, at: now };
+            if (index >= 0) injectDiffButtonsForIndices([index]);
         }, 150);
     };
 
@@ -543,9 +569,8 @@ export function bindEvents() {
 
     if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; });
     if (event_types.STREAM_TOKEN_RECEIVED) {
-        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
+        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, () => {
             runtimeState.isStreamingGeneration = true;
-            visualMaskLatestOnly(payload);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);

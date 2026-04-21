@@ -1,7 +1,7 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, updateDiffSnippetCache } from './diff.js';
+import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, injectDiffButtonsForIndices, updateDiffSnippetCache } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
 
 /**
@@ -293,18 +293,37 @@ export function performIncrementalCleanse(payload, options = {}) {
     if (index < 0 && fallbackLatest) index = getLatestMessageIndex();
     if (index < 0) return;
 
-    const dataChanged = options.visualOnly ? false : cleanseMessageDataAtIndex(index);
+    const visualOnly = options.visualOnly === true;
+    const dataChanged = visualOnly ? false : cleanseMessageDataAtIndex(index);
     const messageNode = getMessageDomNode(index);
-    if (messageNode) {
-        purifyDOM(messageNode);
-        ensureMessageDiffButton(index, messageNode);
+
+    if (visualOnly) {
+        if (messageNode) purifyTextSubtree(messageNode);
+        return;
     }
 
     if (dataChanged) {
         try {
-            if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
-        } catch (e) { }
+            if (typeof updateMessageBlock === 'function') {
+                updateMessageBlock(index, chat[index]);
+                setTimeout(() => injectDiffButtonsForIndices([index]), 60);
+            } else if (messageNode) {
+                purifyDOM(messageNode);
+                ensureMessageDiffButton(index, messageNode);
+            }
+        } catch (e) {
+            if (messageNode) {
+                purifyDOM(messageNode);
+                ensureMessageDiffButton(index, messageNode);
+            }
+        }
         queueIncrementalChatSave();
+        return;
+    }
+
+    if (messageNode) {
+        purifyDOM(messageNode);
+        ensureMessageDiffButton(index, messageNode);
     }
 }
 

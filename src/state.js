@@ -26,6 +26,11 @@ export const runtimeState = {
     isBooted: false,
     diffSnippetsCache: new Map(),
     currentDiffIndex: undefined,
+    pendingMutationNodes: new Set(),
+    mutationFlushScheduled: false,
+    pendingDiffButtonIndices: new Set(),
+    diffButtonSyncScheduled: false,
+    lastFinalCleanseMeta: { index: -1, at: 0 },
 };
 
 const appContext = {
