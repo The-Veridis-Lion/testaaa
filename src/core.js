@@ -1,8 +1,8 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, injectDiffButtonsForIndices, updateDiffSnippetCache } from './diff.js';
-import { getMessageDomNode, purifyDOM } from './dom.js';
+import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, updateDiffSnippetCache, queueDiffComputation, scheduleDiffButtonSync, setDiffStatus } from './diff.js';
+import { getMessageDomNode, purifyDOM, purifyTextSubtree } from './dom.js';
 
 /**
  * 根据当前规则构建净化处理器（文本/正则/简易语法）。
@@ -232,46 +232,74 @@ export function getLatestMessageIndex() {
  * @param {number} index 消息索引。
  * @returns {boolean} 是否发生数据变更。
  */
-export function cleanseMessageDataAtIndex(index) {
+export function cleanseMessageDataAtIndex(index, options = {}) {
     const { chat } = getAppContext();
-    if (!Array.isArray(chat) || index < 0 || index >= chat.length) return false;
+    if (!Array.isArray(chat) || index < 0 || index >= chat.length) return options.deferDiff ? { changed: false, sourceText: '', hadOriginalText: false } : false;
     const msg = chat[index];
-    if (!msg || typeof msg !== 'object') return false;
+    if (!msg || typeof msg !== 'object') return options.deferDiff ? { changed: false, sourceText: '', hadOriginalText: false } : false;
+    const deferDiff = options.deferDiff === true;
     let changed = false;
     const allSnippets = [];
     let mainFullDiff = "";
+    let sourceText = typeof msg.mes === 'string' ? msg.mes : '';
+    const hadOriginalText = typeof msg.mes === 'string';
 
     if (typeof msg.mes === 'string') {
-        const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
-        allSnippets.push(...mesSnippets);
-        mainFullDiff = fullDiff;
-        if (cleanedText !== msg.mes) {
-            msg.mes = cleanedText;
-            changed = true;
+        if (deferDiff) {
+            const cleanedText = applyReplacements(msg.mes);
+            if (cleanedText !== msg.mes) {
+                msg.mes = cleanedText;
+                changed = true;
+            }
+        } else {
+            const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
+            allSnippets.push(...mesSnippets);
+            mainFullDiff = fullDiff;
+            if (cleanedText !== msg.mes) {
+                msg.mes = cleanedText;
+                changed = true;
+            }
         }
     }
 
     if (Array.isArray(msg.swipes)) {
         for (let i = 0; i < msg.swipes.length; i++) {
             if (typeof msg.swipes[i] === 'string') {
-                const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
-                allSnippets.push(...swipeSnippets);
-                if (cleanedText !== msg.swipes[i]) {
-                    msg.swipes[i] = cleanedText;
-                    changed = true;
+                if (deferDiff) {
+                    const cleanedText = applyReplacements(msg.swipes[i]);
+                    if (cleanedText !== msg.swipes[i]) {
+                        msg.swipes[i] = cleanedText;
+                        changed = true;
+                    }
+                } else {
+                    const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
+                    allSnippets.push(...swipeSnippets);
+                    if (cleanedText !== msg.swipes[i]) {
+                        msg.swipes[i] = cleanedText;
+                        changed = true;
+                    }
                 }
             } else if (msg.swipes[i] && typeof msg.swipes[i] === 'object' && typeof msg.swipes[i].mes === 'string') {
-                const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
-                allSnippets.push(...swipeObjSnippets);
-                if (cleanedText !== msg.swipes[i].mes) {
-                    msg.swipes[i].mes = cleanedText;
-                    changed = true;
+                if (deferDiff) {
+                    const cleanedText = applyReplacements(msg.swipes[i].mes);
+                    if (cleanedText !== msg.swipes[i].mes) {
+                        msg.swipes[i].mes = cleanedText;
+                        changed = true;
+                    }
+                } else {
+                    const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                    allSnippets.push(...swipeObjSnippets);
+                    if (cleanedText !== msg.swipes[i].mes) {
+                        msg.swipes[i].mes = cleanedText;
+                        changed = true;
+                    }
                 }
             }
         }
     }
 
-    // 使用 Set 对完全相同的片段 HTML 进行去重
+    if (deferDiff) return { changed, sourceText, hadOriginalText };
+
     const uniqueSnippets = Array.from(new Set(allSnippets));
     updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
     return changed;
@@ -294,7 +322,8 @@ export function performIncrementalCleanse(payload, options = {}) {
     if (index < 0) return;
 
     const visualOnly = options.visualOnly === true;
-    const dataChanged = visualOnly ? false : cleanseMessageDataAtIndex(index);
+    const cleanseResult = visualOnly ? null : cleanseMessageDataAtIndex(index, { deferDiff: true });
+    const dataChanged = !!(cleanseResult && cleanseResult.changed);
     const messageNode = getMessageDomNode(index);
 
     if (visualOnly) {
@@ -302,11 +331,16 @@ export function performIncrementalCleanse(payload, options = {}) {
         return;
     }
 
+    setDiffStatus(index, 'pending');
+    scheduleDiffButtonSync([index]);
+    if (cleanseResult && cleanseResult.hadOriginalText) queueDiffComputation(index, cleanseResult.sourceText);
+    else setDiffStatus(index, 'ready');
+
     if (dataChanged) {
         try {
             if (typeof updateMessageBlock === 'function') {
                 updateMessageBlock(index, chat[index]);
-                setTimeout(() => injectDiffButtonsForIndices([index]), 60);
+                setTimeout(() => scheduleDiffButtonSync([index]), 60);
             } else if (messageNode) {
                 purifyDOM(messageNode);
                 ensureMessageDiffButton(index, messageNode);

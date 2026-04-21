@@ -15,6 +15,58 @@ export function escapeHtml(value = '') {
         .replace(/'/g, '&#39;');
 }
 
+export function getDiffStatus(index) {
+    const state = runtimeState.diffStatusCache.get(index);
+    return state || 'idle';
+}
+
+export function setDiffStatus(index, status) {
+    if (!Number.isInteger(index) || index < 0) return;
+    runtimeState.diffStatusCache.set(index, status || 'idle');
+    document.dispatchEvent(new CustomEvent('bl-diff-state-changed', { detail: { index, status: status || 'idle' } }));
+}
+
+export function scheduleDiffButtonSync(indices) {
+    if (!indices || typeof indices[Symbol.iterator] !== 'function') return;
+    for (const rawIndex of indices) {
+        const index = Number(rawIndex);
+        if (Number.isInteger(index) && index >= 0) runtimeState.pendingDiffButtonIndices.add(index);
+    }
+    if (runtimeState.diffButtonSyncScheduled) return;
+    runtimeState.diffButtonSyncScheduled = true;
+    requestAnimationFrame(() => {
+        runtimeState.diffButtonSyncScheduled = false;
+        const pending = Array.from(runtimeState.pendingDiffButtonIndices);
+        runtimeState.pendingDiffButtonIndices.clear();
+        injectDiffButtonsForIndices(pending);
+    });
+}
+
+export function queueDiffComputation(index, rawText) {
+    if (!Number.isInteger(index) || index < 0) return;
+    if (typeof rawText !== 'string') rawText = '';
+
+    const prevTimer = runtimeState.diffJobTimers.get(index);
+    if (prevTimer) clearTimeout(prevTimer);
+
+    runtimeState.diffSourceTextCache.set(index, rawText);
+    setDiffStatus(index, 'pending');
+    scheduleDiffButtonSync([index]);
+
+    const timer = setTimeout(() => {
+        runtimeState.diffJobTimers.delete(index);
+        const sourceText = runtimeState.diffSourceTextCache.get(index) ?? rawText;
+        const result = buildDiffSnippetsFromText(sourceText);
+        updateDiffSnippetCache(index, { snippets: Array.from(new Set(result.snippets || [])), fullDiff: result.fullDiff || '' });
+        runtimeState.diffSourceTextCache.delete(index);
+        setDiffStatus(index, 'ready');
+        scheduleDiffButtonSync([index]);
+        document.dispatchEvent(new CustomEvent('bl-diff-ready', { detail: { index } }));
+    }, 0);
+
+    runtimeState.diffJobTimers.set(index, timer);
+}
+
 /**
  * 生成两段文本的行内差异 HTML。
  *
@@ -152,73 +204,86 @@ export function ensureMessageDiffButton(index, messageNode) {
 
     const { extension_settings } = getAppContext();
     const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
-    // 新增：读取是否要求收纳
-    const isTopInExtra = extension_settings[extensionName]?.diffButtonInExtraMenu === true; 
-    
-    const cached = runtimeState.diffSnippetsCache.get(index);
-    const hasSnippets = !!(cached && ((Array.isArray(cached.snippets) && cached.snippets.length > 0) || cached.fullDiff !== ""));
+    const isTopInExtra = extension_settings[extensionName]?.diffButtonInExtraMenu === true;
+    const status = getDiffStatus(index);
+    const isStreaming = status === 'streaming';
+    const isPending = status === 'pending';
+    const isReady = status === 'ready';
 
-    // --- 顶部按钮注入逻辑更新开始 ---
+    const applyButtonState = (button) => {
+        if (!button) return;
+        button.setAttribute('data-index', String(index));
+        button.setAttribute('data-state', status);
+        button.classList.toggle('is-disabled', isStreaming);
+        button.classList.toggle('is-pending', isPending);
+        button.classList.toggle('is-ready', isReady);
+        button.classList.toggle('interactable', !isStreaming);
+        if (isStreaming) {
+            button.setAttribute('aria-disabled', 'true');
+            button.title = '生成中';
+        } else if (isPending) {
+            button.removeAttribute('aria-disabled');
+            button.title = 'Loading';
+        } else {
+            button.removeAttribute('aria-disabled');
+            button.title = '溯源净化前文';
+        }
+    };
+
     const buttonArea = messageNode.querySelector('.mes_buttons');
     if (buttonArea) {
         let existing = buttonArea.querySelector('.bl-diff-btn-top');
         const extraMenu = buttonArea.querySelector('.extraMesButtons');
-        
-        // 确定真正应该放置按钮的容器（如果要求收纳且存在三个点菜单，就用菜单，否则兜底放外边）
         const targetContainer = (isTopInExtra && extraMenu) ? extraMenu : buttonArea;
 
-        // 如果旧按钮存在，但发现它不在我们当前期望的父容器里，把它扬了重新生成
         if (existing && existing.parentElement !== targetContainer) {
             existing.remove();
             existing = null;
         }
 
-        if (!isEnabled || !hasSnippets) {
+        if (!isEnabled) {
             if (existing) existing.remove();
         } else if (!existing) {
             const button = document.createElement('div');
-            button.className = 'mes_button bl-diff-btn bl-diff-btn-top fa-solid fa-clock-rotate-left interactable';
-            button.title = '溯源净化前文';
-            button.setAttribute('data-index', String(index));
+            button.className = 'mes_button bl-diff-btn bl-diff-btn-top fa-solid fa-clock-rotate-left';
             button.setAttribute('tabindex', '0');
             button.setAttribute('role', 'button');
-            
-            // 往目标容器里塞按钮
             if (isTopInExtra && extraMenu) {
-                extraMenu.appendChild(button); // 收纳进三个点内部
+                extraMenu.appendChild(button);
             } else {
                 const editBtn = buttonArea.querySelector('.mes_edit');
                 if (editBtn) buttonArea.insertBefore(button, editBtn);
-                else buttonArea.appendChild(button); // 外显状态逻辑
+                else buttonArea.appendChild(button);
             }
-        } else {
-            existing.setAttribute('data-index', String(index));
+            existing = button;
         }
+
+        applyButtonState(existing);
     }
 
     const swipeBlock = messageNode.querySelector('.swipeRightBlock');
     if (swipeBlock) {
         const parent = swipeBlock.parentNode;
-        const existingBottom = parent?.querySelector('.bl-diff-btn-bottom');
+        let existingBottom = parent?.querySelector('.bl-diff-btn-bottom');
 
-        if (!isEnabled || !hasSnippets) {
+        if (!isEnabled) {
             if (existingBottom) existingBottom.remove();
         } else if (!existingBottom && parent) {
             const btnBottom = document.createElement('div');
-            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
-            btnBottom.title = '溯源净化前文 (尾部触发)';
-            btnBottom.setAttribute('data-index', String(index));
+            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left';
             btnBottom.setAttribute('tabindex', '0');
             btnBottom.setAttribute('role', 'button');
             parent.insertBefore(btnBottom, swipeBlock);
-        } else if (existingBottom) {
-            existingBottom.setAttribute('data-index', String(index));
+            existingBottom = btnBottom;
         }
+
+        applyButtonState(existingBottom);
     }
 }
 
 /**
  * 扫描当前聊天区域并按消息索引注入差异按钮。
+ */
  * @returns {void}
  */
 export function injectDiffButtons() {
@@ -282,4 +347,8 @@ export function getDiffSnippetsForMessage(index) {
  */
 export function clearDiffSnippetsCache() {
     runtimeState.diffSnippetsCache.clear();
+    runtimeState.diffStatusCache.clear();
+    runtimeState.diffSourceTextCache.clear();
+    for (const timer of runtimeState.diffJobTimers.values()) clearTimeout(timer);
+    runtimeState.diffJobTimers.clear();
 }
