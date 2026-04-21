@@ -23,7 +23,7 @@ import {
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffStatus, setDiffStatus, scheduleDiffButtonSync } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -156,14 +156,10 @@ export function bindEvents() {
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         const mode = settings.diffViewMode || 'snippet';
-        const status = getDiffStatus(index);
         const cached = getDiffSnippetsForMessage(index);
-        const contentEl = $('#bl-diff-modal-content');
+        if (!cached) return;
 
-        if (status === 'pending') {
-            contentEl.html('<div class="bl-diff-loading"><div class="bl-diff-spinner" aria-hidden="true"></div><div class="bl-diff-loading-text">Loading</div></div>');
-            return;
-        }
+        const contentEl = $('#bl-diff-modal-content');
 
         if (mode === 'full') {
             contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || "当前消息无正文差异。"}</div>`);
@@ -185,8 +181,6 @@ export function bindEvents() {
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
         const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
-        const status = getDiffStatus(index);
-        if (status === 'streaming') return;
 
         // --- 新增：同步收纳按钮的图标和文本状态 ---
         const { extension_settings } = getAppContext();
@@ -243,14 +237,6 @@ export function bindEvents() {
     $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => $('#bl-diff-modal').hide());
     $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) {
         if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').hide();
-    });
-
-
-    document.addEventListener('bl-diff-ready', (e) => {
-        const index = Number(e.detail?.index);
-        if (Number.isInteger(index) && runtimeState.currentDiffIndex === index && $('#bl-diff-modal').is(':visible')) {
-            renderDiffModalContent(index);
-        }
     });
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
@@ -567,7 +553,7 @@ export function bindEvents() {
             if (index >= 0 && runtimeState.lastFinalCleanseMeta.index === index && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
             performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
             runtimeState.lastFinalCleanseMeta = { index, at: now };
-            if (index >= 0) scheduleDiffButtonSync([index]);
+            if (index >= 0) injectDiffButtonsForIndices([index]);
         }, 150);
     };
 
@@ -581,23 +567,10 @@ export function bindEvents() {
         });
     }
 
-    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => {
-        runtimeState.isStreamingGeneration = true;
-        const idx = getLatestMessageIndex();
-        if (idx >= 0) {
-            setDiffStatus(idx, 'streaming');
-            scheduleDiffButtonSync([idx]);
-        }
-    });
+    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; });
     if (event_types.STREAM_TOKEN_RECEIVED) {
-        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
+        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, () => {
             runtimeState.isStreamingGeneration = true;
-            let index = getMessageIndexFromEvent(payload);
-            if (index < 0) index = getLatestMessageIndex();
-            if (index >= 0) {
-                setDiffStatus(index, 'streaming');
-                scheduleDiffButtonSync([index]);
-            }
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
