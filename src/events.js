@@ -174,13 +174,18 @@ export function bindEvents() {
         const state = getDiffState(index);
         const contentEl = $('#bl-diff-modal-content');
 
-        if (state === 'pending' || state === 'idle') {
+        if (state === 'pending') {
             contentEl.html(`
                 <div class="bl-diff-loading-wrap">
                     <div class="bl-diff-spinner" aria-hidden="true"></div>
                     <div class="bl-diff-loading-text">Loading...</div>
                 </div>
             `);
+            return;
+        }
+
+        if (state !== 'ready') {
+            contentEl.html('');
             return;
         }
 
@@ -207,8 +212,8 @@ export function bindEvents() {
         if (!Number.isInteger(index) || index < 0) return;
 
         const state = getDiffState(index);
-        if (state === 'streaming') return;
-        ensureFreshDiffForIndex(index);
+        if (state === 'streaming' || state === 'idle') return;
+        if (state === 'pending') ensureFreshDiffForIndex(index);
 
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -659,15 +664,19 @@ export function bindEvents() {
     if (event_types.MESSAGE_RECEIVED) {
         eventSource.on(event_types.MESSAGE_RECEIVED, (payload) => {
             const index = resolveEventIndex(payload);
-            markDiffPending(index >= 0 ? index : payload);
-            delayedIncrementalCleanse(index >= 0 ? index : payload);
+            if (!runtimeState.isStreamingGeneration) {
+                if (index >= 0 && isDiffEligibleIndex(index)) setDiffState(index, 'pending');
+                delayedIncrementalCleanse(index >= 0 ? index : payload);
+            }
         });
     }
     if (event_types.CHARACTER_MESSAGE_RENDERED) {
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (payload) => {
             const index = resolveEventIndex(payload);
-            markDiffPending(index >= 0 ? index : payload);
-            delayedIncrementalCleanse(index >= 0 ? index : payload);
+            if (!runtimeState.isStreamingGeneration) {
+                if (index >= 0 && isDiffEligibleIndex(index)) setDiffState(index, 'pending');
+                delayedIncrementalCleanse(index >= 0 ? index : payload);
+            }
         });
     }
     if (event_types.MESSAGE_SWIPED) {
