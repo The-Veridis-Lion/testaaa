@@ -51,7 +51,7 @@
     display: flex !important; justify-content: space-between !important; align-items: center !important;
     padding-bottom: 18px !important; border-bottom: 1px solid var(--bl-border-color) !important; margin: 0 !important;
 }
-#bl-purifier-popup .bl-title { font-size: 28px !important; font-weight: bold !important; margin: 0 !important; color: var(--bl-text-primary) !important; } 
+#bl-purifier-popup .bl-title { font-size: 24px !important; font-weight: 700 !important; margin: 0 !important; color: var(--bl-text-primary) !important; } 
 #bl-purifier-popup .bl-close {
     background: none !important; border: none !important; color: var(--bl-text-secondary) !important;
     font-size: 36px !important; line-height: 1 !important; cursor: pointer !important; transition: color 0.2s ease !important;
@@ -244,8 +244,8 @@
 }
 
 .bl-rule-name { 
-    font-weight: bold !important; 
-    font-size: 18px !important; 
+    font-weight: 700 !important; 
+    font-size: 16px !important; 
     color: var(--bl-text-primary) !important; 
     margin: 0 !important; 
     line-height: 1.4 !important;
@@ -266,7 +266,7 @@
 
 .bl-rule-actions { 
     display: flex !important; 
-    gap: 8px !important; 
+    gap: 6px !important; 
     align-items: center !important; 
     margin-left: 8px !important; 
     margin-top: 0 !important; 
@@ -486,8 +486,9 @@
 }
 
 .bl-edit-modal-title {
-    margin: 0 0 12px 0 !important;
-    font-size: 18px !important;
+    margin: 0 0 10px 0 !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
     color: var(--bl-text-primary) !important;
     flex-shrink: 0 !important;
 }
@@ -627,7 +628,7 @@
 
 .bl-subrule-summary-actions {
     display: flex !important;
-    gap: 6px !important;
+    gap: 5px !important;
     flex-shrink: 0 !important;
     align-items: center !important;
 }
@@ -680,7 +681,7 @@
     #bl-rule-transfer-modal .bl-transfer-content {
         width: min(420px, 92vw) !important;
     }
-    #bl-purifier-popup .bl-title { font-size: 18px !important; }
+    #bl-purifier-popup .bl-title { font-size: 17px !important; }
     .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
     .bl-tool-btn { font-size: 12px !important; padding: 6px 0 !important; }
     #bl-purifier-popup .bl-preset-row {
@@ -1055,10 +1056,10 @@
 .bl-rule-move-down,
 .bl-move-subrule-up-btn,
 .bl-move-subrule-down-btn {
-    border-radius: 999px !important;
-    min-width: 34px !important;
-    width: 34px !important;
-    min-height: 34px !important;
+    border-radius: 10px !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    min-height: 32px !important;
     padding: 0 !important;
 }
 
@@ -1073,13 +1074,19 @@
 .bl-rule-transfer,
 .bl-rule-edit,
 .bl-rule-del {
-    min-width: 36px !important;
-    width: 36px !important;
-    min-height: 36px !important;
+    min-width: 32px !important;
+    width: 32px !important;
+    min-height: 32px !important;
     padding: 0 !important;
 }
 
 .bl-subrule-summary-actions i,
 .bl-rule-actions i {
-    font-size: 14px !important;
+    font-size: 13px !important;
+}
+
+
+@media screen and (max-width: 600px) {
+    .bl-edit-modal-title { font-size: 15px !important; }
+    .bl-rule-name { font-size: 15px !important; }
 }
