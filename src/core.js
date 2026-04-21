@@ -1,7 +1,7 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, buildDiffTextSignature, getDiffSnippetsForMessage, isTrackedLatestDiffIndex, ensureMessageDiffButton, injectDiffButtons, updateDiffSnippetCache } from './diff.js';
+import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, setDiffReadyState, updateDiffSnippetCache } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
 
 /**
@@ -237,27 +237,16 @@ export function cleanseMessageDataAtIndex(index) {
     if (!Array.isArray(chat) || index < 0 || index >= chat.length) return false;
     const msg = chat[index];
     if (!msg || typeof msg !== 'object') return false;
-
-    const tracked = isTrackedLatestDiffIndex(index);
-    const existingDiff = getDiffSnippetsForMessage(index);
-    const currentMainText = typeof msg.mes === 'string' ? msg.mes : '';
-    const currentSignature = buildDiffTextSignature(currentMainText);
-    const canReusePersistedReady = tracked && existingDiff.status === 'ready' && !!existingDiff.signature && existingDiff.signature === currentSignature;
-
     let changed = false;
-    let rawMainText = currentMainText;
-    let cleanedMainText = currentMainText;
-    let mainSnippets = [];
-    let mainFullDiff = '';
+    const allSnippets = [];
+    let mainFullDiff = "";
 
-    if (!canReusePersistedReady && typeof msg.mes === 'string') {
-        const diffResult = buildDiffSnippetsFromText(msg.mes);
-        rawMainText = msg.mes;
-        cleanedMainText = diffResult.cleanedText;
-        mainSnippets = diffResult.snippets;
-        mainFullDiff = diffResult.fullDiff;
-        if (cleanedMainText !== msg.mes) {
-            msg.mes = cleanedMainText;
+    if (typeof msg.mes === 'string') {
+        const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
+        allSnippets.push(...mesSnippets);
+        mainFullDiff = fullDiff;
+        if (cleanedText !== msg.mes) {
+            msg.mes = cleanedText;
             changed = true;
         }
     }
@@ -265,13 +254,15 @@ export function cleanseMessageDataAtIndex(index) {
     if (Array.isArray(msg.swipes)) {
         for (let i = 0; i < msg.swipes.length; i++) {
             if (typeof msg.swipes[i] === 'string') {
-                const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
+                const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
+                allSnippets.push(...swipeSnippets);
                 if (cleanedText !== msg.swipes[i]) {
                     msg.swipes[i] = cleanedText;
                     changed = true;
                 }
             } else if (msg.swipes[i] && typeof msg.swipes[i] === 'object' && typeof msg.swipes[i].mes === 'string') {
-                const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                allSnippets.push(...swipeObjSnippets);
                 if (cleanedText !== msg.swipes[i].mes) {
                     msg.swipes[i].mes = cleanedText;
                     changed = true;
@@ -280,17 +271,10 @@ export function cleanseMessageDataAtIndex(index) {
         }
     }
 
-    if (tracked && !canReusePersistedReady) {
-        updateDiffSnippetCache(index, {
-            status: 'ready',
-            snippets: Array.from(new Set(mainSnippets)),
-            fullDiff: mainFullDiff,
-            rawText: rawMainText,
-            cleanedText: cleanedMainText,
-            signature: buildDiffTextSignature(cleanedMainText),
-        });
-    }
-
+    // 使用 Set 对完全相同的片段 HTML 进行去重
+    const uniqueSnippets = Array.from(new Set(allSnippets));
+    updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
+    setDiffReadyState(index, true);
     return changed;
 }
 
@@ -333,36 +317,25 @@ export function performGlobalCleanse() {
     const { chat, saveChat } = getAppContext();
     buildProcessors();
     if (runtimeState.activeProcessors.length === 0) {
+        clearDiffSnippetsCache();
         injectDiffButtons();
         return;
     }
-
     let chatChanged = false;
+    clearDiffSnippetsCache();
 
     if (chat && Array.isArray(chat)) {
         chat.forEach((msg, index) => {
-            if (!msg || typeof msg !== 'object') return;
-
             let msgChanged = false;
-            const tracked = isTrackedLatestDiffIndex(index);
-            const existingDiff = getDiffSnippetsForMessage(index);
-            const currentMainText = typeof msg.mes === 'string' ? msg.mes : '';
-            const currentSignature = buildDiffTextSignature(currentMainText);
-            const canReusePersistedReady = tracked && existingDiff.status === 'ready' && !!existingDiff.signature && existingDiff.signature === currentSignature;
+            const allSnippets = [];
+            let mainFullDiff = "";
 
-            let rawMainText = currentMainText;
-            let cleanedMainText = currentMainText;
-            let mainSnippets = [];
-            let mainFullDiff = '';
-
-            if (!canReusePersistedReady && typeof msg.mes === 'string') {
-                const diffResult = buildDiffSnippetsFromText(msg.mes);
-                rawMainText = msg.mes;
-                cleanedMainText = diffResult.cleanedText;
-                mainSnippets = diffResult.snippets;
-                mainFullDiff = diffResult.fullDiff;
-                if (msg.mes !== cleanedMainText) {
-                    msg.mes = cleanedMainText;
+            if (typeof msg.mes === 'string') {
+                const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
+                allSnippets.push(...mesSnippets);
+                mainFullDiff = fullDiff;
+                if (msg.mes !== cleanedText) {
+                    msg.mes = cleanedText;
                     msgChanged = true;
                 }
             }
@@ -370,13 +343,15 @@ export function performGlobalCleanse() {
             if (msg.swipes && Array.isArray(msg.swipes)) {
                 for (let i = 0; i < msg.swipes.length; i++) {
                     if (typeof msg.swipes[i] === 'string') {
-                        const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
+                        const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
+                        allSnippets.push(...swipeSnippets);
                         if (msg.swipes[i] !== cleanedText) {
                             msg.swipes[i] = cleanedText;
                             msgChanged = true;
                         }
                     } else if (typeof msg.swipes[i] === 'object' && msg.swipes[i] !== null && typeof msg.swipes[i].mes === 'string') {
-                        const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                        const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                        allSnippets.push(...swipeObjSnippets);
                         if (msg.swipes[i].mes !== cleanedText) {
                             msg.swipes[i].mes = cleanedText;
                             msgChanged = true;
@@ -385,16 +360,10 @@ export function performGlobalCleanse() {
                 }
             }
 
-            if (tracked && !canReusePersistedReady) {
-                updateDiffSnippetCache(index, {
-                    status: 'ready',
-                    snippets: Array.from(new Set(mainSnippets)),
-                    fullDiff: mainFullDiff,
-                    rawText: rawMainText,
-                    cleanedText: cleanedMainText,
-                    signature: buildDiffTextSignature(cleanedMainText),
-                });
-            }
+            // 同样在这里加上去重逻辑
+            const uniqueSnippets = Array.from(new Set(allSnippets));
+            updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
+            setDiffReadyState(index, true);
 
             if (msgChanged) {
                 chatChanged = true;

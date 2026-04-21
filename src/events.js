@@ -20,10 +20,12 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
+    getMessageIndexFromEvent,
+    getLatestMessageIndex,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, initLatestThreeButtonsLayer, markTrackedDiffMessageLoading, restoreLatestDiffStateForCurrentChat, trackLatestDiffIndex } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, isDiffReady, restoreLatestThreeSnapshot, setDiffReadyState } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -136,25 +138,19 @@ export function bindEvents() {
         const mode = settings.diffViewMode || 'snippet';
         const cached = getDiffSnippetsForMessage(index);
         const contentEl = $('#bl-diff-modal-content');
-        const modeToggle = $('#bl-diff-mode-toggle');
 
-        if (cached.status === 'loading') {
+        if (!isDiffReady(index)) {
             contentEl.html(`
                 <div class="bl-diff-loading">
-                    <div class="bl-diff-loading-spinner" aria-hidden="true"></div>
+                    <div class="bl-diff-spinner"></div>
                     <div class="bl-diff-loading-text">Loading...</div>
                 </div>
             `);
-            modeToggle.prop('disabled', true).addClass('is-disabled');
-            $('#bl-diff-mode-text').text('全文模式');
-            $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-file-lines');
             return;
         }
 
-        modeToggle.prop('disabled', false).removeClass('is-disabled');
-
         if (mode === 'full') {
-            contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || "当前消息无正文差异。"}</div>`);
+            contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || "<div class=\"bl-diff-empty\">当前消息无正文差异。</div>"}</div>`);
             $('#bl-diff-mode-text').text('切回片段');
             $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-list-ul');
         } else {
@@ -171,10 +167,10 @@ export function bindEvents() {
     // 新修改的区域开始：透视弹窗按钮与收纳逻辑
     // ==========================================
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
-        const rawIndex = $(this).attr('data-index') ?? $(this).attr('data-bl-diff-index');
-        const index = Number(rawIndex);
+        const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
 
+        // --- 新增：同步收纳按钮的图标和文本状态 ---
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         if (settings.diffButtonInExtraMenu) {
@@ -184,10 +180,11 @@ export function bindEvents() {
             $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-ellipsis');
             $('#bl-diff-pos-text').text('收纳按钮');
         }
+        // ------------------------------------------
 
         runtimeState.currentDiffIndex = index;
-        $('#bl-diff-modal').css('display', 'flex');
         renderDiffModalContent(index);
+        $('#bl-diff-modal').css('display', 'flex');
     });
 
     $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
@@ -214,20 +211,6 @@ export function bindEvents() {
     // 新修改的区域结束
     // ==========================================
 
-
-    $(document).off('bl-diff-state-updated').on('bl-diff-state-updated', function(event) {
-        const index = Number(event.originalEvent?.detail?.index);
-        const reason = String(event.originalEvent?.detail?.reason || 'updated');
-        injectDiffButtons();
-        if (!Number.isInteger(index) || runtimeState.currentDiffIndex !== index) return;
-        if (reason === 'evicted' && $('#bl-diff-modal').is(':visible')) {
-            $('#bl-diff-modal').hide();
-            return;
-        }
-        if (!$('#bl-diff-modal').is(':visible')) return;
-        renderDiffModalContent(index);
-    });
-
     $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -242,6 +225,22 @@ export function bindEvents() {
     $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => $('#bl-diff-modal').hide());
     $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) {
         if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').hide();
+    });
+
+    document.addEventListener('bl-diff-cache-updated', (event) => {
+        const updatedIndex = Number(event?.detail?.index);
+        if (runtimeState.currentDiffIndex === undefined) return;
+        if (!$('#bl-diff-modal').is(':visible')) return;
+        if (updatedIndex >= 0 && updatedIndex !== runtimeState.currentDiffIndex) return;
+        renderDiffModalContent(runtimeState.currentDiffIndex);
+    });
+
+    document.addEventListener('bl-diff-ready-state', (event) => {
+        const updatedIndex = Number(event?.detail?.index);
+        if (runtimeState.currentDiffIndex === undefined) return;
+        if (!$('#bl-diff-modal').is(':visible')) return;
+        if (updatedIndex >= 0 && updatedIndex !== runtimeState.currentDiffIndex) return;
+        renderDiffModalContent(runtimeState.currentDiffIndex);
     });
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
@@ -544,37 +543,22 @@ export function bindEvents() {
         input.click();
     });
 
-    const resolveLatestIndex = (payload) => {
-        if (Number.isInteger(payload) && payload >= 0) return payload;
-        const candidateList = [payload?.messageId, payload?.message_id, payload?.mesid, payload?.index, payload?.id];
-        for (const value of candidateList) {
-            const index = Number(value);
-            if (Number.isInteger(index) && index >= 0) return index;
-        }
-        const { chat } = getAppContext();
-        return Array.isArray(chat) && chat.length > 0 ? chat.length - 1 : -1;
-    };
-
     const visualMaskLatestOnly = (payload) => {
         if (!runtimeState.isStreamingGeneration) return;
-        const index = resolveLatestIndex(payload);
-        if (index >= 0) markTrackedDiffMessageLoading(index);
         performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true });
     };
 
+    let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
-        const index = resolveLatestIndex(payload);
-        if (index >= 0) trackLatestDiffIndex(index);
-
-        if (runtimeState.diffFinalizePrimaryTimer) clearTimeout(runtimeState.diffFinalizePrimaryTimer);
-        if (runtimeState.diffFinalizeFallbackTimer) clearTimeout(runtimeState.diffFinalizeFallbackTimer);
-
-        runtimeState.diffFinalizePrimaryTimer = setTimeout(() => {
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-        }, 150);
-
-        runtimeState.diffFinalizeFallbackTimer = setTimeout(() => {
+        let index = getMessageIndexFromEvent(payload);
+        if (index < 0) index = getLatestMessageIndex();
+        if (index >= 0) {
+            setDiffReadyState(index, false);
+            injectDiffButtons();
+        }
+        if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
+        delayedCleanseTimer = setTimeout(() => {
             performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
         }, 700);
     };
@@ -589,12 +573,16 @@ export function bindEvents() {
         });
     }
 
-    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => {
-        runtimeState.isStreamingGeneration = true;
-    });
+    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; injectDiffButtons(); });
     if (event_types.STREAM_TOKEN_RECEIVED) {
         eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
             runtimeState.isStreamingGeneration = true;
+            let index = getMessageIndexFromEvent(payload);
+            if (index < 0) index = getLatestMessageIndex();
+            if (index >= 0) {
+                setDiffReadyState(index, false);
+                injectDiffButtons();
+            }
             visualMaskLatestOnly(payload);
         });
     }
@@ -608,12 +596,8 @@ export function bindEvents() {
             runtimeState.currentDiffIndex = undefined;
             $('#bl-diff-modal').hide();
             applyCharacterPresetBinding(true);
-            restoreLatestDiffStateForCurrentChat();
-            setTimeout(() => {
-                initLatestThreeButtonsLayer();
-                performGlobalCleanse();
-                injectDiffButtons();
-            }, 120);
+            restoreLatestThreeSnapshot();
+            setTimeout(performGlobalCleanse, 120);
         });
     }
 

@@ -25,11 +25,8 @@ export const runtimeState = {
     pendingChatSave: false,
     isBooted: false,
     diffSnippetsCache: new Map(),
-    diffMessageState: new Map(),
+    diffReadyState: new Map(),
     latestDiffMessageIndices: [],
-    currentDiffScopeKey: "",
-    diffFinalizePrimaryTimer: null,
-    diffFinalizeFallbackTimer: null,
     currentDiffIndex: undefined,
 };
 

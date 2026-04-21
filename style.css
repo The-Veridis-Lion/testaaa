@@ -743,14 +743,6 @@
     font-size: inherit !important;
 }
 
-.bl-diff-btn.menu_button {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin-left: 6px !important;
-    vertical-align: middle !important;
-}
-
 #bl-diff-modal {
     position: fixed !important;
     inset: 0 !important;
@@ -798,6 +790,12 @@
     line-height: 1;
 }
 
+.bl-diff-modal-content {
+    padding: 12px 16px 16px;
+    overflow-y: auto;
+    max-height: min(70vh, 760px);
+    color: var(--bl-text-primary);
+}
 
 .bl-diff-loading {
     min-height: 180px !important;
@@ -805,40 +803,30 @@
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
-    gap: 14px !important;
-    color: var(--bl-text-primary) !important;
+    gap: 12px !important;
+    color: var(--bl-text-secondary) !important;
 }
 
-.bl-diff-loading-spinner {
-    width: 28px !important;
-    height: 28px !important;
-    border-radius: 50% !important;
-    border: 3px solid rgba(127, 127, 127, 0.28) !important;
+.bl-diff-spinner {
+    width: 26px !important;
+    height: 26px !important;
+    border-radius: 999px !important;
+    border: 3px solid var(--bl-border-color) !important;
     border-top-color: var(--bl-accent-color) !important;
-    animation: bl-diff-spin 0.8s linear infinite !important;
+    animation: bl-diff-spin 0.9s linear infinite !important;
 }
 
-.bl-diff-loading-text {
-    font-size: 15px !important;
-    line-height: 1.5 !important;
-    opacity: 0.92 !important;
+.bl-diff-loading-text,
+.bl-diff-empty {
+    font-size: 14px !important;
+    line-height: 1.6 !important;
+    color: var(--bl-text-secondary) !important;
+    text-align: center !important;
 }
 
 @keyframes bl-diff-spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
-}
-
-.bl-diff-header-btn.is-disabled {
-    opacity: 0.5 !important;
-    pointer-events: none !important;
-}
-
-.bl-diff-modal-content {
-    padding: 12px 16px 16px;
-    overflow-y: auto;
-    max-height: min(70vh, 760px);
-    color: var(--bl-text-primary);
 }
 
 /* --- 原来的行内高亮片段（带边框和底色背景） --- */

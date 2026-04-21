@@ -5,7 +5,7 @@ import { defaultSettings, extensionName, initAppContext, runtimeState } from './
 import { bindEvents, initRealtimeInterceptor } from './src/events.js';
 import { setupUI, updateToolbarUI, applyCharacterPresetBinding, cleanupInvalidPresetBindings } from './src/ui.js';
 import { performGlobalCleanse } from './src/core.js';
-import { restoreLatestDiffStateForCurrentChat, initLatestThreeButtonsLayer } from './src/diff.js';
+import { restoreLatestThreeSnapshot } from './src/diff.js';
 
 initAppContext({
     extension_settings,
@@ -96,8 +96,7 @@ jQuery(() => {
         initRealtimeInterceptor();
         updateToolbarUI();
         applyCharacterPresetBinding(true);
-        restoreLatestDiffStateForCurrentChat();
-        initLatestThreeButtonsLayer();
+        restoreLatestThreeSnapshot();
         performGlobalCleanse();
     };
 
