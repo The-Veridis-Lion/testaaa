@@ -20,10 +20,12 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
+    getCurrentRawBundleForIndex,
+    getRawBundleSignature,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex, ensureDiffButtonsForMessageNode } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex, ensureDiffButtonsForMessageNode, ensureFreshDiffForIndex } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -74,11 +76,25 @@ export function initRealtimeInterceptor() {
                 if (!node) continue;
                 if ((node.nodeType === 3 || node.nodeType === 8) && node.parentNode && isProtectedNode(node.parentNode)) continue;
                 if (node.nodeType === 1 && isProtectedNode(node)) continue;
-                if (node.nodeType === 1) ensureDiffButtonsForMessageNode(node);
+                if (node.nodeType === 1) {
+                    ensureDiffButtonsForMessageNode(node);
+                    const mesNode = node.classList?.contains('mes') ? node : node.closest?.('.mes') || node.querySelector?.('.mes');
+                    if (mesNode) {
+                        const rawIndex = Number(mesNode.getAttribute('mesid') ?? mesNode.getAttribute('data-mesid') ?? mesNode.getAttribute('messageid') ?? mesNode.getAttribute('data-message-id'));
+                        const idx = Number.isInteger(rawIndex) ? rawIndex : Array.from((document.getElementById('chat') || document).querySelectorAll?.('.mes') || []).indexOf(mesNode);
+                        if (idx >= 0) scheduleDiffSettle(idx);
+                    }
+                }
                 runtimeState.pendingMutationNodes.add(node);
             }
             if (m.type === 'characterData') {
                 if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
+                const mesNode = m.target.parentElement?.closest?.('.mes');
+                if (mesNode) {
+                    const rawIndex = Number(mesNode.getAttribute('mesid') ?? mesNode.getAttribute('data-mesid') ?? mesNode.getAttribute('messageid') ?? mesNode.getAttribute('data-message-id'));
+                    const idx = Number.isInteger(rawIndex) ? rawIndex : Array.from((document.getElementById('chat') || document).querySelectorAll?.('.mes') || []).indexOf(mesNode);
+                    if (idx >= 0) scheduleDiffSettle(idx);
+                }
                 runtimeState.pendingMutationNodes.add(m.target);
             }
         }
@@ -192,6 +208,7 @@ export function bindEvents() {
 
         const state = getDiffState(index);
         if (state === 'streaming') return;
+        ensureFreshDiffForIndex(index);
 
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -573,16 +590,34 @@ export function bindEvents() {
         if (runtimeState.currentStreamingDiffIndex === index) runtimeState.currentStreamingDiffIndex = -1;
         setDiffState(index, 'pending');
         injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+        ensureFreshDiffForIndex(index);
+    };
+
+
+    const scheduleDiffSettle = (index) => {
+        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
+        const nextRev = (runtimeState.diffSettleRevision.get(index) || 0) + 1;
+        runtimeState.diffSettleRevision.set(index, nextRev);
+        const oldTimer = runtimeState.diffSettleTimers.get(index);
+        if (oldTimer) clearTimeout(oldTimer);
+        const timer = setTimeout(() => {
+            runtimeState.diffSettleTimers.delete(index);
+            const latestRev = runtimeState.diffSettleRevision.get(index) || 0;
+            if (latestRev !== nextRev) return;
+            if (getDiffState(index) === 'streaming') setDiffState(index, 'pending');
+            ensureFreshDiffForIndex(index);
+        }, 700);
+        runtimeState.diffSettleTimers.set(index, timer);
     };
 
     let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
-        runtimeState.currentStreamingDiffIndex = -1;
+        const fallbackStreamingIndex = runtimeState.currentStreamingDiffIndex;
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
             const index = resolveEventIndex(payload);
-            const targetIndex = index >= 0 ? index : runtimeState.currentStreamingDiffIndex;
+            const targetIndex = index >= 0 ? index : fallbackStreamingIndex;
             const now = Date.now();
             if (targetIndex >= 0 && runtimeState.lastFinalCleanseMeta.index === targetIndex && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
             if (targetIndex >= 0 && isDiffEligibleIndex(targetIndex) && getDiffState(targetIndex) === 'streaming') {
@@ -591,6 +626,7 @@ export function bindEvents() {
             performIncrementalCleanse(targetIndex >= 0 ? targetIndex : payload, { visualOnly: false, fallbackLatest: true });
             runtimeState.lastFinalCleanseMeta = { index: targetIndex, at: now };
             if (targetIndex >= 0) injectDiffButtonsForIndices([targetIndex, targetIndex - 1, targetIndex - 2, targetIndex - 3]);
+            runtimeState.currentStreamingDiffIndex = -1;
         }, 150);
     };
 
@@ -615,6 +651,7 @@ export function bindEvents() {
                 setDiffState(index, 'streaming');
                 injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
             }
+            if (index >= 0) scheduleDiffSettle(index);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
@@ -639,6 +676,7 @@ export function bindEvents() {
             if (index >= 0 && isDiffEligibleIndex(index)) {
                 setDiffState(index, 'pending');
                 injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+                ensureFreshDiffForIndex(index);
             }
             delayedIncrementalCleanse(index >= 0 ? index : payload);
         });
@@ -650,6 +688,9 @@ export function bindEvents() {
             runtimeState.diffRawSourceMap.clear();
             for (const timer of runtimeState.diffBuildTimers.values()) clearTimeout(timer);
             runtimeState.diffBuildTimers.clear();
+            for (const timer of runtimeState.diffSettleTimers.values()) clearTimeout(timer);
+            runtimeState.diffSettleTimers.clear();
+            runtimeState.diffSettleRevision.clear();
             runtimeState.currentDiffIndex = undefined;
             runtimeState.currentStreamingDiffIndex = -1;
             $('#bl-diff-modal').hide();

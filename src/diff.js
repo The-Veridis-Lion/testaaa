@@ -1,5 +1,5 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
-import { applyReplacements } from './core.js';
+import { applyReplacements, getCurrentRawBundleForIndex, getRawBundleSignature, performIncrementalCleanse } from './core.js';
 
 export function escapeHtml(value = '') {
     return String(value)
@@ -113,6 +113,7 @@ export function clearDiffState(index) {
     if (timer) clearTimeout(timer);
     runtimeState.diffBuildTimers.delete(index);
     runtimeState.diffSignatureMap.delete(index);
+    runtimeState.diffSnippetsCache.delete(index);
     document.dispatchEvent(new CustomEvent('bl:diff-state-changed', { detail: { index, state: 'idle' } }));
 }
 
@@ -133,6 +134,20 @@ export function updateDiffSnippetCache(index, cacheData) {
         return;
     }
     runtimeState.diffSnippetsCache.set(index, cacheData);
+}
+
+
+export function ensureFreshDiffForIndex(index) {
+    if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return false;
+    const rawBundle = getCurrentRawBundleForIndex(index);
+    const currentSignature = getRawBundleSignature(rawBundle);
+    const cachedSignature = runtimeState.diffSignatureMap.get(index) || '';
+    const state = getDiffState(index);
+    if (!currentSignature) return false;
+    if (state === 'ready' && cachedSignature === currentSignature && runtimeState.diffSnippetsCache.has(index)) return false;
+    if (state !== 'pending') setDiffState(index, 'pending');
+    setTimeout(() => performIncrementalCleanse(index, { visualOnly: false, fallbackLatest: false }), 0);
+    return true;
 }
 
 function applyButtonState(button, index) {

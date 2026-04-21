@@ -37,6 +37,8 @@ export const runtimeState = {
     diffSignatureMap: new Map(),
     currentStreamingDiffIndex: -1,
     diffLimit: 3,
+    diffSettleTimers: new Map(),
+    diffSettleRevision: new Map(),
 };
 
 const appContext = {

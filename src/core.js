@@ -243,11 +243,19 @@ function cloneRawDiffBundle(msg) {
 }
 
 
-function getRawBundleSignature(rawBundle) {
+export function getRawBundleSignature(rawBundle) {
     if (!rawBundle || typeof rawBundle !== 'object') return '';
     const mes = typeof rawBundle.mes === 'string' ? rawBundle.mes : '';
     const swipes = Array.isArray(rawBundle.swipes) ? rawBundle.swipes : [];
     return JSON.stringify([mes, ...swipes]);
+}
+
+export function getCurrentRawBundleForIndex(index) {
+    const { chat } = getAppContext();
+    if (!Array.isArray(chat) || index < 0 || index >= chat.length) return null;
+    const msg = chat[index];
+    if (!msg || typeof msg !== 'object') return null;
+    return cloneRawDiffBundle(msg);
 }
 
 function buildDiffCacheFromBundle(rawBundle) {
