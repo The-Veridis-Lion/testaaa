@@ -42,6 +42,10 @@ export const runtimeState = {
     diffGenerationFinishedMap: new Map(),
     diffRenderSettledMap: new Map(),
     diffBuildReadyMap: new Map(),
+    diffCaptureTimers: new Map(),
+    diffCaptureSignatureMap: new Map(),
+    diffCaptureSeenAtMap: new Map(),
+    diffReadyTimers: new Map(),
 };
 
 const appContext = {

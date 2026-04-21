@@ -585,7 +585,7 @@ export function bindEvents() {
 
     const resetDiffForActiveMessage = (index, options = {}) => {
         if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        const nextState = options.state || (runtimeState.isStreamingGeneration ? 'streaming' : 'pending');
+        const nextState = options.state || 'pending';
         markDiffLoading(index, {
             state: nextState,
             clearCache: options.clearCache !== false,
@@ -594,6 +594,55 @@ export function bindEvents() {
             resetBuild: true,
         });
         injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+    };
+
+    const noteCurrentCaptureSignature = (index) => {
+        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return '';
+        const signature = getRawBundleSignature(getCurrentRawBundleForIndex(index));
+        if (!signature) return '';
+        if (runtimeState.diffCaptureSignatureMap.get(index) !== signature) {
+            runtimeState.diffCaptureSignatureMap.set(index, signature);
+            runtimeState.diffCaptureSeenAtMap.set(index, Date.now());
+        }
+        return signature;
+    };
+
+    const schedulePostRenderReady = (index) => {
+        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
+        const oldTimer = runtimeState.diffReadyTimers.get(index);
+        if (oldTimer) clearTimeout(oldTimer);
+        const timer = setTimeout(() => {
+            runtimeState.diffReadyTimers.delete(index);
+            markDiffRenderSettled(index, true);
+            maybeSetDiffReady(index);
+            injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+        }, 260);
+        runtimeState.diffReadyTimers.set(index, timer);
+    };
+
+    const scheduleDiffCaptureCheck = (index) => {
+        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
+        const oldTimer = runtimeState.diffCaptureTimers.get(index);
+        if (oldTimer) clearTimeout(oldTimer);
+        const timer = setTimeout(() => {
+            runtimeState.diffCaptureTimers.delete(index);
+            if (!isDiffGenerationFinished(index)) return;
+            const signature = noteCurrentCaptureSignature(index);
+            if (!signature) {
+                scheduleDiffCaptureCheck(index);
+                return;
+            }
+            const lastSeen = runtimeState.diffCaptureSeenAtMap.get(index) || 0;
+            if ((Date.now() - lastSeen) < 500) {
+                scheduleDiffCaptureCheck(index);
+                return;
+            }
+            setDiffState(index, 'pending');
+            injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+            performIncrementalCleanse(index, { visualOnly: false, fallbackLatest: false });
+            schedulePostRenderReady(index);
+        }, 180);
+        runtimeState.diffCaptureTimers.set(index, timer);
     };
 
     const queueDiffFinalize = (index) => {
@@ -606,7 +655,7 @@ export function bindEvents() {
         if (runtimeState.diffBuildTimers.get(index)) return;
         setDiffState(index, 'pending');
         injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-        performIncrementalCleanse(index, { visualOnly: false, fallbackLatest: false });
+        scheduleDiffCaptureCheck(index);
     };
 
     const scheduleDiffSettle = (index) => {
@@ -621,7 +670,7 @@ export function bindEvents() {
             if (latestRev !== nextRev) return;
             markDiffRenderSettled(index, true);
             queueDiffFinalize(index);
-        }, 900);
+        }, 420);
         runtimeState.diffSettleTimers.set(index, timer);
     };
     let delayedCleanseTimer = null;
@@ -637,7 +686,8 @@ export function bindEvents() {
                 markDiffGenerationFinished(targetIndex, true);
                 setDiffState(targetIndex, 'pending');
                 injectDiffButtonsForIndices([targetIndex, targetIndex - 1, targetIndex - 2, targetIndex - 3]);
-                scheduleDiffSettle(targetIndex);
+                noteCurrentCaptureSignature(targetIndex);
+                scheduleDiffCaptureCheck(targetIndex);
             }
             if (targetIndex >= 0 && runtimeState.lastFinalCleanseMeta.index === targetIndex && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
             runtimeState.lastFinalCleanseMeta = { index: targetIndex, at: now };
@@ -660,7 +710,8 @@ export function bindEvents() {
         const index = resolveEventIndex(...args);
         runtimeState.currentStreamingDiffIndex = index >= 0 ? index : -1;
         if (index >= 0 && isDiffEligibleIndex(index)) {
-            resetDiffForActiveMessage(index, { state: 'streaming', resetGeneration: true, clearCache: true });
+            resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: true, clearCache: true });
+            noteCurrentCaptureSignature(index);
         }
     });
     if (event_types.STREAM_TOKEN_RECEIVED) {
@@ -669,7 +720,8 @@ export function bindEvents() {
             const index = resolveEventIndex(...args);
             if (index >= 0 && isDiffEligibleIndex(index)) {
                 runtimeState.currentStreamingDiffIndex = index;
-                resetDiffForActiveMessage(index, { state: 'streaming', resetGeneration: true, clearCache: true });
+                resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: true, clearCache: true });
+                noteCurrentCaptureSignature(index);
                 scheduleDiffSettle(index);
             }
         });
@@ -680,10 +732,11 @@ export function bindEvents() {
         eventSource.on(event_types.MESSAGE_RECEIVED, (...args) => {
             const index = resolveEventIndex(...args);
             if (index >= 0 && isDiffEligibleIndex(index)) {
-                resetDiffForActiveMessage(index, { state: runtimeState.isStreamingGeneration ? 'streaming' : 'pending', resetGeneration: !runtimeState.isStreamingGeneration, clearCache: true });
+                resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: !runtimeState.isStreamingGeneration, clearCache: true });
+                noteCurrentCaptureSignature(index);
                 if (!runtimeState.isStreamingGeneration) {
                     markDiffGenerationFinished(index, true);
-                    scheduleDiffSettle(index);
+                    scheduleDiffCaptureCheck(index);
                 }
             }
         });
@@ -692,10 +745,14 @@ export function bindEvents() {
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (...args) => {
             const index = resolveEventIndex(...args);
             if (index >= 0 && isDiffEligibleIndex(index)) {
-                if (!runtimeState.isStreamingGeneration) markDiffGenerationFinished(index, true);
-                setDiffState(index, 'pending');
-                injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-                scheduleDiffSettle(index);
+                noteCurrentCaptureSignature(index);
+                if (!runtimeState.isStreamingGeneration) {
+                    markDiffGenerationFinished(index, true);
+                    scheduleDiffCaptureCheck(index);
+                } else {
+                    setDiffState(index, 'pending');
+                    injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+                }
             }
         });
     }
@@ -704,8 +761,9 @@ export function bindEvents() {
             const index = resolveEventIndex(...args);
             if (index >= 0 && isDiffEligibleIndex(index)) {
                 resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: true, clearCache: true });
+                noteCurrentCaptureSignature(index);
                 markDiffGenerationFinished(index, true);
-                scheduleDiffSettle(index);
+                scheduleDiffCaptureCheck(index);
             }
         });
     }
@@ -722,6 +780,12 @@ export function bindEvents() {
             runtimeState.diffGenerationFinishedMap.clear();
             runtimeState.diffRenderSettledMap.clear();
             runtimeState.diffBuildReadyMap.clear();
+            for (const timer of runtimeState.diffCaptureTimers.values()) clearTimeout(timer);
+            runtimeState.diffCaptureTimers.clear();
+            runtimeState.diffCaptureSignatureMap.clear();
+            runtimeState.diffCaptureSeenAtMap.clear();
+            for (const timer of runtimeState.diffReadyTimers.values()) clearTimeout(timer);
+            runtimeState.diffReadyTimers.clear();
             runtimeState.currentDiffIndex = undefined;
             runtimeState.currentStreamingDiffIndex = -1;
             $('#bl-diff-modal').hide();

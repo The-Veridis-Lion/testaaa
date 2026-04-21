@@ -117,6 +117,14 @@ export function clearDiffState(index) {
     runtimeState.diffGenerationFinishedMap.delete(index);
     runtimeState.diffRenderSettledMap.delete(index);
     runtimeState.diffBuildReadyMap.delete(index);
+    const captureTimer = runtimeState.diffCaptureTimers.get(index);
+    if (captureTimer) clearTimeout(captureTimer);
+    runtimeState.diffCaptureTimers.delete(index);
+    runtimeState.diffCaptureSignatureMap.delete(index);
+    runtimeState.diffCaptureSeenAtMap.delete(index);
+    const readyTimer = runtimeState.diffReadyTimers.get(index);
+    if (readyTimer) clearTimeout(readyTimer);
+    runtimeState.diffReadyTimers.delete(index);
     document.dispatchEvent(new CustomEvent('bl:diff-state-changed', { detail: { index, state: 'idle' } }));
 }
 
@@ -314,8 +322,16 @@ export function markDiffLoading(index, options = {}) {
     const timer = runtimeState.diffBuildTimers.get(index);
     if (timer) clearTimeout(timer);
     runtimeState.diffBuildTimers.delete(index);
+    const captureTimer = runtimeState.diffCaptureTimers.get(index);
+    if (captureTimer) clearTimeout(captureTimer);
+    runtimeState.diffCaptureTimers.delete(index);
+    const readyTimer = runtimeState.diffReadyTimers.get(index);
+    if (readyTimer) clearTimeout(readyTimer);
+    runtimeState.diffReadyTimers.delete(index);
     runtimeState.diffRawSourceMap.delete(index);
     runtimeState.diffSignatureMap.delete(index);
+    runtimeState.diffCaptureSignatureMap.delete(index);
+    runtimeState.diffCaptureSeenAtMap.delete(index);
     if (clearCache) runtimeState.diffSnippetsCache.delete(index);
     if (resetGeneration) runtimeState.diffGenerationFinishedMap.set(index, false);
     if (resetRender) runtimeState.diffRenderSettledMap.set(index, false);

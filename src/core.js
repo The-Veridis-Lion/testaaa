@@ -419,7 +419,7 @@ export function performIncrementalCleanse(payload, options = {}) {
     if (visualOnly) {
         if (isDiffEligibleIndex(index)) {
             pruneDiffTracking();
-            setDiffState(index, 'streaming');
+            setDiffState(index, 'pending');
             injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
         }
         if (messageNode) purifyTextSubtree(messageNode);
@@ -437,7 +437,11 @@ export function performIncrementalCleanse(payload, options = {}) {
         try {
             if (typeof updateMessageBlock === 'function') {
                 updateMessageBlock(index, chat[index]);
-                setTimeout(() => injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]), 60);
+                setTimeout(() => {
+                    markDiffRenderSettled(index, true);
+                    maybeSetDiffReady(index);
+                    injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+                }, 260);
             } else if (messageNode) {
                 purifyDOM(messageNode);
                 ensureMessageDiffButton(index, messageNode);
