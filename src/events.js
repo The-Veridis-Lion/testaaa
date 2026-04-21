@@ -174,6 +174,11 @@ export function bindEvents() {
         const state = getDiffState(index);
         const contentEl = $('#bl-diff-modal-content');
 
+        if (state === 'streaming') {
+            contentEl.empty();
+            return;
+        }
+
         if (state === 'pending') {
             contentEl.html(`
                 <div class="bl-diff-loading-wrap">
@@ -185,7 +190,7 @@ export function bindEvents() {
         }
 
         if (state !== 'ready') {
-            contentEl.html('');
+            contentEl.empty();
             return;
         }
 
@@ -212,8 +217,8 @@ export function bindEvents() {
         if (!Number.isInteger(index) || index < 0) return;
 
         const state = getDiffState(index);
-        if (state === 'streaming' || state === 'idle') return;
-        if (state === 'pending') ensureFreshDiffForIndex(index);
+        if (state === 'streaming') return;
+        ensureFreshDiffForIndex(index);
 
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -580,7 +585,8 @@ export function bindEvents() {
         input.click();
     });
 
-    const resolveEventIndex = (payload) => {
+    const resolveEventIndex = (...eventArgs) => {
+        const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
         let idx = getMessageIndexFromEvent(payload);
         if (idx < 0 && Number.isInteger(runtimeState.currentStreamingDiffIndex) && runtimeState.currentStreamingDiffIndex >= 0) {
             idx = runtimeState.currentStreamingDiffIndex;
@@ -589,15 +595,14 @@ export function bindEvents() {
         return idx;
     };
 
-    const markDiffPending = (payload) => {
-        const index = resolveEventIndex(payload);
-        if (index < 0 || !isDiffEligibleIndex(index)) return;
+    const queueDiffFinalize = (index) => {
+        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
         if (runtimeState.currentStreamingDiffIndex === index) runtimeState.currentStreamingDiffIndex = -1;
-        setDiffState(index, 'pending');
+        const currentState = getDiffState(index);
+        if (currentState !== 'ready') setDiffState(index, 'pending');
         injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
         ensureFreshDiffForIndex(index);
     };
-
 
     const scheduleDiffSettle = (index) => {
         if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
@@ -609,26 +614,24 @@ export function bindEvents() {
             runtimeState.diffSettleTimers.delete(index);
             const latestRev = runtimeState.diffSettleRevision.get(index) || 0;
             if (latestRev !== nextRev) return;
-            if (getDiffState(index) === 'streaming') setDiffState(index, 'pending');
-            ensureFreshDiffForIndex(index);
+            queueDiffFinalize(index);
         }, 700);
         runtimeState.diffSettleTimers.set(index, timer);
     };
 
     let delayedCleanseTimer = null;
-    const delayedIncrementalCleanse = (payload) => {
+    const delayedIncrementalCleanse = (...eventArgs) => {
         runtimeState.isStreamingGeneration = false;
         const fallbackStreamingIndex = runtimeState.currentStreamingDiffIndex;
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
-            const index = resolveEventIndex(payload);
+            const index = resolveEventIndex(...eventArgs);
             const targetIndex = index >= 0 ? index : fallbackStreamingIndex;
             const now = Date.now();
             if (targetIndex >= 0 && runtimeState.lastFinalCleanseMeta.index === targetIndex && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
-            if (targetIndex >= 0 && isDiffEligibleIndex(targetIndex) && getDiffState(targetIndex) === 'streaming') {
-                setDiffState(targetIndex, 'pending');
-            }
-            performIncrementalCleanse(targetIndex >= 0 ? targetIndex : payload, { visualOnly: false, fallbackLatest: true });
+            if (targetIndex >= 0 && isDiffEligibleIndex(targetIndex)) queueDiffFinalize(targetIndex);
+            const cleansePayload = targetIndex >= 0 ? targetIndex : (eventArgs.length <= 1 ? eventArgs[0] : eventArgs);
+            performIncrementalCleanse(cleansePayload, { visualOnly: false, fallbackLatest: true });
             runtimeState.lastFinalCleanseMeta = { index: targetIndex, at: now };
             if (targetIndex >= 0) injectDiffButtonsForIndices([targetIndex, targetIndex - 1, targetIndex - 2, targetIndex - 3]);
             runtimeState.currentStreamingDiffIndex = -1;
@@ -645,49 +648,49 @@ export function bindEvents() {
         });
     }
 
-    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => { runtimeState.isStreamingGeneration = true; runtimeState.currentStreamingDiffIndex = -1; });
+    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, (...args) => {
+        runtimeState.isStreamingGeneration = true;
+        const index = resolveEventIndex(...args);
+        runtimeState.currentStreamingDiffIndex = index >= 0 ? index : -1;
+    });
     if (event_types.STREAM_TOKEN_RECEIVED) {
-        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
+        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (...args) => {
             runtimeState.isStreamingGeneration = true;
-            let index = getMessageIndexFromEvent(payload);
-            if (index < 0) index = getLatestMessageIndex();
-            if (index >= 0 && runtimeState.currentStreamingDiffIndex !== index && isDiffEligibleIndex(index)) {
+            let index = resolveEventIndex(...args);
+            if (index >= 0 && isDiffEligibleIndex(index)) {
                 runtimeState.currentStreamingDiffIndex = index;
                 setDiffState(index, 'streaming');
                 injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+                scheduleDiffSettle(index);
             }
-            if (index >= 0) scheduleDiffSettle(index);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_RECEIVED) {
-        eventSource.on(event_types.MESSAGE_RECEIVED, (payload) => {
-            const index = resolveEventIndex(payload);
-            if (!runtimeState.isStreamingGeneration) {
-                if (index >= 0 && isDiffEligibleIndex(index)) setDiffState(index, 'pending');
-                delayedIncrementalCleanse(index >= 0 ? index : payload);
-            }
+        eventSource.on(event_types.MESSAGE_RECEIVED, (...args) => {
+            const index = resolveEventIndex(...args);
+            if (!runtimeState.isStreamingGeneration && index >= 0 && isDiffEligibleIndex(index)) queueDiffFinalize(index);
+            delayedIncrementalCleanse(...args);
         });
     }
     if (event_types.CHARACTER_MESSAGE_RENDERED) {
-        eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (payload) => {
-            const index = resolveEventIndex(payload);
-            if (!runtimeState.isStreamingGeneration) {
-                if (index >= 0 && isDiffEligibleIndex(index)) setDiffState(index, 'pending');
-                delayedIncrementalCleanse(index >= 0 ? index : payload);
-            }
+        eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (...args) => {
+            const index = resolveEventIndex(...args);
+            if (!runtimeState.isStreamingGeneration && index >= 0 && isDiffEligibleIndex(index)) queueDiffFinalize(index);
+            delayedIncrementalCleanse(...args);
         });
     }
     if (event_types.MESSAGE_SWIPED) {
-        eventSource.on(event_types.MESSAGE_SWIPED, (payload) => {
-            const index = resolveEventIndex(payload);
+        eventSource.on(event_types.MESSAGE_SWIPED, (...args) => {
+            const index = resolveEventIndex(...args);
             if (index >= 0 && isDiffEligibleIndex(index)) {
-                setDiffState(index, 'pending');
-                injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-                ensureFreshDiffForIndex(index);
+                runtimeState.diffRawSourceMap.delete(index);
+                runtimeState.diffSignatureMap.delete(index);
+                updateDiffSnippetCache(index, null);
+                queueDiffFinalize(index);
             }
-            delayedIncrementalCleanse(index >= 0 ? index : payload);
+            delayedIncrementalCleanse(...args);
         });
     }
     if (event_types.CHAT_CHANGED) {

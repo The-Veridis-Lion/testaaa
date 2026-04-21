@@ -210,14 +210,42 @@ export function queueIncrementalChatSave() {
 export function getMessageIndexFromEvent(payload) {
     const { chat } = getAppContext();
     const maxIndex = Array.isArray(chat) ? chat.length - 1 : -1;
-    if (Number.isInteger(payload)) return payload >= 0 && (maxIndex < 0 || payload <= maxIndex) ? payload : -1;
-    if (!payload || typeof payload !== 'object') return -1;
-    const candidates = [payload.messageId, payload.message_id, payload.mesid, payload.index, payload.id];
-    for (const value of candidates) {
+
+    const normalize = (value) => {
         const n = Number(value);
-        if (Number.isInteger(n) && n >= 0 && (maxIndex < 0 || n <= maxIndex)) return n;
-    }
-    return -1;
+        return Number.isInteger(n) && n >= 0 && (maxIndex < 0 || n <= maxIndex) ? n : -1;
+    };
+
+    const visit = (value) => {
+        const direct = normalize(value);
+        if (direct >= 0) return direct;
+        if (Array.isArray(value)) {
+            for (const item of value) {
+                const nested = visit(item);
+                if (nested >= 0) return nested;
+            }
+            return -1;
+        }
+        if (!value || typeof value !== 'object') return -1;
+        const candidates = [
+            value.messageId,
+            value.message_id,
+            value.mesid,
+            value.index,
+            value.id,
+            value.swipe_id,
+            value.swipeId,
+            value[0],
+            value[1],
+        ];
+        for (const candidate of candidates) {
+            const nested = visit(candidate);
+            if (nested >= 0) return nested;
+        }
+        return -1;
+    };
+
+    return visit(payload);
 }
 
 /**
