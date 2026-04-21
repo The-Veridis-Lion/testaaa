@@ -220,6 +220,17 @@ export function bindEvents() {
     };
     document.addEventListener('bl:diff-state-changed', window.__blDiffStateHandler);
 
+    if (window.__blDiffCacheHandler) document.removeEventListener('bl:diff-cache-updated', window.__blDiffCacheHandler);
+    window.__blDiffCacheHandler = (evt) => {
+        const detail = evt?.detail;
+        if (!detail) return;
+        if (runtimeState.currentDiffIndex === detail.index && $('#bl-diff-modal').is(':visible')) {
+            renderDiffModalContent(detail.index);
+        }
+        injectDiffButtonsForIndices([detail.index, detail.index - 1, detail.index - 2, detail.index - 3]);
+    };
+    document.addEventListener('bl:diff-cache-updated', window.__blDiffCacheHandler);
+
     $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -613,8 +624,16 @@ export function bindEvents() {
                     resetBuild: false,
                 });
                 syncLoadingButtonState(index);
+                if (runtimeState.currentDiffIndex === index && $('#bl-diff-modal').is(':visible')) renderDiffModalContent(index);
             }
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+            const result = performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+            const finalIndex = Number.isInteger(result?.index) && result.index >= 0 ? result.index : index;
+            if (finalIndex >= 0 && runtimeState.currentDiffIndex === finalIndex && $('#bl-diff-modal').is(':visible')) {
+                renderDiffModalContent(finalIndex);
+                setTimeout(() => {
+                    if (runtimeState.currentDiffIndex === finalIndex && $('#bl-diff-modal').is(':visible')) renderDiffModalContent(finalIndex);
+                }, 180);
+            }
             runtimeState.currentStreamingDiffIndex = -1;
         }, 150);
     };

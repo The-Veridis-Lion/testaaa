@@ -140,11 +140,25 @@ export function pruneDiffTracking() {
 
 export function updateDiffSnippetCache(index, cacheData) {
     if (!Number.isInteger(index) || index < 0) return;
-    if (!cacheData || ((!Array.isArray(cacheData.snippets) || cacheData.snippets.length === 0) && !cacheData.fullDiff)) {
-        runtimeState.diffSnippetsCache.delete(index);
-        return;
+    let normalized = null;
+    if (cacheData && typeof cacheData === 'object') {
+        normalized = {
+            snippets: Array.isArray(cacheData.snippets) ? cacheData.snippets : [],
+            fullDiff: String(cacheData.fullDiff || ''),
+        };
     }
-    runtimeState.diffSnippetsCache.set(index, cacheData);
+
+    if (!normalized) runtimeState.diffSnippetsCache.delete(index);
+    else runtimeState.diffSnippetsCache.set(index, normalized);
+
+    document.dispatchEvent(new CustomEvent('bl:diff-cache-updated', {
+        detail: {
+            index,
+            hasCache: !!normalized,
+            snippetCount: normalized ? normalized.snippets.length : 0,
+            hasFullDiff: normalized ? !!normalized.fullDiff : false,
+        },
+    }));
 }
 
 
