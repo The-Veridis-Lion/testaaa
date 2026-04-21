@@ -34,7 +34,24 @@ export function computeMessageSignature(msg) {
     const base = typeof msg.mes === 'string' ? msg.mes : '';
     const name = typeof msg.name === 'string' ? msg.name : '';
     const swipeInfo = msg.swipe_id ?? msg.swipeId ?? msg.swipes?.length ?? '';
-    return hashString(`${name}\n${swipeInfo}\n${base}`);
+
+    const storedSourceSignature = typeof msg.__bl_diff_source_signature === 'string'
+        ? msg.__bl_diff_source_signature
+        : '';
+    const lastCleanedMes = typeof msg.__bl_diff_last_cleaned_mes === 'string'
+        ? msg.__bl_diff_last_cleaned_mes
+        : '';
+
+    // 正式替换后 msg.mes 会被写成净化后的文本。
+    // 如果随后同一条消息又收到一次结束事件，这里仍需返回“原始源文本”的签名，
+    // 避免把同一条消息误判成新内容，导致对比缓存被空结果覆盖。
+    if (storedSourceSignature && lastCleanedMes && base === lastCleanedMes) {
+        return storedSourceSignature;
+    }
+
+    return hashString(`${name}
+${swipeInfo}
+${base}`);
 }
 
 export function getLatestAssistantMessageIndices(chat, limit = maxTrackedDiffMessages) {

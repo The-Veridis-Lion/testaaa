@@ -275,6 +275,8 @@ export function cleanseMessageDataAtIndex(index) {
     }
 
     if (isAssistant) {
+        msg.__bl_diff_source_signature = currentSignature;
+        msg.__bl_diff_last_cleaned_mes = typeof msg.mes === 'string' ? msg.mes : '';
         writeReadyDiffCache(index, currentSignature, {
             snippets: mainCache.snippets,
             fullDiff: mainCache.fullDiff,
@@ -311,6 +313,18 @@ export function performIncrementalCleanse(payload, options = {}) {
         if (options.visualOnly) markDiffComparisonPending(index, signature);
         else {
             const previousState = runtimeState.diffMessageStates.get(index);
+            const alreadyFinalizedSameSource = previousState?.status === 'ready'
+                && previousState.signature === signature
+                && typeof msg?.mes === 'string'
+                && typeof msg?.__bl_diff_last_cleaned_mes === 'string'
+                && msg.mes === msg.__bl_diff_last_cleaned_mes;
+
+            if (alreadyFinalizedSameSource) {
+                const messageNode = getMessageDomNode(index);
+                if (messageNode) ensureMessageDiffButton(index, messageNode);
+                return;
+            }
+
             if (!previousState || previousState.signature !== signature) {
                 markDiffComparisonPending(index, signature);
             }
