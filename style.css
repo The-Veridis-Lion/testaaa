@@ -4,9 +4,9 @@
     --bl-accent-color: var(--SmartThemeQuoteColor, rgba(148, 0, 211, 0.7));
     --bl-accent-color-hover: color-mix(in srgb, var(--bl-accent-color) 82%, white 18%);
     --bl-danger-color: var(--SmartThemeEmColor, #ff4757);
-    --bl-deep-clean-bg: #a55a5a;
-    --bl-deep-clean-hover: #955050;
-    --bl-deep-clean-active: #844747;
+    --bl-deep-clean-bg: #d9534f;
+    --bl-deep-clean-hover: #c9302c;
+    --bl-deep-clean-active: #ac2925;
     --bl-background-popup: var(--SmartThemeBlurTintColor, rgba(255, 255, 255, 0.96));
     --bl-background-secondary: color-mix(in srgb, var(--SmartThemeBodyColor, #343a40) 8%, transparent);
     --bl-background-tertiary: color-mix(in srgb, var(--SmartThemeBodyColor, #343a40) 12%, transparent);
