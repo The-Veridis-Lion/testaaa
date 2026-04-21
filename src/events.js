@@ -23,7 +23,7 @@ import {
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, markTrackedDiffMessageLoading, restoreLatestDiffStateForCurrentChat, trackLatestDiffIndex } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, initLatestThreeButtonsLayer, markTrackedDiffMessageLoading, restoreLatestDiffStateForCurrentChat, trackLatestDiffIndex } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -171,7 +171,8 @@ export function bindEvents() {
     // 新修改的区域开始：透视弹窗按钮与收纳逻辑
     // ==========================================
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
-        const index = Number($(this).attr('data-index'));
+        const rawIndex = $(this).attr('data-index') ?? $(this).attr('data-bl-diff-index');
+        const index = Number(rawIndex);
         if (!Number.isInteger(index) || index < 0) return;
 
         const { extension_settings } = getAppContext();
@@ -609,6 +610,7 @@ export function bindEvents() {
             applyCharacterPresetBinding(true);
             restoreLatestDiffStateForCurrentChat();
             setTimeout(() => {
+                initLatestThreeButtonsLayer();
                 performGlobalCleanse();
                 injectDiffButtons();
             }, 120);

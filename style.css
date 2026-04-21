@@ -743,6 +743,14 @@
     font-size: inherit !important;
 }
 
+.bl-diff-btn.menu_button {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin-left: 6px !important;
+    vertical-align: middle !important;
+}
+
 #bl-diff-modal {
     position: fixed !important;
     inset: 0 !important;

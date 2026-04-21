@@ -383,96 +383,280 @@ export function updateDiffSnippetCache(index, cacheData) {
     dispatchDiffStateEvent(index, 'ready');
 }
 
+function ensureLatest3ButtonHelper() {
+    if (window.THKeywordFilterLatest3) return window.THKeywordFilterLatest3;
+
+    window.THKeywordFilterLatest3 = (() => {
+        const state = {
+            latestThree: [],
+            observer: null,
+        };
+
+        function getChatRoot() {
+            return document.querySelector('#chat');
+        }
+
+        function getMessageNodes() {
+            const chat = getChatRoot();
+            if (!chat) return [];
+            return Array.from(chat.querySelectorAll('.mes')).filter((el) => !el.closest('.mes[is_hidden="true"]'));
+        }
+
+        function getMessageIndexFromNode(node) {
+            if (!node) return -1;
+
+            const direct =
+                node.getAttribute?.('mesid') ??
+                node.dataset?.mesid ??
+                node.dataset?.messageId ??
+                node.dataset?.messageid ??
+                node.getAttribute?.('data-mesid') ??
+                node.getAttribute?.('data-message-id');
+
+            if (direct != null && direct !== '' && !Number.isNaN(Number(direct))) {
+                return Number(direct);
+            }
+
+            const nodes = getMessageNodes();
+            return nodes.indexOf(node);
+        }
+
+        function getMessageNodeByIndex(index) {
+            const nodes = getMessageNodes();
+            const byAttr = nodes.find((node) => getMessageIndexFromNode(node) === index);
+            if (byAttr) return byAttr;
+            if (index < 0 || index >= nodes.length) return null;
+            return nodes[index] || null;
+        }
+
+        function getActionBar(node) {
+            if (!node) return null;
+            return (
+                node.querySelector('.mes_buttons') ||
+                node.querySelector('.mes_block .flex-container') ||
+                node.querySelector('.mes_block') ||
+                node
+            );
+        }
+
+        function removeLegacyButtons(node) {
+            if (!node) return;
+            node.querySelectorAll('.bl-diff-btn-top, .bl-diff-btn-bottom').forEach((el) => el.remove());
+        }
+
+        function makeDiffButton(index) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'bl-diff-btn menu_button';
+            btn.dataset.blDiffIndex = String(index);
+            btn.dataset.index = String(index);
+            btn.textContent = '对比';
+            btn.title = '查看净化前文本对比';
+            return btn;
+        }
+
+        function ensureDiffButtonForIndex(index) {
+            const node = getMessageNodeByIndex(index);
+            if (!node) return;
+
+            removeLegacyButtons(node);
+
+            const old = node.querySelector(`.bl-diff-btn[data-bl-diff-index="${index}"], .bl-diff-btn[data-index="${index}"]`);
+            if (old) {
+                old.dataset.blDiffIndex = String(index);
+                old.dataset.index = String(index);
+                return;
+            }
+
+            const bar = getActionBar(node);
+            if (!bar) return;
+
+            const btn = makeDiffButton(index);
+            bar.appendChild(btn);
+        }
+
+        function removeDiffButtonForIndex(index) {
+            const node = getMessageNodeByIndex(index);
+            if (!node) return;
+
+            removeLegacyButtons(node);
+            node
+                .querySelectorAll(`.bl-diff-btn[data-bl-diff-index="${index}"], .bl-diff-btn[data-index="${index}"]`)
+                .forEach((el) => el.remove());
+        }
+
+        function setLatestThreeByNewestIndex(newestIndex) {
+            if (!Number.isInteger(newestIndex) || newestIndex < 0) return [];
+
+            const start = Math.max(0, newestIndex - 2);
+            state.latestThree = [];
+            for (let i = start; i <= newestIndex; i++) {
+                state.latestThree.push(i);
+            }
+            return [...state.latestThree];
+        }
+
+        function syncLatestThreeButtonsByNewestIndex(newestIndex) {
+            const nodes = getMessageNodes();
+            if (!nodes.length) return;
+
+            const latest = setLatestThreeByNewestIndex(newestIndex);
+            const latestSet = new Set(latest);
+
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const index = getMessageIndexFromNode(node);
+                if (latestSet.has(index >= 0 ? index : i)) {
+                    ensureDiffButtonForIndex(index >= 0 ? index : i);
+                } else {
+                    removeDiffButtonForIndex(index >= 0 ? index : i);
+                }
+            }
+        }
+
+        function syncLatestThreeButtonsByIndices(indices = []) {
+            const nodes = getMessageNodes();
+            if (!nodes.length) return;
+
+            const cleaned = indices
+                .map((value) => Number(value))
+                .filter((value) => Number.isInteger(value) && value >= 0);
+            state.latestThree = [...cleaned];
+            const latestSet = new Set(cleaned);
+
+            for (let i = 0; i < nodes.length; i++) {
+                const node = nodes[i];
+                const index = getMessageIndexFromNode(node);
+                const resolved = index >= 0 ? index : i;
+                if (latestSet.has(resolved)) {
+                    ensureDiffButtonForIndex(resolved);
+                } else {
+                    removeDiffButtonForIndex(resolved);
+                }
+            }
+        }
+
+        function syncLatestThreeButtonsByMessageNode(messageNode) {
+            const index = getMessageIndexFromNode(messageNode);
+            if (index < 0) return;
+            syncLatestThreeButtonsByNewestIndex(index);
+        }
+
+        function observeNewMessages() {
+            const chat = getChatRoot();
+            if (!chat) return null;
+            if (state.observer) return state.observer;
+
+            const observer = new MutationObserver((mutations) => {
+                for (const mutation of mutations) {
+                    for (const added of mutation.addedNodes) {
+                        if (!(added instanceof HTMLElement)) continue;
+
+                        if (added.matches?.('.mes')) {
+                            syncLatestThreeButtonsByMessageNode(added);
+                            continue;
+                        }
+
+                        const mes = added.querySelector?.('.mes');
+                        if (mes) {
+                            syncLatestThreeButtonsByMessageNode(mes);
+                        }
+                    }
+                }
+            });
+
+            observer.observe(chat, { childList: true, subtree: true });
+            state.observer = observer;
+            return observer;
+        }
+
+        function initLatestThreeButtons() {
+            const nodes = getMessageNodes();
+            if (!nodes.length) return;
+
+            const newestNode = nodes[nodes.length - 1];
+            const newestIndex = getMessageIndexFromNode(newestNode);
+            syncLatestThreeButtonsByNewestIndex(newestIndex >= 0 ? newestIndex : nodes.length - 1);
+        }
+
+        return {
+            state,
+            getChatRoot,
+            getMessageNodes,
+            getMessageIndexFromNode,
+            getMessageNodeByIndex,
+            initLatestThreeButtons,
+            syncLatestThreeButtonsByNewestIndex,
+            syncLatestThreeButtonsByIndices,
+            syncLatestThreeButtonsByMessageNode,
+            observeNewMessages,
+        };
+    })();
+
+    return window.THKeywordFilterLatest3;
+}
+
+function seedTrackedLatestFromHelper(helper) {
+    if (!helper || runtimeState.latestDiffMessageIndices.length > 0) return;
+    const initial = Array.isArray(helper.state?.latestThree) ? helper.state.latestThree : [];
+    const cleaned = initial
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0)
+        .slice(-MAX_TRACKED_DIFF_MESSAGES);
+    if (!cleaned.length) return;
+    runtimeState.latestDiffMessageIndices = [...cleaned];
+    persistLatestDiffStateForCurrentChat();
+}
+
+export function initLatestThreeButtonsLayer() {
+    const helper = ensureLatest3ButtonHelper();
+    helper.initLatestThreeButtons();
+    seedTrackedLatestFromHelper(helper);
+    helper.observeNewMessages();
+}
+
 /**
- * 确保消息节点拥有正确的“净化前文溯源”按钮状态。
- * 仅对当前聊天最新 3 条消息显示按钮；loading 时也显示按钮。
+ * 兼容旧调用入口，但按钮注入现在只负责“最新三层按钮注入”。
+ * 不再耦合 loading / ready / 对比构建逻辑。
  * @param {number} index 消息索引。
  * @param {Element} messageNode 消息 DOM 节点。
  * @returns {void}
  */
 export function ensureMessageDiffButton(index, messageNode) {
-    if (!messageNode || !Number.isInteger(index) || index < 0) return;
-
-    const { extension_settings } = getAppContext();
-    const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
-    const isTopInExtra = extension_settings[extensionName]?.diffButtonInExtraMenu === true;
-    const isTracked = isTrackedLatestDiffIndex(index);
-
-    const buttonArea = messageNode.querySelector('.mes_buttons');
-    if (buttonArea) {
-        let existing = buttonArea.querySelector('.bl-diff-btn-top');
-        const extraMenu = buttonArea.querySelector('.extraMesButtons');
-        const targetContainer = (isTopInExtra && extraMenu) ? extraMenu : buttonArea;
-
-        if (existing && existing.parentElement !== targetContainer) {
-            existing.remove();
-            existing = null;
-        }
-
-        if (!isEnabled || !isTracked) {
-            if (existing) existing.remove();
-        } else if (!existing) {
-            const button = document.createElement('div');
-            button.className = 'mes_button bl-diff-btn bl-diff-btn-top fa-solid fa-clock-rotate-left interactable';
-            button.title = '溯源净化前文';
-            button.setAttribute('data-index', String(index));
-            button.setAttribute('tabindex', '0');
-            button.setAttribute('role', 'button');
-
-            if (isTopInExtra && extraMenu) {
-                extraMenu.appendChild(button);
-            } else {
-                const editBtn = buttonArea.querySelector('.mes_edit');
-                if (editBtn) buttonArea.insertBefore(button, editBtn);
-                else buttonArea.appendChild(button);
-            }
-        } else {
-            existing.setAttribute('data-index', String(index));
-        }
+    const helper = ensureLatest3ButtonHelper();
+    if (messageNode) {
+        helper.syncLatestThreeButtonsByMessageNode(messageNode);
+        return;
     }
-
-    const swipeBlock = messageNode.querySelector('.swipeRightBlock');
-    if (swipeBlock) {
-        const parent = swipeBlock.parentNode;
-        const existingBottom = parent?.querySelector('.bl-diff-btn-bottom');
-
-        if (!isEnabled || !isTracked) {
-            if (existingBottom) existingBottom.remove();
-        } else if (!existingBottom && parent) {
-            const btnBottom = document.createElement('div');
-            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
-            btnBottom.title = '溯源净化前文 (尾部触发)';
-            btnBottom.setAttribute('data-index', String(index));
-            btnBottom.setAttribute('tabindex', '0');
-            btnBottom.setAttribute('role', 'button');
-            parent.insertBefore(btnBottom, swipeBlock);
-        } else if (existingBottom) {
-            existingBottom.setAttribute('data-index', String(index));
-        }
+    if (Number.isInteger(index) && index >= 0) {
+        helper.syncLatestThreeButtonsByNewestIndex(index);
     }
 }
 
 /**
- * 扫描当前聊天区域并按消息索引注入差异按钮。
+ * 扫描当前聊天区域并按“当前聊天最新 3 条”注入对比按钮。
+ * 只负责按钮出现与淘汰，不处理 ready / loading。
  * @returns {void}
  */
 export function injectDiffButtons() {
-    const chatEl = document.getElementById('chat');
-    if (!chatEl) return;
-    const messageNodes = chatEl.querySelectorAll('.mes');
-    for (let i = 0; i < messageNodes.length; i++) {
-        const node = messageNodes[i];
-        const attrs = [node.getAttribute('mesid'), node.getAttribute('data-mesid'), node.getAttribute('messageid'), node.getAttribute('data-message-id')];
-        let index = -1;
-        for (const raw of attrs) {
-            const n = Number(raw);
-            if (Number.isInteger(n) && n >= 0) {
-                index = n;
-                break;
-            }
-        }
-        if (index < 0) index = i;
-        ensureMessageDiffButton(index, node);
+    const { extension_settings } = getAppContext();
+    const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
+    const helper = ensureLatest3ButtonHelper();
+
+    if (!isEnabled) {
+        helper.syncLatestThreeButtonsByIndices([]);
+        return;
+    }
+
+    const tracked = runtimeState.latestDiffMessageIndices
+        .map((value) => Number(value))
+        .filter((value) => Number.isInteger(value) && value >= 0);
+
+    if (tracked.length > 0) {
+        helper.syncLatestThreeButtonsByIndices(tracked);
+    } else {
+        helper.initLatestThreeButtons();
+        seedTrackedLatestFromHelper(helper);
     }
 }
 
