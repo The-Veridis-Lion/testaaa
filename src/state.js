@@ -39,6 +39,9 @@ export const runtimeState = {
     diffLimit: 3,
     diffSettleTimers: new Map(),
     diffSettleRevision: new Map(),
+    diffGenerationFinishedMap: new Map(),
+    diffRenderSettledMap: new Map(),
+    diffBuildReadyMap: new Map(),
 };
 
 const appContext = {

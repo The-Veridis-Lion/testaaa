@@ -114,6 +114,9 @@ export function clearDiffState(index) {
     runtimeState.diffBuildTimers.delete(index);
     runtimeState.diffSignatureMap.delete(index);
     runtimeState.diffSnippetsCache.delete(index);
+    runtimeState.diffGenerationFinishedMap.delete(index);
+    runtimeState.diffRenderSettledMap.delete(index);
+    runtimeState.diffBuildReadyMap.delete(index);
     document.dispatchEvent(new CustomEvent('bl:diff-state-changed', { detail: { index, state: 'idle' } }));
 }
 
@@ -154,19 +157,12 @@ function applyButtonState(button, index) {
     const state = getDiffState(index);
     button.setAttribute('data-index', String(index));
     button.setAttribute('data-diff-state', state);
-    button.classList.toggle('is-disabled', state === 'streaming');
-    button.classList.toggle('is-pending', state === 'pending');
+    button.classList.toggle('is-disabled', false);
+    button.classList.toggle('is-pending', state === 'pending' || state === 'streaming' || state === 'idle');
     button.classList.toggle('is-ready', state === 'ready');
-    if (state === 'streaming') {
-        button.setAttribute('aria-disabled', 'true');
-        button.title = '生成中，稍后可查看';
-    } else if (state === 'pending') {
-        button.removeAttribute('aria-disabled');
-        button.title = '对比内容准备中';
-    } else {
-        button.removeAttribute('aria-disabled');
-        button.title = '溯源净化前文';
-    }
+    button.removeAttribute('aria-disabled');
+    if (state === 'ready') button.title = '溯源净化前文';
+    else button.title = '对比内容准备中';
 }
 
 function resolveIndexFromMessageNode(messageNode) {
@@ -304,4 +300,61 @@ export function getDiffSnippetsForMessage(index) {
 
 export function clearDiffSnippetsCache() {
     runtimeState.diffSnippetsCache.clear();
+}
+
+
+export function markDiffLoading(index, options = {}) {
+    if (!Number.isInteger(index) || index < 0) return;
+    const state = options.state || 'pending';
+    const clearCache = options.clearCache === true;
+    const resetGeneration = options.resetGeneration === true;
+    const resetRender = options.resetRender !== false;
+    const resetBuild = options.resetBuild !== false;
+
+    const timer = runtimeState.diffBuildTimers.get(index);
+    if (timer) clearTimeout(timer);
+    runtimeState.diffBuildTimers.delete(index);
+    runtimeState.diffRawSourceMap.delete(index);
+    runtimeState.diffSignatureMap.delete(index);
+    if (clearCache) runtimeState.diffSnippetsCache.delete(index);
+    if (resetGeneration) runtimeState.diffGenerationFinishedMap.set(index, false);
+    if (resetRender) runtimeState.diffRenderSettledMap.set(index, false);
+    if (resetBuild) runtimeState.diffBuildReadyMap.set(index, false);
+    setDiffState(index, state);
+}
+
+export function markDiffGenerationFinished(index, finished = true) {
+    if (!Number.isInteger(index) || index < 0) return;
+    runtimeState.diffGenerationFinishedMap.set(index, finished === true);
+}
+
+export function markDiffRenderSettled(index, settled = true) {
+    if (!Number.isInteger(index) || index < 0) return;
+    runtimeState.diffRenderSettledMap.set(index, settled === true);
+}
+
+export function markDiffBuildReady(index, ready = true) {
+    if (!Number.isInteger(index) || index < 0) return;
+    runtimeState.diffBuildReadyMap.set(index, ready === true);
+}
+
+export function isDiffGenerationFinished(index) {
+    return runtimeState.diffGenerationFinishedMap.get(index) === true;
+}
+
+export function isDiffRenderSettled(index) {
+    return runtimeState.diffRenderSettledMap.get(index) === true;
+}
+
+export function isDiffBuildReady(index) {
+    return runtimeState.diffBuildReadyMap.get(index) === true;
+}
+
+export function maybeSetDiffReady(index) {
+    if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return false;
+    if (!isDiffGenerationFinished(index)) return false;
+    if (!isDiffRenderSettled(index)) return false;
+    if (!isDiffBuildReady(index)) return false;
+    setDiffState(index, 'ready');
+    return true;
 }

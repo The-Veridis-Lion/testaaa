@@ -1,7 +1,7 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, injectDiffButtonsForIndices, updateDiffSnippetCache, isDiffEligibleIndex, setDiffState, clearDiffState, pruneDiffTracking } from './diff.js';
+import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, injectDiffButtonsForIndices, updateDiffSnippetCache, isDiffEligibleIndex, setDiffState, clearDiffState, pruneDiffTracking, markDiffBuildReady, maybeSetDiffReady, markDiffRenderSettled } from './diff.js';
 import { getMessageDomNode, purifyDOM, purifyTextSubtree } from './dom.js';
 
 /**
@@ -317,11 +317,11 @@ function scheduleDiffBuild(index, rawBundle) {
     const oldTimer = runtimeState.diffBuildTimers.get(index);
     if (oldTimer) clearTimeout(oldTimer);
     const oldSignature = runtimeState.diffSignatureMap.get(index) || '';
-    if (oldSignature && oldSignature !== signature) {
-        updateDiffSnippetCache(index, null);
-    }
+    if (oldSignature && oldSignature !== signature) updateDiffSnippetCache(index, null);
+
     runtimeState.diffSignatureMap.set(index, signature);
     runtimeState.diffRawSourceMap.set(index, rawBundle || null);
+    markDiffBuildReady(index, false);
     setDiffState(index, 'pending');
     const timer = setTimeout(() => {
         runtimeState.diffBuildTimers.delete(index);
@@ -339,7 +339,8 @@ function scheduleDiffBuild(index, rawBundle) {
         const cache = buildDiffCacheFromBundle(currentBundle);
         updateDiffSnippetCache(index, cache);
         runtimeState.diffRawSourceMap.delete(index);
-        setDiffState(index, 'ready');
+        markDiffBuildReady(index, true);
+        maybeSetDiffReady(index);
     }, 120);
     runtimeState.diffBuildTimers.set(index, timer);
 }
@@ -422,7 +423,7 @@ export function performIncrementalCleanse(payload, options = {}) {
             injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
         }
         if (messageNode) purifyTextSubtree(messageNode);
-        return;
+        return { index, visualOnly: true, dataChanged: false };
     }
 
     const cleanseResult = cleanseMessageDataAtIndex(index);
@@ -432,6 +433,7 @@ export function performIncrementalCleanse(payload, options = {}) {
     if (isDiffEligibleIndex(index)) scheduleDiffBuild(index, cleanseResult.rawBundle);
 
     if (dataChanged) {
+        markDiffRenderSettled(index, false);
         try {
             if (typeof updateMessageBlock === 'function') {
                 updateMessageBlock(index, chat[index]);
@@ -439,11 +441,15 @@ export function performIncrementalCleanse(payload, options = {}) {
             } else if (messageNode) {
                 purifyDOM(messageNode);
                 ensureMessageDiffButton(index, messageNode);
+                markDiffRenderSettled(index, true);
+                maybeSetDiffReady(index);
             }
         } catch (e) {
             if (messageNode) {
                 purifyDOM(messageNode);
                 ensureMessageDiffButton(index, messageNode);
+                markDiffRenderSettled(index, true);
+                maybeSetDiffReady(index);
             }
         }
         queueIncrementalChatSave();
@@ -454,7 +460,10 @@ export function performIncrementalCleanse(payload, options = {}) {
         purifyDOM(messageNode);
         ensureMessageDiffButton(index, messageNode);
     }
+    markDiffRenderSettled(index, true);
+    maybeSetDiffReady(index);
     injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+    return { index, visualOnly: false, dataChanged };
 }
 
 /**
