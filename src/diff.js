@@ -112,6 +112,7 @@ export function clearDiffState(index) {
     const timer = runtimeState.diffBuildTimers.get(index);
     if (timer) clearTimeout(timer);
     runtimeState.diffBuildTimers.delete(index);
+    runtimeState.diffSignatureMap.delete(index);
     document.dispatchEvent(new CustomEvent('bl:diff-state-changed', { detail: { index, state: 'idle' } }));
 }
 

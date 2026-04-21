@@ -34,6 +34,7 @@ export const runtimeState = {
     diffStatusMap: new Map(),
     diffBuildTimers: new Map(),
     diffRawSourceMap: new Map(),
+    diffSignatureMap: new Map(),
     currentStreamingDiffIndex: -1,
     diffLimit: 3,
 };

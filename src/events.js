@@ -560,6 +560,9 @@ export function bindEvents() {
 
     const resolveEventIndex = (payload) => {
         let idx = getMessageIndexFromEvent(payload);
+        if (idx < 0 && Number.isInteger(runtimeState.currentStreamingDiffIndex) && runtimeState.currentStreamingDiffIndex >= 0) {
+            idx = runtimeState.currentStreamingDiffIndex;
+        }
         if (idx < 0) idx = getLatestMessageIndex();
         return idx;
     };
@@ -579,14 +582,15 @@ export function bindEvents() {
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
             const index = resolveEventIndex(payload);
+            const targetIndex = index >= 0 ? index : runtimeState.currentStreamingDiffIndex;
             const now = Date.now();
-            if (index >= 0 && runtimeState.lastFinalCleanseMeta.index === index && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
-            if (index >= 0 && isDiffEligibleIndex(index) && getDiffState(index) === 'streaming') {
-                setDiffState(index, 'pending');
+            if (targetIndex >= 0 && runtimeState.lastFinalCleanseMeta.index === targetIndex && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
+            if (targetIndex >= 0 && isDiffEligibleIndex(targetIndex) && getDiffState(targetIndex) === 'streaming') {
+                setDiffState(targetIndex, 'pending');
             }
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-            runtimeState.lastFinalCleanseMeta = { index, at: now };
-            if (index >= 0) injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+            performIncrementalCleanse(targetIndex >= 0 ? targetIndex : payload, { visualOnly: false, fallbackLatest: true });
+            runtimeState.lastFinalCleanseMeta = { index: targetIndex, at: now };
+            if (targetIndex >= 0) injectDiffButtonsForIndices([targetIndex, targetIndex - 1, targetIndex - 2, targetIndex - 3]);
         }, 150);
     };
 
@@ -617,17 +621,28 @@ export function bindEvents() {
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_RECEIVED) {
         eventSource.on(event_types.MESSAGE_RECEIVED, (payload) => {
-            markDiffPending(payload);
-            delayedIncrementalCleanse(payload);
+            const index = resolveEventIndex(payload);
+            markDiffPending(index >= 0 ? index : payload);
+            delayedIncrementalCleanse(index >= 0 ? index : payload);
         });
     }
     if (event_types.CHARACTER_MESSAGE_RENDERED) {
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (payload) => {
-            markDiffPending(payload);
-            delayedIncrementalCleanse(payload);
+            const index = resolveEventIndex(payload);
+            markDiffPending(index >= 0 ? index : payload);
+            delayedIncrementalCleanse(index >= 0 ? index : payload);
         });
     }
-    if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
+    if (event_types.MESSAGE_SWIPED) {
+        eventSource.on(event_types.MESSAGE_SWIPED, (payload) => {
+            const index = resolveEventIndex(payload);
+            if (index >= 0 && isDiffEligibleIndex(index)) {
+                setDiffState(index, 'pending');
+                injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
+            }
+            delayedIncrementalCleanse(index >= 0 ? index : payload);
+        });
+    }
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
             clearDiffSnippetsCache();

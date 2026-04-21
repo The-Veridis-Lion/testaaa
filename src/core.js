@@ -208,12 +208,14 @@ export function queueIncrementalChatSave() {
  * @returns {number} 解析出的索引，失败返回 -1。
  */
 export function getMessageIndexFromEvent(payload) {
-    if (Number.isInteger(payload)) return payload;
+    const { chat } = getAppContext();
+    const maxIndex = Array.isArray(chat) ? chat.length - 1 : -1;
+    if (Number.isInteger(payload)) return payload >= 0 && (maxIndex < 0 || payload <= maxIndex) ? payload : -1;
     if (!payload || typeof payload !== 'object') return -1;
     const candidates = [payload.messageId, payload.message_id, payload.mesid, payload.index, payload.id];
     for (const value of candidates) {
         const n = Number(value);
-        if (Number.isInteger(n) && n >= 0) return n;
+        if (Number.isInteger(n) && n >= 0 && (maxIndex < 0 || n <= maxIndex)) return n;
     }
     return -1;
 }
@@ -240,6 +242,14 @@ function cloneRawDiffBundle(msg) {
     };
 }
 
+
+function getRawBundleSignature(rawBundle) {
+    if (!rawBundle || typeof rawBundle !== 'object') return '';
+    const mes = typeof rawBundle.mes === 'string' ? rawBundle.mes : '';
+    const swipes = Array.isArray(rawBundle.swipes) ? rawBundle.swipes : [];
+    return JSON.stringify([mes, ...swipes]);
+}
+
 function buildDiffCacheFromBundle(rawBundle) {
     const allSnippets = [];
     let mainFullDiff = '';
@@ -263,20 +273,32 @@ function scheduleDiffBuild(index, rawBundle) {
     if (!isDiffEligibleIndex(index)) {
         clearDiffState(index);
         updateDiffSnippetCache(index, null);
+        runtimeState.diffSignatureMap.delete(index);
         return;
     }
 
+    const signature = getRawBundleSignature(rawBundle);
     const oldTimer = runtimeState.diffBuildTimers.get(index);
     if (oldTimer) clearTimeout(oldTimer);
+    const oldSignature = runtimeState.diffSignatureMap.get(index) || '';
+    if (oldSignature && oldSignature !== signature) {
+        updateDiffSnippetCache(index, null);
+    }
+    runtimeState.diffSignatureMap.set(index, signature);
     runtimeState.diffRawSourceMap.set(index, rawBundle || null);
     setDiffState(index, 'pending');
     const timer = setTimeout(() => {
         runtimeState.diffBuildTimers.delete(index);
         const currentBundle = runtimeState.diffRawSourceMap.get(index);
+        const currentSignature = runtimeState.diffSignatureMap.get(index) || '';
         if (!isDiffEligibleIndex(index) || !currentBundle) {
             clearDiffState(index);
             updateDiffSnippetCache(index, null);
+            runtimeState.diffSignatureMap.delete(index);
             return;
+        }
+        if (currentSignature !== getRawBundleSignature(currentBundle)) {
+            return scheduleDiffBuild(index, currentBundle);
         }
         const cache = buildDiffCacheFromBundle(currentBundle);
         updateDiffSnippetCache(index, cache);
@@ -348,6 +370,9 @@ export function performIncrementalCleanse(payload, options = {}) {
 
     const fallbackLatest = options.fallbackLatest !== false;
     let index = getMessageIndexFromEvent(payload);
+    if (index < 0 && Number.isInteger(runtimeState.currentStreamingDiffIndex) && runtimeState.currentStreamingDiffIndex >= 0) {
+        index = runtimeState.currentStreamingDiffIndex;
+    }
     if (index < 0 && fallbackLatest) index = getLatestMessageIndex();
     if (index < 0) return;
 
