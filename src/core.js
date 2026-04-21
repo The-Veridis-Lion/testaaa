@@ -321,7 +321,6 @@ function scheduleDiffBuild(index, rawBundle) {
 
     runtimeState.diffSignatureMap.set(index, signature);
     runtimeState.diffRawSourceMap.set(index, rawBundle || null);
-    markDiffBuildReady(index, false);
     setDiffState(index, 'pending');
     const timer = setTimeout(() => {
         runtimeState.diffBuildTimers.delete(index);
@@ -339,8 +338,7 @@ function scheduleDiffBuild(index, rawBundle) {
         const cache = buildDiffCacheFromBundle(currentBundle);
         updateDiffSnippetCache(index, cache);
         runtimeState.diffRawSourceMap.delete(index);
-        markDiffBuildReady(index, true);
-        maybeSetDiffReady(index);
+        setDiffState(index, 'ready');
     }, 120);
     runtimeState.diffBuildTimers.set(index, timer);
 }
@@ -419,7 +417,7 @@ export function performIncrementalCleanse(payload, options = {}) {
     if (visualOnly) {
         if (isDiffEligibleIndex(index)) {
             pruneDiffTracking();
-            setDiffState(index, 'pending');
+            setDiffState(index, 'streaming');
             injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
         }
         if (messageNode) purifyTextSubtree(messageNode);
@@ -433,39 +431,30 @@ export function performIncrementalCleanse(payload, options = {}) {
     if (isDiffEligibleIndex(index)) scheduleDiffBuild(index, cleanseResult.rawBundle);
 
     if (dataChanged) {
-        markDiffRenderSettled(index, false);
         try {
             if (typeof updateMessageBlock === 'function') {
                 updateMessageBlock(index, chat[index]);
                 setTimeout(() => {
-                    markDiffRenderSettled(index, true);
-                    maybeSetDiffReady(index);
                     injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-                }, 260);
+                }, 50);
             } else if (messageNode) {
                 purifyDOM(messageNode);
                 ensureMessageDiffButton(index, messageNode);
-                markDiffRenderSettled(index, true);
-                maybeSetDiffReady(index);
             }
         } catch (e) {
             if (messageNode) {
                 purifyDOM(messageNode);
                 ensureMessageDiffButton(index, messageNode);
-                markDiffRenderSettled(index, true);
-                maybeSetDiffReady(index);
             }
         }
         queueIncrementalChatSave();
-        return;
+        return { index, visualOnly: false, dataChanged };
     }
 
     if (messageNode) {
         purifyDOM(messageNode);
         ensureMessageDiffButton(index, messageNode);
     }
-    markDiffRenderSettled(index, true);
-    maybeSetDiffReady(index);
     injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
     return { index, visualOnly: false, dataChanged };
 }

@@ -20,12 +20,11 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
-    getCurrentRawBundleForIndex,
-    getRawBundleSignature,
+    getLatestMessageIndex,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex, ensureDiffButtonsForMessageNode, markDiffLoading, markDiffGenerationFinished, markDiffRenderSettled, isDiffGenerationFinished, isDiffBuildReady, maybeSetDiffReady, updateDiffSnippetCache } from './diff.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex, ensureDiffButtonsForMessageNode, markDiffLoading } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
@@ -78,23 +77,11 @@ export function initRealtimeInterceptor() {
                 if (node.nodeType === 1 && isProtectedNode(node)) continue;
                 if (node.nodeType === 1) {
                     ensureDiffButtonsForMessageNode(node);
-                    const mesNode = node.classList?.contains('mes') ? node : node.closest?.('.mes') || node.querySelector?.('.mes');
-                    if (mesNode) {
-                        const rawIndex = Number(mesNode.getAttribute('mesid') ?? mesNode.getAttribute('data-mesid') ?? mesNode.getAttribute('messageid') ?? mesNode.getAttribute('data-message-id'));
-                        const idx = Number.isInteger(rawIndex) ? rawIndex : Array.from((document.getElementById('chat') || document).querySelectorAll?.('.mes') || []).indexOf(mesNode);
-                        if (idx >= 0) scheduleDiffSettle(idx);
-                    }
                 }
                 runtimeState.pendingMutationNodes.add(node);
             }
             if (m.type === 'characterData') {
                 if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
-                const mesNode = m.target.parentElement?.closest?.('.mes');
-                if (mesNode) {
-                    const rawIndex = Number(mesNode.getAttribute('mesid') ?? mesNode.getAttribute('data-mesid') ?? mesNode.getAttribute('messageid') ?? mesNode.getAttribute('data-message-id'));
-                    const idx = Number.isInteger(rawIndex) ? rawIndex : Array.from((document.getElementById('chat') || document).querySelectorAll?.('.mes') || []).indexOf(mesNode);
-                    if (idx >= 0) scheduleDiffSettle(idx);
-                }
                 runtimeState.pendingMutationNodes.add(m.target);
             }
         }
@@ -573,6 +560,7 @@ export function bindEvents() {
         input.click();
     });
 
+
     const resolveEventIndex = (...eventArgs) => {
         const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
         let idx = getMessageIndexFromEvent(payload);
@@ -583,114 +571,50 @@ export function bindEvents() {
         return idx;
     };
 
-    const resetDiffForActiveMessage = (index, options = {}) => {
+    const syncLoadingButtonState = (index) => {
         if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        const nextState = options.state || 'pending';
-        markDiffLoading(index, {
-            state: nextState,
-            clearCache: options.clearCache !== false,
-            resetGeneration: options.resetGeneration === true,
-            resetRender: true,
-            resetBuild: true,
-        });
+        if (getDiffState(index) === 'idle') setDiffState(index, runtimeState.isStreamingGeneration ? 'streaming' : 'pending');
+        else if (getDiffState(index) === 'ready') return;
+        else setDiffState(index, runtimeState.isStreamingGeneration ? 'streaming' : 'pending');
         injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
     };
 
-    const noteCurrentCaptureSignature = (index) => {
-        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return '';
-        const signature = getRawBundleSignature(getCurrentRawBundleForIndex(index));
-        if (!signature) return '';
-        if (runtimeState.diffCaptureSignatureMap.get(index) !== signature) {
-            runtimeState.diffCaptureSignatureMap.set(index, signature);
-            runtimeState.diffCaptureSeenAtMap.set(index, Date.now());
+    const visualMaskLatestOnly = (...eventArgs) => {
+        const index = resolveEventIndex(...eventArgs);
+        if (index >= 0 && isDiffEligibleIndex(index)) {
+            runtimeState.currentStreamingDiffIndex = index;
+            markDiffLoading(index, {
+                state: 'streaming',
+                clearCache: true,
+                resetGeneration: true,
+                resetRender: true,
+                resetBuild: true,
+            });
+            syncLoadingButtonState(index);
         }
-        return signature;
+        if (!runtimeState.isStreamingGeneration) return;
+        const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
+        performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true });
     };
 
-    const schedulePostRenderReady = (index) => {
-        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        const oldTimer = runtimeState.diffReadyTimers.get(index);
-        if (oldTimer) clearTimeout(oldTimer);
-        const timer = setTimeout(() => {
-            runtimeState.diffReadyTimers.delete(index);
-            markDiffRenderSettled(index, true);
-            maybeSetDiffReady(index);
-            injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-        }, 260);
-        runtimeState.diffReadyTimers.set(index, timer);
-    };
-
-    const scheduleDiffCaptureCheck = (index) => {
-        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        const oldTimer = runtimeState.diffCaptureTimers.get(index);
-        if (oldTimer) clearTimeout(oldTimer);
-        const timer = setTimeout(() => {
-            runtimeState.diffCaptureTimers.delete(index);
-            if (!isDiffGenerationFinished(index)) return;
-            const signature = noteCurrentCaptureSignature(index);
-            if (!signature) {
-                scheduleDiffCaptureCheck(index);
-                return;
-            }
-            const lastSeen = runtimeState.diffCaptureSeenAtMap.get(index) || 0;
-            if ((Date.now() - lastSeen) < 500) {
-                scheduleDiffCaptureCheck(index);
-                return;
-            }
-            setDiffState(index, 'pending');
-            injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-            performIncrementalCleanse(index, { visualOnly: false, fallbackLatest: false });
-            schedulePostRenderReady(index);
-        }, 180);
-        runtimeState.diffCaptureTimers.set(index, timer);
-    };
-
-    const queueDiffFinalize = (index) => {
-        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        if (!isDiffGenerationFinished(index)) return;
-        if (isDiffBuildReady(index) && maybeSetDiffReady(index)) {
-            injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-            return;
-        }
-        if (runtimeState.diffBuildTimers.get(index)) return;
-        setDiffState(index, 'pending');
-        injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-        scheduleDiffCaptureCheck(index);
-    };
-
-    const scheduleDiffSettle = (index) => {
-        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        const nextRev = (runtimeState.diffSettleRevision.get(index) || 0) + 1;
-        runtimeState.diffSettleRevision.set(index, nextRev);
-        const oldTimer = runtimeState.diffSettleTimers.get(index);
-        if (oldTimer) clearTimeout(oldTimer);
-        const timer = setTimeout(() => {
-            runtimeState.diffSettleTimers.delete(index);
-            const latestRev = runtimeState.diffSettleRevision.get(index) || 0;
-            if (latestRev !== nextRev) return;
-            markDiffRenderSettled(index, true);
-            queueDiffFinalize(index);
-        }, 420);
-        runtimeState.diffSettleTimers.set(index, timer);
-    };
     let delayedCleanseTimer = null;
     const delayedIncrementalCleanse = (...eventArgs) => {
         runtimeState.isStreamingGeneration = false;
-        const fallbackStreamingIndex = runtimeState.currentStreamingDiffIndex;
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
             const index = resolveEventIndex(...eventArgs);
-            const targetIndex = index >= 0 ? index : fallbackStreamingIndex;
-            const now = Date.now();
-            if (targetIndex >= 0 && isDiffEligibleIndex(targetIndex)) {
-                markDiffGenerationFinished(targetIndex, true);
-                setDiffState(targetIndex, 'pending');
-                injectDiffButtonsForIndices([targetIndex, targetIndex - 1, targetIndex - 2, targetIndex - 3]);
-                noteCurrentCaptureSignature(targetIndex);
-                scheduleDiffCaptureCheck(targetIndex);
+            const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
+            if (index >= 0 && isDiffEligibleIndex(index)) {
+                markDiffLoading(index, {
+                    state: 'pending',
+                    clearCache: true,
+                    resetGeneration: false,
+                    resetRender: false,
+                    resetBuild: false,
+                });
+                syncLoadingButtonState(index);
             }
-            if (targetIndex >= 0 && runtimeState.lastFinalCleanseMeta.index === targetIndex && (now - runtimeState.lastFinalCleanseMeta.at) < 350) return;
-            runtimeState.lastFinalCleanseMeta = { index: targetIndex, at: now };
+            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
             runtimeState.currentStreamingDiffIndex = -1;
         }, 150);
     };
@@ -700,6 +624,17 @@ export function bindEvents() {
         eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
             if (editCleanseTimer) clearTimeout(editCleanseTimer);
             editCleanseTimer = setTimeout(() => {
+                const index = resolveEventIndex(payload);
+                if (index >= 0 && isDiffEligibleIndex(index)) {
+                    markDiffLoading(index, {
+                        state: 'pending',
+                        clearCache: true,
+                        resetGeneration: false,
+                        resetRender: false,
+                        resetBuild: false,
+                    });
+                    syncLoadingButtonState(index);
+                }
                 performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
             }, 100);
         });
@@ -710,63 +645,45 @@ export function bindEvents() {
         const index = resolveEventIndex(...args);
         runtimeState.currentStreamingDiffIndex = index >= 0 ? index : -1;
         if (index >= 0 && isDiffEligibleIndex(index)) {
-            resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: true, clearCache: true });
-            noteCurrentCaptureSignature(index);
+            markDiffLoading(index, {
+                state: 'streaming',
+                clearCache: true,
+                resetGeneration: true,
+                resetRender: true,
+                resetBuild: true,
+            });
+            syncLoadingButtonState(index);
         }
     });
     if (event_types.STREAM_TOKEN_RECEIVED) {
         eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (...args) => {
             runtimeState.isStreamingGeneration = true;
-            const index = resolveEventIndex(...args);
-            if (index >= 0 && isDiffEligibleIndex(index)) {
-                runtimeState.currentStreamingDiffIndex = index;
-                resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: true, clearCache: true });
-                noteCurrentCaptureSignature(index);
-                scheduleDiffSettle(index);
-            }
+            visualMaskLatestOnly(...args);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
-    if (event_types.MESSAGE_RECEIVED) {
-        eventSource.on(event_types.MESSAGE_RECEIVED, (...args) => {
-            const index = resolveEventIndex(...args);
-            if (index >= 0 && isDiffEligibleIndex(index)) {
-                resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: !runtimeState.isStreamingGeneration, clearCache: true });
-                noteCurrentCaptureSignature(index);
-                if (!runtimeState.isStreamingGeneration) {
-                    markDiffGenerationFinished(index, true);
-                    scheduleDiffCaptureCheck(index);
-                }
-            }
-        });
-    }
+    if (event_types.MESSAGE_RECEIVED) eventSource.on(event_types.MESSAGE_RECEIVED, delayedIncrementalCleanse);
     if (event_types.CHARACTER_MESSAGE_RENDERED) {
         eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (...args) => {
             const index = resolveEventIndex(...args);
-            if (index >= 0 && isDiffEligibleIndex(index)) {
-                noteCurrentCaptureSignature(index);
-                if (!runtimeState.isStreamingGeneration) {
-                    markDiffGenerationFinished(index, true);
-                    scheduleDiffCaptureCheck(index);
-                } else {
-                    setDiffState(index, 'pending');
-                    injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-                }
-            }
+            if (index >= 0 && isDiffEligibleIndex(index)) syncLoadingButtonState(index);
         });
     }
-    if (event_types.MESSAGE_SWIPED) {
-        eventSource.on(event_types.MESSAGE_SWIPED, (...args) => {
-            const index = resolveEventIndex(...args);
-            if (index >= 0 && isDiffEligibleIndex(index)) {
-                resetDiffForActiveMessage(index, { state: 'pending', resetGeneration: true, clearCache: true });
-                noteCurrentCaptureSignature(index);
-                markDiffGenerationFinished(index, true);
-                scheduleDiffCaptureCheck(index);
-            }
-        });
-    }
+    if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, (...args) => {
+        const index = resolveEventIndex(...args);
+        if (index >= 0 && isDiffEligibleIndex(index)) {
+            markDiffLoading(index, {
+                state: 'pending',
+                clearCache: true,
+                resetGeneration: false,
+                resetRender: false,
+                resetBuild: false,
+            });
+            syncLoadingButtonState(index);
+        }
+        delayedIncrementalCleanse(...args);
+    });
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
             clearDiffSnippetsCache();
