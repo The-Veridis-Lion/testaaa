@@ -27,38 +27,6 @@ export function isProtectedNode(node) {
     return false;
 }
 
-
-
-function getMaskedValue(original) {
-    return runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
-}
-
-export function purifyTextNode(node) {
-    if (!node || (node.nodeType !== 3 && node.nodeType !== 8)) return;
-    const parent = node.parentNode;
-    if (parent && (isProtectedNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains?.(document.activeElement))))) return;
-    const original = node.nodeValue || '';
-    const nextValue = getMaskedValue(original);
-    if (original !== nextValue) node.nodeValue = nextValue;
-}
-
-export function purifyTextSubtree(rootNode) {
-    if (!rootNode) return;
-    buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) return;
-
-    if (rootNode.nodeType === 3 || rootNode.nodeType === 8) {
-        purifyTextNode(rootNode);
-        return;
-    }
-
-    const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, null, false);
-    let node;
-    while (node = walker.nextNode()) {
-        purifyTextNode(node);
-    }
-}
-
 /**
  * 对指定 DOM 子树执行净化替换（文本节点、注释节点、输入框）。
  * @param {Node} rootNode 待净化根节点。
@@ -76,7 +44,9 @@ export function purifyDOM(rootNode) {
         const parent = node.parentNode;
         if (parent && (isProtectedNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
 
-        purifyTextNode(node);
+        const original = node.nodeValue || '';
+        const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+        if (original !== nextValue) node.nodeValue = nextValue;
     }
 
     if (rootNode.nodeType === 1) {
@@ -84,7 +54,7 @@ export function purifyDOM(rootNode) {
             const input = rootNode;
             if (!(isProtectedNode(input) || document.activeElement === input)) {
                 const originalVal = input.value || '';
-                const nextVal = getMaskedValue(originalVal);
+                const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
                 if (originalVal !== nextVal) input.value = nextVal;
             }
         }
@@ -95,7 +65,7 @@ export function purifyDOM(rootNode) {
                 const input = inputs[i];
                 if (isProtectedNode(input) || document.activeElement === input) continue;
                 const originalVal = input.value || '';
-                const nextVal = getMaskedValue(originalVal);
+                const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
                 if (originalVal !== nextVal) input.value = nextVal;
             }
         }

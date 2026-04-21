@@ -1,8 +1,8 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, injectDiffButtonsForIndices, updateDiffSnippetCache, isDiffEligibleIndex, setDiffState, clearDiffState, pruneDiffTracking, markDiffBuildReady, maybeSetDiffReady, markDiffRenderSettled } from './diff.js';
-import { getMessageDomNode, purifyDOM, purifyTextSubtree } from './dom.js';
+import { buildDiffSnippetsFromText, buildDiffTextSignature, getDiffSnippetsForMessage, isTrackedLatestDiffIndex, ensureMessageDiffButton, injectDiffButtons, updateDiffSnippetCache } from './diff.js';
+import { getMessageDomNode, purifyDOM } from './dom.js';
 
 /**
  * 根据当前规则构建净化处理器（文本/正则/简易语法）。
@@ -208,44 +208,14 @@ export function queueIncrementalChatSave() {
  * @returns {number} 解析出的索引，失败返回 -1。
  */
 export function getMessageIndexFromEvent(payload) {
-    const { chat } = getAppContext();
-    const maxIndex = Array.isArray(chat) ? chat.length - 1 : -1;
-
-    const normalize = (value) => {
+    if (Number.isInteger(payload)) return payload;
+    if (!payload || typeof payload !== 'object') return -1;
+    const candidates = [payload.messageId, payload.message_id, payload.mesid, payload.index, payload.id];
+    for (const value of candidates) {
         const n = Number(value);
-        return Number.isInteger(n) && n >= 0 && (maxIndex < 0 || n <= maxIndex) ? n : -1;
-    };
-
-    const visit = (value) => {
-        const direct = normalize(value);
-        if (direct >= 0) return direct;
-        if (Array.isArray(value)) {
-            for (const item of value) {
-                const nested = visit(item);
-                if (nested >= 0) return nested;
-            }
-            return -1;
-        }
-        if (!value || typeof value !== 'object') return -1;
-        const candidates = [
-            value.messageId,
-            value.message_id,
-            value.mesid,
-            value.index,
-            value.id,
-            value.swipe_id,
-            value.swipeId,
-            value[0],
-            value[1],
-        ];
-        for (const candidate of candidates) {
-            const nested = visit(candidate);
-            if (nested >= 0) return nested;
-        }
-        return -1;
-    };
-
-    return visit(payload);
+        if (Number.isInteger(n) && n >= 0) return n;
+    }
+    return -1;
 }
 
 /**
@@ -257,111 +227,37 @@ export function getLatestMessageIndex() {
     return Array.isArray(chat) && chat.length > 0 ? chat.length - 1 : -1;
 }
 
-
-function cloneRawDiffBundle(msg) {
-    if (!msg || typeof msg !== 'object') return null;
-    return {
-        mes: typeof msg.mes === 'string' ? msg.mes : '',
-        swipes: Array.isArray(msg.swipes) ? msg.swipes.map((item) => {
-            if (typeof item === 'string') return item;
-            if (item && typeof item === 'object' && typeof item.mes === 'string') return item.mes;
-            return '';
-        }) : [],
-    };
-}
-
-
-export function getRawBundleSignature(rawBundle) {
-    if (!rawBundle || typeof rawBundle !== 'object') return '';
-    const mes = typeof rawBundle.mes === 'string' ? rawBundle.mes : '';
-    const swipes = Array.isArray(rawBundle.swipes) ? rawBundle.swipes : [];
-    return JSON.stringify([mes, ...swipes]);
-}
-
-export function getCurrentRawBundleForIndex(index) {
-    const { chat } = getAppContext();
-    if (!Array.isArray(chat) || index < 0 || index >= chat.length) return null;
-    const msg = chat[index];
-    if (!msg || typeof msg !== 'object') return null;
-    return cloneRawDiffBundle(msg);
-}
-
-function buildDiffCacheFromBundle(rawBundle) {
-    const allSnippets = [];
-    let mainFullDiff = '';
-    if (rawBundle && typeof rawBundle.mes === 'string') {
-        const main = buildDiffSnippetsFromText(rawBundle.mes);
-        allSnippets.push(...main.snippets);
-        mainFullDiff = main.fullDiff;
-    }
-    if (rawBundle && Array.isArray(rawBundle.swipes)) {
-        for (const swipe of rawBundle.swipes) {
-            if (typeof swipe !== 'string' || !swipe) continue;
-            const swipeDiff = buildDiffSnippetsFromText(swipe);
-            allSnippets.push(...swipeDiff.snippets);
-        }
-    }
-    return { snippets: Array.from(new Set(allSnippets)), fullDiff: mainFullDiff };
-}
-
-function scheduleDiffBuild(index, rawBundle) {
-    if (!Number.isInteger(index) || index < 0) return;
-    if (!isDiffEligibleIndex(index)) {
-        clearDiffState(index);
-        updateDiffSnippetCache(index, null);
-        runtimeState.diffSignatureMap.delete(index);
-        return;
-    }
-
-    const signature = getRawBundleSignature(rawBundle);
-    const oldTimer = runtimeState.diffBuildTimers.get(index);
-    if (oldTimer) clearTimeout(oldTimer);
-    const oldSignature = runtimeState.diffSignatureMap.get(index) || '';
-    if (oldSignature && oldSignature !== signature) updateDiffSnippetCache(index, null);
-
-    runtimeState.diffSignatureMap.set(index, signature);
-    runtimeState.diffRawSourceMap.set(index, rawBundle || null);
-    setDiffState(index, 'pending');
-    const timer = setTimeout(() => {
-        runtimeState.diffBuildTimers.delete(index);
-        const currentBundle = runtimeState.diffRawSourceMap.get(index);
-        const currentSignature = runtimeState.diffSignatureMap.get(index) || '';
-        if (!isDiffEligibleIndex(index) || !currentBundle) {
-            clearDiffState(index);
-            updateDiffSnippetCache(index, null);
-            runtimeState.diffSignatureMap.delete(index);
-            return;
-        }
-        if (currentSignature !== getRawBundleSignature(currentBundle)) {
-            return scheduleDiffBuild(index, currentBundle);
-        }
-        const cache = buildDiffCacheFromBundle(currentBundle);
-        updateDiffSnippetCache(index, cache);
-        runtimeState.diffRawSourceMap.delete(index);
-        setDiffState(index, 'ready');
-    }, 120);
-    runtimeState.diffBuildTimers.set(index, timer);
-}
-
 /**
- * 清理指定索引消息的数据，并仅为最新 3 条消息保留异步对比原文。
+ * 清理指定索引消息的数据并更新差异缓存。
  * @param {number} index 消息索引。
- * @returns {{changed: boolean, rawBundle: object|null}} 是否发生数据变更以及原文快照。
+ * @returns {boolean} 是否发生数据变更。
  */
 export function cleanseMessageDataAtIndex(index) {
     const { chat } = getAppContext();
-    if (!Array.isArray(chat) || index < 0 || index >= chat.length) return { changed: false, rawBundle: null };
+    if (!Array.isArray(chat) || index < 0 || index >= chat.length) return false;
     const msg = chat[index];
-    if (!msg || typeof msg !== 'object') return { changed: false, rawBundle: null };
+    if (!msg || typeof msg !== 'object') return false;
 
-    const eligible = isDiffEligibleIndex(index);
-    const rawBundle = eligible ? cloneRawDiffBundle(msg) : null;
+    const tracked = isTrackedLatestDiffIndex(index);
+    const existingDiff = getDiffSnippetsForMessage(index);
+    const currentMainText = typeof msg.mes === 'string' ? msg.mes : '';
+    const currentSignature = buildDiffTextSignature(currentMainText);
+    const canReusePersistedReady = tracked && existingDiff.status === 'ready' && !!existingDiff.signature && existingDiff.signature === currentSignature;
+
     let changed = false;
+    let rawMainText = currentMainText;
+    let cleanedMainText = currentMainText;
+    let mainSnippets = [];
+    let mainFullDiff = '';
 
-    if (typeof msg.mes === 'string') {
-        const cleanedText = applyReplacements(msg.mes);
-        if (cleanedText !== msg.mes) {
-            msg.mes = cleanedText;
+    if (!canReusePersistedReady && typeof msg.mes === 'string') {
+        const diffResult = buildDiffSnippetsFromText(msg.mes);
+        rawMainText = msg.mes;
+        cleanedMainText = diffResult.cleanedText;
+        mainSnippets = diffResult.snippets;
+        mainFullDiff = diffResult.fullDiff;
+        if (cleanedMainText !== msg.mes) {
+            msg.mes = cleanedMainText;
             changed = true;
         }
     }
@@ -369,13 +265,13 @@ export function cleanseMessageDataAtIndex(index) {
     if (Array.isArray(msg.swipes)) {
         for (let i = 0; i < msg.swipes.length; i++) {
             if (typeof msg.swipes[i] === 'string') {
-                const cleanedText = applyReplacements(msg.swipes[i]);
+                const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
                 if (cleanedText !== msg.swipes[i]) {
                     msg.swipes[i] = cleanedText;
                     changed = true;
                 }
             } else if (msg.swipes[i] && typeof msg.swipes[i] === 'object' && typeof msg.swipes[i].mes === 'string') {
-                const cleanedText = applyReplacements(msg.swipes[i].mes);
+                const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i].mes);
                 if (cleanedText !== msg.swipes[i].mes) {
                     msg.swipes[i].mes = cleanedText;
                     changed = true;
@@ -384,12 +280,18 @@ export function cleanseMessageDataAtIndex(index) {
         }
     }
 
-    if (!eligible) {
-        updateDiffSnippetCache(index, null);
-        clearDiffState(index);
+    if (tracked && !canReusePersistedReady) {
+        updateDiffSnippetCache(index, {
+            status: 'ready',
+            snippets: Array.from(new Set(mainSnippets)),
+            fullDiff: mainFullDiff,
+            rawText: rawMainText,
+            cleanedText: cleanedMainText,
+            signature: buildDiffTextSignature(cleanedMainText),
+        });
     }
 
-    return { changed, rawBundle };
+    return changed;
 }
 
 /**
@@ -405,113 +307,122 @@ export function performIncrementalCleanse(payload, options = {}) {
 
     const fallbackLatest = options.fallbackLatest !== false;
     let index = getMessageIndexFromEvent(payload);
-    if (index < 0 && Number.isInteger(runtimeState.currentStreamingDiffIndex) && runtimeState.currentStreamingDiffIndex >= 0) {
-        index = runtimeState.currentStreamingDiffIndex;
-    }
     if (index < 0 && fallbackLatest) index = getLatestMessageIndex();
     if (index < 0) return;
 
-    const visualOnly = options.visualOnly === true;
+    const dataChanged = options.visualOnly ? false : cleanseMessageDataAtIndex(index);
     const messageNode = getMessageDomNode(index);
-
-    if (visualOnly) {
-        if (isDiffEligibleIndex(index)) {
-            pruneDiffTracking();
-            setDiffState(index, 'streaming');
-            injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-        }
-        if (messageNode) purifyTextSubtree(messageNode);
-        return { index, visualOnly: true, dataChanged: false };
-    }
-
-    const cleanseResult = cleanseMessageDataAtIndex(index);
-    const dataChanged = !!cleanseResult.changed;
-    pruneDiffTracking();
-
-    if (isDiffEligibleIndex(index)) scheduleDiffBuild(index, cleanseResult.rawBundle);
-
-    if (dataChanged) {
-        try {
-            if (typeof updateMessageBlock === 'function') {
-                updateMessageBlock(index, chat[index]);
-                setTimeout(() => {
-                    injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-                }, 50);
-            } else if (messageNode) {
-                purifyDOM(messageNode);
-                ensureMessageDiffButton(index, messageNode);
-            }
-        } catch (e) {
-            if (messageNode) {
-                purifyDOM(messageNode);
-                ensureMessageDiffButton(index, messageNode);
-            }
-        }
-        queueIncrementalChatSave();
-        return { index, visualOnly: false, dataChanged };
-    }
-
     if (messageNode) {
         purifyDOM(messageNode);
         ensureMessageDiffButton(index, messageNode);
     }
-    injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-    return { index, visualOnly: false, dataChanged };
+
+    if (dataChanged) {
+        try {
+            if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
+        } catch (e) { }
+        queueIncrementalChatSave();
+    }
 }
 
 /**
- * 执行当前角色卡当前聊天的可见消息净化。
- * 仅处理当前聊天中未被隐藏的消息节点，不在启动时全量替换历史聊天。
+ * 执行全局净化：遍历聊天数据、同步 UI 并刷新差异按钮。
  * @returns {void}
  */
 export function performGlobalCleanse() {
     const { chat, saveChat } = getAppContext();
     buildProcessors();
     if (runtimeState.activeProcessors.length === 0) {
-        clearDiffSnippetsCache();
-        pruneDiffTracking();
         injectDiffButtons();
         return;
     }
-
-    const chatEl = document.getElementById('chat');
-    if (!chatEl || !Array.isArray(chat)) {
-        pruneDiffTracking();
-        injectDiffButtons();
-        return;
-    }
-
-    const visibleNodes = Array.from(chatEl.querySelectorAll('.mes')).filter((node) => {
-        if (!node || node.classList?.contains('displayNone') || node.hidden) return false;
-        const style = window.getComputedStyle ? window.getComputedStyle(node) : null;
-        return !style || (style.display !== 'none' && style.visibility !== 'hidden');
-    });
 
     let chatChanged = false;
-    clearDiffSnippetsCache();
-    pruneDiffTracking();
 
-    for (const node of visibleNodes) {
-        const attrs = [node.getAttribute('mesid'), node.getAttribute('data-mesid'), node.getAttribute('messageid'), node.getAttribute('data-message-id')];
-        let index = -1;
-        for (const raw of attrs) {
-            const n = Number(raw);
-            if (Number.isInteger(n) && n >= 0) { index = n; break; }
+    if (chat && Array.isArray(chat)) {
+        chat.forEach((msg, index) => {
+            if (!msg || typeof msg !== 'object') return;
+
+            let msgChanged = false;
+            const tracked = isTrackedLatestDiffIndex(index);
+            const existingDiff = getDiffSnippetsForMessage(index);
+            const currentMainText = typeof msg.mes === 'string' ? msg.mes : '';
+            const currentSignature = buildDiffTextSignature(currentMainText);
+            const canReusePersistedReady = tracked && existingDiff.status === 'ready' && !!existingDiff.signature && existingDiff.signature === currentSignature;
+
+            let rawMainText = currentMainText;
+            let cleanedMainText = currentMainText;
+            let mainSnippets = [];
+            let mainFullDiff = '';
+
+            if (!canReusePersistedReady && typeof msg.mes === 'string') {
+                const diffResult = buildDiffSnippetsFromText(msg.mes);
+                rawMainText = msg.mes;
+                cleanedMainText = diffResult.cleanedText;
+                mainSnippets = diffResult.snippets;
+                mainFullDiff = diffResult.fullDiff;
+                if (msg.mes !== cleanedMainText) {
+                    msg.mes = cleanedMainText;
+                    msgChanged = true;
+                }
+            }
+
+            if (msg.swipes && Array.isArray(msg.swipes)) {
+                for (let i = 0; i < msg.swipes.length; i++) {
+                    if (typeof msg.swipes[i] === 'string') {
+                        const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
+                        if (msg.swipes[i] !== cleanedText) {
+                            msg.swipes[i] = cleanedText;
+                            msgChanged = true;
+                        }
+                    } else if (typeof msg.swipes[i] === 'object' && msg.swipes[i] !== null && typeof msg.swipes[i].mes === 'string') {
+                        const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i].mes);
+                        if (msg.swipes[i].mes !== cleanedText) {
+                            msg.swipes[i].mes = cleanedText;
+                            msgChanged = true;
+                        }
+                    }
+                }
+            }
+
+            if (tracked && !canReusePersistedReady) {
+                updateDiffSnippetCache(index, {
+                    status: 'ready',
+                    snippets: Array.from(new Set(mainSnippets)),
+                    fullDiff: mainFullDiff,
+                    rawText: rawMainText,
+                    cleanedText: cleanedMainText,
+                    signature: buildDiffTextSignature(cleanedMainText),
+                });
+            }
+
+            if (msgChanged) {
+                chatChanged = true;
+                try {
+                    if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50);
+                } catch (e) { }
+            }
+        });
+
+        const latestMsg = chat.length > 0 ? chat[chat.length - 1] : null;
+        if (latestMsg && typeof latestMsg === 'object') {
+            ['TavernDB_ACU_Data', 'TavernDB_ACU_SummaryData'].forEach((dbKey) => {
+                const dbVal = latestMsg[dbKey];
+                if (dbVal && typeof dbVal === 'object') {
+                    const dbChanges = deepCleanObjectSync(dbVal);
+                    if (dbChanges > 0) chatChanged = true;
+                }
+            });
         }
-        if (index < 0 || index >= chat.length) continue;
-        const result = cleanseMessageDataAtIndex(index);
-        if (result.changed) {
-            chatChanged = true;
-            try { if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50); } catch (e) {}
-        }
-        if (isDiffEligibleIndex(index)) scheduleDiffBuild(index, result.rawBundle);
-        else clearDiffState(index);
     }
 
     if (chatChanged) {
-        try { if (typeof saveChat === 'function') saveChat(); } catch (e) { console.error('[Ultimate Purifier] 存盘失败', e); }
+        try {
+            if (typeof saveChat === 'function') saveChat();
+        } catch (e) {
+            console.error("[Ultimate Purifier] 存盘失败", e);
+        }
     }
-
-    purifyDOM(chatEl);
+    purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
 }

@@ -20,73 +20,47 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
-    getLatestMessageIndex,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
-import { purifyDOM, isProtectedNode, purifyTextNode, purifyTextSubtree } from './dom.js';
-import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, injectDiffButtonsForIndices, getDiffState, setDiffState, isDiffEligibleIndex, ensureDiffButtonsForMessageNode, markDiffLoading } from './diff.js';
+import { purifyDOM, isProtectedNode } from './dom.js';
+import { getDiffSnippetsForMessage, clearDiffSnippetsCache, injectDiffButtons, markTrackedDiffMessageLoading, restoreLatestDiffStateForCurrentChat, trackLatestDiffIndex } from './diff.js';
 
 export function initRealtimeInterceptor() {
     let isPurifying = false;
 
-    const flushPendingMutations = () => {
-        runtimeState.mutationFlushScheduled = false;
-        if (isPurifying) return;
-
-        buildProcessors();
-        if (runtimeState.activeProcessors.length === 0) {
-            runtimeState.pendingMutationNodes.clear();
-            return;
-        }
-
-        const pendingNodes = Array.from(runtimeState.pendingMutationNodes);
-        runtimeState.pendingMutationNodes.clear();
-        if (pendingNodes.length === 0) return;
-
-        isPurifying = true;
-        try {
-            for (let i = 0; i < pendingNodes.length; i++) {
-                const node = pendingNodes[i];
-                if (!node) continue;
-                if (node.nodeType === 3 || node.nodeType === 8) purifyTextNode(node);
-                else if (node.nodeType === 1 || node.nodeType === 11) {
-                    if (runtimeState.isStreamingGeneration) purifyTextSubtree(node);
-                    else purifyDOM(node);
-                }
-            }
-        } finally {
-            isPurifying = false;
-        }
-    };
-
-    const scheduleMutationFlush = () => {
-        if (runtimeState.mutationFlushScheduled) return;
-        runtimeState.mutationFlushScheduled = true;
-        requestAnimationFrame(flushPendingMutations);
-    };
-
     const chatObserver = new MutationObserver((mutations) => {
         if (isPurifying) return;
 
-        for (let mi = 0; mi < mutations.length; mi++) {
-            const m = mutations[mi];
-            for (let ni = 0; ni < m.addedNodes.length; ni++) {
-                const node = m.addedNodes[ni];
-                if (!node) continue;
-                if ((node.nodeType === 3 || node.nodeType === 8) && node.parentNode && isProtectedNode(node.parentNode)) continue;
-                if (node.nodeType === 1 && isProtectedNode(node)) continue;
-                if (node.nodeType === 1) {
-                    ensureDiffButtonsForMessageNode(node);
-                }
-                runtimeState.pendingMutationNodes.add(node);
-            }
-            if (m.type === 'characterData') {
-                if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
-                runtimeState.pendingMutationNodes.add(m.target);
-            }
-        }
+        buildProcessors();
+        if (runtimeState.activeProcessors.length === 0) return;
 
-        if (runtimeState.pendingMutationNodes.size > 0) scheduleMutationFlush();
+        isPurifying = true;
+        try {
+            for (let mi = 0; mi < mutations.length; mi++) {
+                const m = mutations[mi];
+                for (let ni = 0; ni < m.addedNodes.length; ni++) {
+                    const node = m.addedNodes[ni];
+                    if (node.nodeType === 3 || node.nodeType === 8) {
+                        if (node.parentNode && isProtectedNode(node.parentNode)) continue;
+                        const original = node.nodeValue;
+                        const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+                        if (original !== nextValue) node.nodeValue = nextValue;
+                    } else if (node.nodeType === 1) {
+                        purifyDOM(node);
+                    }
+                }
+                if (m.type === 'characterData') {
+                    if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
+                    const original = m.target.nodeValue;
+                    const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+                    if (original !== nextValue) m.target.nodeValue = nextValue;
+                }
+            }
+        } finally {
+            chatObserver.takeRecords();
+            injectDiffButtons();
+            isPurifying = false;
+        }
     });
 
     const chatEl = document.getElementById('chat');
@@ -154,24 +128,31 @@ export function bindEvents() {
         saveSettingsDebounced();
         injectDiffButtons();
     });
+
+
     function renderDiffModalContent(index) {
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         const mode = settings.diffViewMode || 'snippet';
-        const state = getDiffState(index);
+        const cached = getDiffSnippetsForMessage(index);
         const contentEl = $('#bl-diff-modal-content');
+        const modeToggle = $('#bl-diff-mode-toggle');
 
-        if (state !== 'ready') {
+        if (cached.status === 'loading') {
             contentEl.html(`
-                <div class="bl-diff-loading-wrap">
-                    <div class="bl-diff-spinner" aria-hidden="true"></div>
+                <div class="bl-diff-loading">
+                    <div class="bl-diff-loading-spinner" aria-hidden="true"></div>
                     <div class="bl-diff-loading-text">Loading...</div>
                 </div>
             `);
+            modeToggle.prop('disabled', true).addClass('is-disabled');
+            $('#bl-diff-mode-text').text('全文模式');
+            $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-file-lines');
             return;
         }
 
-        const cached = getDiffSnippetsForMessage(index);
+        modeToggle.prop('disabled', false).removeClass('is-disabled');
+
         if (mode === 'full') {
             contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || "当前消息无正文差异。"}</div>`);
             $('#bl-diff-mode-text').text('切回片段');
@@ -193,8 +174,6 @@ export function bindEvents() {
         const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
 
-        const state = getDiffState(index);
-
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         if (settings.diffButtonInExtraMenu) {
@@ -206,30 +185,9 @@ export function bindEvents() {
         }
 
         runtimeState.currentDiffIndex = index;
-        renderDiffModalContent(index);
         $('#bl-diff-modal').css('display', 'flex');
+        renderDiffModalContent(index);
     });
-
-
-    if (window.__blDiffStateHandler) document.removeEventListener('bl:diff-state-changed', window.__blDiffStateHandler);
-    window.__blDiffStateHandler = (evt) => {
-        const detail = evt?.detail;
-        if (!detail) return;
-        if (runtimeState.currentDiffIndex === detail.index && $('#bl-diff-modal').is(':visible')) renderDiffModalContent(detail.index);
-        injectDiffButtonsForIndices([detail.index, detail.index - 1, detail.index - 2, detail.index - 3]);
-    };
-    document.addEventListener('bl:diff-state-changed', window.__blDiffStateHandler);
-
-    if (window.__blDiffCacheHandler) document.removeEventListener('bl:diff-cache-updated', window.__blDiffCacheHandler);
-    window.__blDiffCacheHandler = (evt) => {
-        const detail = evt?.detail;
-        if (!detail) return;
-        if (runtimeState.currentDiffIndex === detail.index && $('#bl-diff-modal').is(':visible')) {
-            renderDiffModalContent(detail.index);
-        }
-        injectDiffButtonsForIndices([detail.index, detail.index - 1, detail.index - 2, detail.index - 3]);
-    };
-    document.addEventListener('bl:diff-cache-updated', window.__blDiffCacheHandler);
 
     $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
@@ -254,6 +212,20 @@ export function bindEvents() {
     // ==========================================
     // 新修改的区域结束
     // ==========================================
+
+
+    $(document).off('bl-diff-state-updated').on('bl-diff-state-updated', function(event) {
+        const index = Number(event.originalEvent?.detail?.index);
+        const reason = String(event.originalEvent?.detail?.reason || 'updated');
+        injectDiffButtons();
+        if (!Number.isInteger(index) || runtimeState.currentDiffIndex !== index) return;
+        if (reason === 'evicted' && $('#bl-diff-modal').is(':visible')) {
+            $('#bl-diff-modal').hide();
+            return;
+        }
+        if (!$('#bl-diff-modal').is(':visible')) return;
+        renderDiffModalContent(index);
+    });
 
     $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
@@ -571,71 +543,39 @@ export function bindEvents() {
         input.click();
     });
 
-
-    const resolveEventIndex = (...eventArgs) => {
-        const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
-        let idx = getMessageIndexFromEvent(payload);
-        if (idx < 0 && Number.isInteger(runtimeState.currentStreamingDiffIndex) && runtimeState.currentStreamingDiffIndex >= 0) {
-            idx = runtimeState.currentStreamingDiffIndex;
+    const resolveLatestIndex = (payload) => {
+        if (Number.isInteger(payload) && payload >= 0) return payload;
+        const candidateList = [payload?.messageId, payload?.message_id, payload?.mesid, payload?.index, payload?.id];
+        for (const value of candidateList) {
+            const index = Number(value);
+            if (Number.isInteger(index) && index >= 0) return index;
         }
-        if (idx < 0) idx = getLatestMessageIndex();
-        return idx;
+        const { chat } = getAppContext();
+        return Array.isArray(chat) && chat.length > 0 ? chat.length - 1 : -1;
     };
 
-    const syncLoadingButtonState = (index) => {
-        if (!Number.isInteger(index) || index < 0 || !isDiffEligibleIndex(index)) return;
-        if (getDiffState(index) === 'idle') setDiffState(index, runtimeState.isStreamingGeneration ? 'streaming' : 'pending');
-        else if (getDiffState(index) === 'ready') return;
-        else setDiffState(index, runtimeState.isStreamingGeneration ? 'streaming' : 'pending');
-        injectDiffButtonsForIndices([index, index - 1, index - 2, index - 3]);
-    };
-
-    const visualMaskLatestOnly = (...eventArgs) => {
-        const index = resolveEventIndex(...eventArgs);
-        if (index >= 0 && isDiffEligibleIndex(index)) {
-            runtimeState.currentStreamingDiffIndex = index;
-            markDiffLoading(index, {
-                state: 'streaming',
-                clearCache: true,
-                resetGeneration: true,
-                resetRender: true,
-                resetBuild: true,
-            });
-            syncLoadingButtonState(index);
-        }
+    const visualMaskLatestOnly = (payload) => {
         if (!runtimeState.isStreamingGeneration) return;
-        const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
+        const index = resolveLatestIndex(payload);
+        if (index >= 0) markTrackedDiffMessageLoading(index);
         performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true });
     };
 
-    let delayedCleanseTimer = null;
-    const delayedIncrementalCleanse = (...eventArgs) => {
+    const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
-        if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
-        delayedCleanseTimer = setTimeout(() => {
-            const index = resolveEventIndex(...eventArgs);
-            const payload = eventArgs.length <= 1 ? eventArgs[0] : eventArgs;
-            if (index >= 0 && isDiffEligibleIndex(index)) {
-                markDiffLoading(index, {
-                    state: 'pending',
-                    clearCache: true,
-                    resetGeneration: false,
-                    resetRender: false,
-                    resetBuild: false,
-                });
-                syncLoadingButtonState(index);
-                if (runtimeState.currentDiffIndex === index && $('#bl-diff-modal').is(':visible')) renderDiffModalContent(index);
-            }
-            const result = performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-            const finalIndex = Number.isInteger(result?.index) && result.index >= 0 ? result.index : index;
-            if (finalIndex >= 0 && runtimeState.currentDiffIndex === finalIndex && $('#bl-diff-modal').is(':visible')) {
-                renderDiffModalContent(finalIndex);
-                setTimeout(() => {
-                    if (runtimeState.currentDiffIndex === finalIndex && $('#bl-diff-modal').is(':visible')) renderDiffModalContent(finalIndex);
-                }, 180);
-            }
-            runtimeState.currentStreamingDiffIndex = -1;
+        const index = resolveLatestIndex(payload);
+        if (index >= 0) trackLatestDiffIndex(index);
+
+        if (runtimeState.diffFinalizePrimaryTimer) clearTimeout(runtimeState.diffFinalizePrimaryTimer);
+        if (runtimeState.diffFinalizeFallbackTimer) clearTimeout(runtimeState.diffFinalizeFallbackTimer);
+
+        runtimeState.diffFinalizePrimaryTimer = setTimeout(() => {
+            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
         }, 150);
+
+        runtimeState.diffFinalizeFallbackTimer = setTimeout(() => {
+            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+        }, 700);
     };
 
     let editCleanseTimer = null;
@@ -643,90 +583,35 @@ export function bindEvents() {
         eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
             if (editCleanseTimer) clearTimeout(editCleanseTimer);
             editCleanseTimer = setTimeout(() => {
-                const index = resolveEventIndex(payload);
-                if (index >= 0 && isDiffEligibleIndex(index)) {
-                    markDiffLoading(index, {
-                        state: 'pending',
-                        clearCache: true,
-                        resetGeneration: false,
-                        resetRender: false,
-                        resetBuild: false,
-                    });
-                    syncLoadingButtonState(index);
-                }
                 performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
             }, 100);
         });
     }
 
-    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, (...args) => {
+    if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => {
         runtimeState.isStreamingGeneration = true;
-        const index = resolveEventIndex(...args);
-        runtimeState.currentStreamingDiffIndex = index >= 0 ? index : -1;
-        if (index >= 0 && isDiffEligibleIndex(index)) {
-            markDiffLoading(index, {
-                state: 'streaming',
-                clearCache: true,
-                resetGeneration: true,
-                resetRender: true,
-                resetBuild: true,
-            });
-            syncLoadingButtonState(index);
-        }
     });
     if (event_types.STREAM_TOKEN_RECEIVED) {
-        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (...args) => {
+        eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
             runtimeState.isStreamingGeneration = true;
-            visualMaskLatestOnly(...args);
+            visualMaskLatestOnly(payload);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_RECEIVED) eventSource.on(event_types.MESSAGE_RECEIVED, delayedIncrementalCleanse);
-    if (event_types.CHARACTER_MESSAGE_RENDERED) {
-        eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, (...args) => {
-            const index = resolveEventIndex(...args);
-            if (index >= 0 && isDiffEligibleIndex(index)) syncLoadingButtonState(index);
-        });
-    }
-    if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, (...args) => {
-        const index = resolveEventIndex(...args);
-        if (index >= 0 && isDiffEligibleIndex(index)) {
-            markDiffLoading(index, {
-                state: 'pending',
-                clearCache: true,
-                resetGeneration: false,
-                resetRender: false,
-                resetBuild: false,
-            });
-            syncLoadingButtonState(index);
-        }
-        delayedIncrementalCleanse(...args);
-    });
+    if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
             clearDiffSnippetsCache();
-            runtimeState.diffStatusMap.clear();
-            runtimeState.diffRawSourceMap.clear();
-            for (const timer of runtimeState.diffBuildTimers.values()) clearTimeout(timer);
-            runtimeState.diffBuildTimers.clear();
-            for (const timer of runtimeState.diffSettleTimers.values()) clearTimeout(timer);
-            runtimeState.diffSettleTimers.clear();
-            runtimeState.diffSettleRevision.clear();
-            runtimeState.diffGenerationFinishedMap.clear();
-            runtimeState.diffRenderSettledMap.clear();
-            runtimeState.diffBuildReadyMap.clear();
-            for (const timer of runtimeState.diffCaptureTimers.values()) clearTimeout(timer);
-            runtimeState.diffCaptureTimers.clear();
-            runtimeState.diffCaptureSignatureMap.clear();
-            runtimeState.diffCaptureSeenAtMap.clear();
-            for (const timer of runtimeState.diffReadyTimers.values()) clearTimeout(timer);
-            runtimeState.diffReadyTimers.clear();
             runtimeState.currentDiffIndex = undefined;
-            runtimeState.currentStreamingDiffIndex = -1;
             $('#bl-diff-modal').hide();
             applyCharacterPresetBinding(true);
-            setTimeout(() => injectDiffButtons(), 120);
+            restoreLatestDiffStateForCurrentChat();
+            setTimeout(() => {
+                performGlobalCleanse();
+                injectDiffButtons();
+            }, 120);
         });
     }
 
