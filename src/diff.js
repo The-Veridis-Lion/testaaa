@@ -42,9 +42,29 @@ export function scheduleDiffButtonSync(indices) {
     });
 }
 
+export function retainOnlyLatestDiffState(latestIndex) {
+    latestIndex = Number(latestIndex);
+    const keepLatest = Number.isInteger(latestIndex) && latestIndex >= 0;
+
+    for (const [idx, timer] of runtimeState.diffJobTimers.entries()) {
+        if (!keepLatest || idx !== latestIndex) {
+            clearTimeout(timer);
+            runtimeState.diffJobTimers.delete(idx);
+        }
+    }
+
+    for (const cache of [runtimeState.diffSnippetsCache, runtimeState.diffStatusCache, runtimeState.diffSourceTextCache]) {
+        for (const key of Array.from(cache.keys())) {
+            if (!keepLatest || key !== latestIndex) cache.delete(key);
+        }
+    }
+}
+
 export function queueDiffComputation(index, rawText) {
     if (!Number.isInteger(index) || index < 0) return;
     if (typeof rawText !== 'string') rawText = '';
+
+    retainOnlyLatestDiffState(index);
 
     const prevTimer = runtimeState.diffJobTimers.get(index);
     if (prevTimer) clearTimeout(prevTimer);

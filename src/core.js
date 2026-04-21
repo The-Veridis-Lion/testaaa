@@ -1,7 +1,7 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, updateDiffSnippetCache, queueDiffComputation, scheduleDiffButtonSync, setDiffStatus } from './diff.js';
+import { buildDiffSnippetsFromText, clearDiffSnippetsCache, ensureMessageDiffButton, injectDiffButtons, queueDiffComputation, retainOnlyLatestDiffState, scheduleDiffButtonSync, setDiffStatus } from './diff.js';
 import { getMessageDomNode, purifyDOM, purifyTextSubtree } from './dom.js';
 
 /**
@@ -239,69 +239,36 @@ export function cleanseMessageDataAtIndex(index, options = {}) {
     if (!msg || typeof msg !== 'object') return options.deferDiff ? { changed: false, sourceText: '', hadOriginalText: false } : false;
     const deferDiff = options.deferDiff === true;
     let changed = false;
-    const allSnippets = [];
-    let mainFullDiff = "";
-    let sourceText = typeof msg.mes === 'string' ? msg.mes : '';
+    const sourceText = typeof msg.mes === 'string' ? msg.mes : '';
     const hadOriginalText = typeof msg.mes === 'string';
 
     if (typeof msg.mes === 'string') {
-        if (deferDiff) {
-            const cleanedText = applyReplacements(msg.mes);
-            if (cleanedText !== msg.mes) {
-                msg.mes = cleanedText;
-                changed = true;
-            }
-        } else {
-            const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
-            allSnippets.push(...mesSnippets);
-            mainFullDiff = fullDiff;
-            if (cleanedText !== msg.mes) {
-                msg.mes = cleanedText;
-                changed = true;
-            }
+        const cleanedText = applyReplacements(msg.mes);
+        if (cleanedText !== msg.mes) {
+            msg.mes = cleanedText;
+            changed = true;
         }
     }
 
     if (Array.isArray(msg.swipes)) {
         for (let i = 0; i < msg.swipes.length; i++) {
             if (typeof msg.swipes[i] === 'string') {
-                if (deferDiff) {
-                    const cleanedText = applyReplacements(msg.swipes[i]);
-                    if (cleanedText !== msg.swipes[i]) {
-                        msg.swipes[i] = cleanedText;
-                        changed = true;
-                    }
-                } else {
-                    const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
-                    allSnippets.push(...swipeSnippets);
-                    if (cleanedText !== msg.swipes[i]) {
-                        msg.swipes[i] = cleanedText;
-                        changed = true;
-                    }
+                const cleanedText = applyReplacements(msg.swipes[i]);
+                if (cleanedText !== msg.swipes[i]) {
+                    msg.swipes[i] = cleanedText;
+                    changed = true;
                 }
             } else if (msg.swipes[i] && typeof msg.swipes[i] === 'object' && typeof msg.swipes[i].mes === 'string') {
-                if (deferDiff) {
-                    const cleanedText = applyReplacements(msg.swipes[i].mes);
-                    if (cleanedText !== msg.swipes[i].mes) {
-                        msg.swipes[i].mes = cleanedText;
-                        changed = true;
-                    }
-                } else {
-                    const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
-                    allSnippets.push(...swipeObjSnippets);
-                    if (cleanedText !== msg.swipes[i].mes) {
-                        msg.swipes[i].mes = cleanedText;
-                        changed = true;
-                    }
+                const cleanedText = applyReplacements(msg.swipes[i].mes);
+                if (cleanedText !== msg.swipes[i].mes) {
+                    msg.swipes[i].mes = cleanedText;
+                    changed = true;
                 }
             }
         }
     }
 
     if (deferDiff) return { changed, sourceText, hadOriginalText };
-
-    const uniqueSnippets = Array.from(new Set(allSnippets));
-    updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
     return changed;
 }
 
@@ -331,10 +298,16 @@ export function performIncrementalCleanse(payload, options = {}) {
         return;
     }
 
-    setDiffStatus(index, 'pending');
-    scheduleDiffButtonSync([index]);
-    if (cleanseResult && cleanseResult.hadOriginalText) queueDiffComputation(index, cleanseResult.sourceText);
-    else setDiffStatus(index, 'ready');
+    const latestIndex = getLatestMessageIndex();
+    if (index === latestIndex && cleanseResult && cleanseResult.hadOriginalText) {
+        retainOnlyLatestDiffState(index);
+        setDiffStatus(index, 'pending');
+        scheduleDiffButtonSync([index]);
+        queueDiffComputation(index, cleanseResult.sourceText);
+    } else {
+        setDiffStatus(index, 'idle');
+        scheduleDiffButtonSync([index]);
+    }
 
     if (dataChanged) {
         try {
@@ -373,19 +346,16 @@ export function performGlobalCleanse() {
         injectDiffButtons();
         return;
     }
+
     let chatChanged = false;
     clearDiffSnippetsCache();
 
     if (chat && Array.isArray(chat)) {
-        chat.forEach((msg, index) => {
+        chat.forEach((msg) => {
             let msgChanged = false;
-            const allSnippets = [];
-            let mainFullDiff = "";
 
             if (typeof msg.mes === 'string') {
-                const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
-                allSnippets.push(...mesSnippets);
-                mainFullDiff = fullDiff;
+                const cleanedText = applyReplacements(msg.mes);
                 if (msg.mes !== cleanedText) {
                     msg.mes = cleanedText;
                     msgChanged = true;
@@ -395,15 +365,13 @@ export function performGlobalCleanse() {
             if (msg.swipes && Array.isArray(msg.swipes)) {
                 for (let i = 0; i < msg.swipes.length; i++) {
                     if (typeof msg.swipes[i] === 'string') {
-                        const { cleanedText, snippets: swipeSnippets } = buildDiffSnippetsFromText(msg.swipes[i]);
-                        allSnippets.push(...swipeSnippets);
+                        const cleanedText = applyReplacements(msg.swipes[i]);
                         if (msg.swipes[i] !== cleanedText) {
                             msg.swipes[i] = cleanedText;
                             msgChanged = true;
                         }
                     } else if (typeof msg.swipes[i] === 'object' && msg.swipes[i] !== null && typeof msg.swipes[i].mes === 'string') {
-                        const { cleanedText, snippets: swipeObjSnippets } = buildDiffSnippetsFromText(msg.swipes[i].mes);
-                        allSnippets.push(...swipeObjSnippets);
+                        const cleanedText = applyReplacements(msg.swipes[i].mes);
                         if (msg.swipes[i].mes !== cleanedText) {
                             msg.swipes[i].mes = cleanedText;
                             msgChanged = true;
@@ -412,16 +380,7 @@ export function performGlobalCleanse() {
                 }
             }
 
-            // 同样在这里加上去重逻辑
-            const uniqueSnippets = Array.from(new Set(allSnippets));
-            updateDiffSnippetCache(index, { snippets: uniqueSnippets, fullDiff: mainFullDiff });
-
-            if (msgChanged) {
-                chatChanged = true;
-                try {
-                    if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50);
-                } catch (e) { }
-            }
+            if (msgChanged) chatChanged = true;
         });
 
         const latestMsg = chat.length > 0 ? chat[chat.length - 1] : null;
@@ -443,6 +402,7 @@ export function performGlobalCleanse() {
             console.error("[Ultimate Purifier] 存盘失败", e);
         }
     }
+
     purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
 }
