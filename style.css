@@ -797,38 +797,6 @@
     color: var(--bl-text-primary);
 }
 
-.bl-diff-loading {
-    min-height: 180px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 12px !important;
-    color: var(--bl-text-secondary) !important;
-}
-
-.bl-diff-spinner {
-    width: 26px !important;
-    height: 26px !important;
-    border-radius: 999px !important;
-    border: 3px solid var(--bl-border-color) !important;
-    border-top-color: var(--bl-accent-color) !important;
-    animation: bl-diff-spin 0.9s linear infinite !important;
-}
-
-.bl-diff-loading-text,
-.bl-diff-empty {
-    font-size: 14px !important;
-    line-height: 1.6 !important;
-    color: var(--bl-text-secondary) !important;
-    text-align: center !important;
-}
-
-@keyframes bl-diff-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
 /* --- 原来的行内高亮片段（带边框和底色背景） --- */
 .bl-diff-snippet {
     display: block !important;

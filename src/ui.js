@@ -231,7 +231,7 @@ export function refreshCharacterBindingUI() {
     }
 }
 
-export function applyCharacterPresetBinding(force = false) {
+export function applyCharacterPresetBinding(force = false, options = {}) {
     const { extension_settings } = getAppContext();
     const context = getCurrentCharacterContext();
     if (!context.key) {
@@ -246,7 +246,7 @@ export function applyCharacterPresetBinding(force = false) {
 
     const presetName = getPresetForCharacter(context.key);
     if (presetName && presetName !== extension_settings[extensionName].activePreset) {
-        applyPresetByName(presetName, { skipRender: true });
+        applyPresetByName(presetName, { skipRender: true, skipCleanse: options.skipCleanse === true });
     }
     refreshCharacterBindingUI();
 }

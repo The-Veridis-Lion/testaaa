@@ -4,8 +4,7 @@ import { saveSettingsDebounced, eventSource, event_types, saveChat, chat_metadat
 import { defaultSettings, extensionName, initAppContext, runtimeState } from './src/state.js';
 import { bindEvents, initRealtimeInterceptor } from './src/events.js';
 import { setupUI, updateToolbarUI, applyCharacterPresetBinding, cleanupInvalidPresetBindings } from './src/ui.js';
-import { performGlobalCleanse } from './src/core.js';
-import { restoreLatestThreeSnapshot } from './src/diff.js';
+import { restoreDiffStateFromChatMetadata, injectDiffButtons } from './src/diff.js';
 
 initAppContext({
     extension_settings,
@@ -95,9 +94,9 @@ jQuery(() => {
         bindEvents();
         initRealtimeInterceptor();
         updateToolbarUI();
-        applyCharacterPresetBinding(true);
-        restoreLatestThreeSnapshot();
-        performGlobalCleanse();
+        applyCharacterPresetBinding(true, { skipCleanse: true });
+        restoreDiffStateFromChatMetadata();
+        setTimeout(() => injectDiffButtons(), 80);
     };
 
     if (typeof eventSource !== 'undefined' && event_types.APP_READY) {

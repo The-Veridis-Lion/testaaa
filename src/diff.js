@@ -1,204 +1,6 @@
-import { extensionName, getAppContext, runtimeState } from './state.js';
-import { getCurrentCharacterContext } from './utils.js';
-import { applyReplacements } from './core.js';
-
-function emitDiffEvent(eventName, detail = {}) {
-    try {
-        document.dispatchEvent(new CustomEvent(eventName, { detail }));
-    } catch (e) { }
-}
-
-function hasRenderableDiff(cacheData) {
-    return !!(
-        cacheData
-        && ((Array.isArray(cacheData.snippets) && cacheData.snippets.length > 0)
-            || String(cacheData.fullDiff || '') !== '')
-    );
-}
-
-function getChatRoot() {
-    return document.querySelector('#chat');
-}
-
-function getMessageNodes() {
-    const chat = getChatRoot();
-    if (!chat) return [];
-    return Array.from(chat.querySelectorAll('.mes')).filter((el) => !el.closest('.mes[is_hidden="true"]'));
-}
-
-function getMessageIndexFromNode(node) {
-    if (!node) return -1;
-
-    const direct =
-        node.getAttribute?.('mesid')
-        ?? node.dataset?.mesid
-        ?? node.dataset?.messageId
-        ?? node.dataset?.messageid
-        ?? node.getAttribute?.('data-mesid')
-        ?? node.getAttribute?.('data-message-id');
-
-    if (direct != null && direct !== '' && !Number.isNaN(Number(direct))) {
-        return Number(direct);
-    }
-
-    const nodes = getMessageNodes();
-    return nodes.indexOf(node);
-}
-
-function getMessageNodeByIndex(index) {
-    const nodes = getMessageNodes();
-    if (index < 0 || index >= nodes.length) return null;
-    return nodes[index] || null;
-}
-
-function getActionBar(node) {
-    if (!node) return null;
-    return (
-        node.querySelector('.mes_buttons')
-        || node.querySelector('.mes_block .flex-container')
-        || node.querySelector('.mes_block')
-        || node
-    );
-}
-
-function makeDiffButton(index) {
-    const btn = document.createElement('div');
-    btn.className = 'mes_button bl-diff-btn bl-diff-btn-top fa-solid fa-clock-rotate-left interactable';
-    btn.title = '溯源净化前文';
-    btn.setAttribute('data-index', String(index));
-    btn.setAttribute('tabindex', '0');
-    btn.setAttribute('role', 'button');
-    return btn;
-}
-
-function getLatestThreeStorageKey() {
-    try {
-        const { chat_metadata } = getAppContext();
-        const context = getCurrentCharacterContext();
-        const charKey = String(context?.key || 'unknown').trim() || 'unknown';
-        const chatKey = String(
-            chat_metadata?.main_chat
-            || chat_metadata?.chat_id
-            || chat_metadata?.file_name
-            || chat_metadata?.create_date
-            || window.location?.hash
-            || 'default'
-        ).trim() || 'default';
-        return `th_keyword_filter_latest3::${charKey}::${chatKey}`;
-    } catch (e) {
-        return '';
-    }
-}
-
-function persistLatestThreeSnapshot() {
-    try {
-        const key = getLatestThreeStorageKey();
-        if (!key) return;
-        const latest = Array.isArray(runtimeState.latestDiffMessageIndices) ? runtimeState.latestDiffMessageIndices.slice(-3) : [];
-        const ready = {};
-        const cache = {};
-        latest.forEach((index) => {
-            ready[index] = runtimeState.diffReadyState.get(index) === true;
-            const cached = runtimeState.diffSnippetsCache.get(index);
-            if (cached && typeof cached === 'object') {
-                cache[index] = {
-                    snippets: Array.isArray(cached.snippets) ? cached.snippets : [],
-                    fullDiff: String(cached.fullDiff || ''),
-                };
-            }
-        });
-        localStorage.setItem(key, JSON.stringify({ latestThree: latest, ready, cache }));
-    } catch (e) { }
-}
-
-function pruneStateToLatestThree() {
-    const latest = new Set(runtimeState.latestDiffMessageIndices || []);
-    Array.from(runtimeState.diffSnippetsCache.keys()).forEach((index) => {
-        if (!latest.has(index)) runtimeState.diffSnippetsCache.delete(index);
-    });
-    Array.from(runtimeState.diffReadyState.keys()).forEach((index) => {
-        if (!latest.has(index)) runtimeState.diffReadyState.delete(index);
-    });
-}
-
-function setLatestThreeIndices(indices) {
-    const normalized = Array.from(new Set((indices || []).filter((i) => Number.isInteger(i) && i >= 0))).sort((a, b) => a - b).slice(-3);
-    runtimeState.latestDiffMessageIndices = normalized;
-    pruneStateToLatestThree();
-    persistLatestThreeSnapshot();
-}
-
-function getLatestThreeFromNewestIndex(newestIndex) {
-    if (!Number.isInteger(newestIndex) || newestIndex < 0) return [];
-    const start = Math.max(0, newestIndex - 2);
-    const list = [];
-    for (let i = start; i <= newestIndex; i++) list.push(i);
-    return list;
-}
-
-export function syncLatestThreeButtonsByNewestIndex(newestIndex) {
-    const nodes = getMessageNodes();
-    if (!nodes.length) return;
-
-    const latest = getLatestThreeFromNewestIndex(newestIndex);
-    setLatestThreeIndices(latest);
-    const latestSet = new Set(latest);
-
-    for (let i = 0; i < nodes.length; i++) {
-        const node = nodes[i];
-        if (latestSet.has(i)) {
-            ensureMessageDiffButton(i, node);
-        } else {
-            removeDiffButtonForIndex(i, node);
-        }
-    }
-}
-
-export function syncLatestThreeButtonsByMessageNode(messageNode) {
-    const index = getMessageIndexFromNode(messageNode);
-    if (index < 0) return;
-    syncLatestThreeButtonsByNewestIndex(index);
-}
-
-export function syncLatestThreeButtonsFromDOM() {
-    const nodes = getMessageNodes();
-    if (!nodes.length) {
-        setLatestThreeIndices([]);
-        return;
-    }
-    syncLatestThreeButtonsByNewestIndex(nodes.length - 1);
-}
-
-export function restoreLatestThreeSnapshot() {
-    try {
-        const key = getLatestThreeStorageKey();
-        if (!key) return;
-        const raw = localStorage.getItem(key);
-        if (!raw) return;
-        const data = JSON.parse(raw);
-        const latestThree = Array.isArray(data?.latestThree) ? data.latestThree.filter((i) => Number.isInteger(i) && i >= 0).slice(-3) : [];
-        runtimeState.latestDiffMessageIndices = latestThree;
-        runtimeState.diffReadyState.clear();
-        runtimeState.diffSnippetsCache.clear();
-        latestThree.forEach((index) => {
-            runtimeState.diffReadyState.set(index, data?.ready?.[index] === true);
-            const cached = data?.cache?.[index];
-            if (cached && typeof cached === 'object') {
-                runtimeState.diffSnippetsCache.set(index, {
-                    snippets: Array.isArray(cached.snippets) ? cached.snippets : [],
-                    fullDiff: String(cached.fullDiff || ''),
-                });
-            }
-        });
-        emitDiffEvent('bl-diff-cache-updated', { index: -1 });
-    } catch (e) { }
-}
-
-function removeDiffButtonForIndex(index, node = null) {
-    const targetNode = node || getMessageNodeByIndex(index);
-    if (!targetNode) return;
-    targetNode.querySelectorAll(`.bl-diff-btn[data-index="${index}"]`).forEach((el) => el.remove());
-}
+import { diffMetadataKey, extensionName, getAppContext, maxTrackedDiffMessages, runtimeState } from './state.js';
+import { applyReplacements, queueIncrementalChatSave } from './core.js';
+import { getMessageDomNode } from './dom.js';
 
 /**
  * 将原始文本进行 HTML 转义，避免差异片段注入标签。
@@ -212,6 +14,233 @@ export function escapeHtml(value = '') {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+}
+
+function hashString(value = '') {
+    let hash = 2166136261;
+    for (let i = 0; i < value.length; i++) {
+        hash ^= value.charCodeAt(i);
+        hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+    }
+    return `h${(hash >>> 0).toString(16)}`;
+}
+
+export function isAssistantMessage(msg) {
+    return !!(msg && typeof msg === 'object' && msg.is_user !== true && msg.is_system !== true);
+}
+
+export function computeMessageSignature(msg) {
+    if (!msg || typeof msg !== 'object') return '';
+    const base = typeof msg.mes === 'string' ? msg.mes : '';
+    const name = typeof msg.name === 'string' ? msg.name : '';
+    const swipeInfo = msg.swipe_id ?? msg.swipeId ?? msg.swipes?.length ?? '';
+    return hashString(`${name}\n${swipeInfo}\n${base}`);
+}
+
+export function getLatestAssistantMessageIndices(chat, limit = maxTrackedDiffMessages) {
+    if (!Array.isArray(chat) || limit <= 0) return [];
+    const picked = [];
+    for (let i = chat.length - 1; i >= 0 && picked.length < limit; i--) {
+        if (isAssistantMessage(chat[i])) picked.push(i);
+    }
+    return picked.reverse();
+}
+
+function sanitizeCacheEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    return {
+        snippets: Array.isArray(entry.snippets) ? entry.snippets.filter(v => typeof v === 'string') : [],
+        fullDiff: typeof entry.fullDiff === 'string' ? entry.fullDiff : '',
+        signature: typeof entry.signature === 'string' ? entry.signature : '',
+    };
+}
+
+function sanitizeStateEntry(entry) {
+    if (!entry || typeof entry !== 'object') return null;
+    const status = entry.status === 'pending' ? 'pending' : 'ready';
+    return {
+        status,
+        signature: typeof entry.signature === 'string' ? entry.signature : '',
+        updatedAt: Number.isFinite(Number(entry.updatedAt)) ? Number(entry.updatedAt) : Date.now(),
+    };
+}
+
+function notifyDiffStateChanged(reason = 'state', index = runtimeState.currentDiffIndex) {
+    if (typeof runtimeState.diffModalRefresh === 'function') {
+        try {
+            runtimeState.diffModalRefresh(index, { reason, changedIndex: index });
+        } catch (err) {
+            console.warn('[Ultimate Purifier] 刷新对比弹窗失败', err);
+        }
+    }
+}
+
+function persistTrackedDiffState() {
+    const { chat_metadata } = getAppContext();
+    if (!chat_metadata || typeof chat_metadata !== 'object') return;
+
+    const order = runtimeState.trackedDiffMessageOrder
+        .filter(index => Number.isInteger(index) && index >= 0)
+        .slice(-maxTrackedDiffMessages);
+
+    if (order.length === 0) {
+        delete chat_metadata[diffMetadataKey];
+        queueIncrementalChatSave();
+        return;
+    }
+
+    const entries = {};
+    for (const index of order) {
+        const state = sanitizeStateEntry(runtimeState.diffMessageStates.get(index));
+        if (!state) continue;
+        const cache = sanitizeCacheEntry(runtimeState.diffSnippetsCache.get(index)) || { snippets: [], fullDiff: '', signature: state.signature || '' };
+        entries[String(index)] = {
+            status: state.status,
+            signature: state.signature || cache.signature || '',
+            updatedAt: state.updatedAt,
+            snippets: cache.snippets,
+            fullDiff: cache.fullDiff,
+        };
+    }
+
+    chat_metadata[diffMetadataKey] = { version: 1, order, entries };
+    queueIncrementalChatSave();
+}
+
+export function resetDiffRuntimeState() {
+    runtimeState.diffSnippetsCache.clear();
+    runtimeState.diffMessageStates.clear();
+    runtimeState.trackedDiffMessageOrder = [];
+    runtimeState.currentDiffIndex = undefined;
+}
+
+export function restoreDiffStateFromChatMetadata() {
+    const { chat, chat_metadata } = getAppContext();
+    resetDiffRuntimeState();
+
+    const saved = chat_metadata?.[diffMetadataKey];
+    if (!saved || typeof saved !== 'object') return;
+
+    const validLatest = new Set(getLatestAssistantMessageIndices(chat));
+    const rawOrder = Array.isArray(saved.order) ? saved.order : [];
+    const restoredOrder = rawOrder
+        .map(v => Number(v))
+        .filter(index => Number.isInteger(index) && index >= 0 && validLatest.has(index))
+        .slice(-maxTrackedDiffMessages);
+
+    for (const index of restoredOrder) {
+        const entry = sanitizeStateEntry(saved.entries?.[String(index)] || saved.entries?.[index]);
+        if (!entry) continue;
+        runtimeState.diffMessageStates.set(index, entry);
+        runtimeState.diffSnippetsCache.set(index, sanitizeCacheEntry(saved.entries?.[String(index)] || {}) || { snippets: [], fullDiff: '', signature: entry.signature || '' });
+    }
+
+    runtimeState.trackedDiffMessageOrder = restoredOrder;
+}
+
+function removeTrackedIndex(index) {
+    runtimeState.trackedDiffMessageOrder = runtimeState.trackedDiffMessageOrder.filter(v => v !== index);
+}
+
+function pushTrackedIndex(index) {
+    removeTrackedIndex(index);
+    runtimeState.trackedDiffMessageOrder.push(index);
+    while (runtimeState.trackedDiffMessageOrder.length > maxTrackedDiffMessages) {
+        const evicted = runtimeState.trackedDiffMessageOrder.shift();
+        runtimeState.diffMessageStates.delete(evicted);
+        runtimeState.diffSnippetsCache.delete(evicted);
+        const oldNode = getMessageDomNode(evicted);
+        if (oldNode) ensureMessageDiffButton(evicted, oldNode);
+    }
+}
+
+export function syncTrackedIndicesToLatestAssistantMessages() {
+    const { chat } = getAppContext();
+    const latestIndices = getLatestAssistantMessageIndices(chat);
+    const latestSet = new Set(latestIndices);
+
+    for (const index of [...runtimeState.trackedDiffMessageOrder]) {
+        if (!latestSet.has(index)) {
+            runtimeState.diffMessageStates.delete(index);
+            runtimeState.diffSnippetsCache.delete(index);
+            removeTrackedIndex(index);
+        }
+    }
+
+    runtimeState.trackedDiffMessageOrder = latestIndices.filter(index => runtimeState.diffMessageStates.has(index) || runtimeState.diffSnippetsCache.has(index));
+}
+
+export function isTrackedDiffMessage(index) {
+    return runtimeState.trackedDiffMessageOrder.includes(index);
+}
+
+export function markDiffComparisonPending(index, signature = '') {
+    const { chat } = getAppContext();
+    if (!Number.isInteger(index) || index < 0 || !Array.isArray(chat) || !isAssistantMessage(chat[index])) return false;
+
+    const existingState = runtimeState.diffMessageStates.get(index);
+    const existingCache = runtimeState.diffSnippetsCache.get(index);
+    const normalizedSignature = signature || computeMessageSignature(chat[index]);
+    const shouldReplace = !existingState || existingState.signature !== normalizedSignature || !isTrackedDiffMessage(index);
+
+    if (!shouldReplace) return false;
+
+    pushTrackedIndex(index);
+    runtimeState.diffSnippetsCache.delete(index);
+    runtimeState.diffMessageStates.set(index, {
+        status: 'pending',
+        signature: normalizedSignature,
+        updatedAt: Date.now(),
+    });
+
+    if (existingCache || !existingState || existingState.status !== 'pending') {
+        persistTrackedDiffState();
+        injectDiffButtons([index]);
+        notifyDiffStateChanged('pending', index);
+    }
+    return true;
+}
+
+export function writeReadyDiffCache(index, signature, cacheData = {}) {
+    if (!Number.isInteger(index) || index < 0) return false;
+
+    pushTrackedIndex(index);
+    runtimeState.diffSnippetsCache.set(index, {
+        snippets: Array.isArray(cacheData.snippets) ? cacheData.snippets : [],
+        fullDiff: typeof cacheData.fullDiff === 'string' ? cacheData.fullDiff : '',
+        signature: signature || '',
+    });
+    runtimeState.diffMessageStates.set(index, {
+        status: 'ready',
+        signature: signature || '',
+        updatedAt: Date.now(),
+    });
+
+    persistTrackedDiffState();
+    injectDiffButtons([index]);
+    notifyDiffStateChanged('cache-written', index);
+    return true;
+}
+
+export function clearTrackedDiffEntry(index, options = {}) {
+    const hadState = runtimeState.diffMessageStates.delete(index);
+    const hadCache = runtimeState.diffSnippetsCache.delete(index);
+    removeTrackedIndex(index);
+
+    if (hadState || hadCache) {
+        if (options.persist !== false) persistTrackedDiffState();
+        injectDiffButtons([index]);
+        notifyDiffStateChanged('cleared', index);
+    }
+}
+
+export function getDiffStateForMessage(index) {
+    const state = runtimeState.diffMessageStates.get(index);
+    if (!state || typeof state !== 'object') return { status: 'pending', signature: '' };
+    return {
+        status: state.status === 'ready' ? 'ready' : 'pending',
+        signature: typeof state.signature === 'string' ? state.signature : '',
+    };
 }
 
 /**
@@ -325,40 +354,23 @@ export function buildDiffSnippetsFromText(rawText) {
     };
 }
 
-export function setDiffReadyState(index, ready) {
-    if (!Number.isInteger(index) || index < 0) return;
-    runtimeState.diffReadyState.set(index, ready === true);
-    emitDiffEvent('bl-diff-ready-state', { index, ready: ready === true });
-    persistLatestThreeSnapshot();
-}
-
-export function isDiffReady(index) {
-    return runtimeState.diffReadyState.get(index) === true;
-}
-
 /**
  * 更新指定消息的差异缓存。
  * @param {number} index 消息索引。
- * @param {{snippets?: string[], fullDiff?: string}} cacheData 差异缓存数据。
+ * @param {{snippets?: string[], fullDiff?: string, signature?: string}} cacheData 差异缓存数据。
  * @returns {void}
  */
 export function updateDiffSnippetCache(index, cacheData) {
     if (!Number.isInteger(index) || index < 0) return;
-    if (!cacheData || !hasRenderableDiff(cacheData)) {
-        runtimeState.diffSnippetsCache.delete(index);
-    } else {
-        runtimeState.diffSnippetsCache.set(index, {
-            snippets: Array.isArray(cacheData.snippets) ? cacheData.snippets : [],
-            fullDiff: String(cacheData.fullDiff || ''),
-        });
-    }
-    emitDiffEvent('bl-diff-cache-updated', { index });
-    persistLatestThreeSnapshot();
+    runtimeState.diffSnippetsCache.set(index, {
+        snippets: Array.isArray(cacheData?.snippets) ? cacheData.snippets : [],
+        fullDiff: typeof cacheData?.fullDiff === 'string' ? cacheData.fullDiff : '',
+        signature: typeof cacheData?.signature === 'string' ? cacheData.signature : '',
+    });
 }
 
 /**
  * 确保消息节点拥有正确的“净化前文溯源”按钮状态。
- * 这里只负责最新三条常驻按钮，不再以是否已有 diff cache 为前置条件。
  * @param {number} index 消息索引。
  * @param {Element} messageNode 消息 DOM 节点。
  * @returns {void}
@@ -368,50 +380,98 @@ export function ensureMessageDiffButton(index, messageNode) {
 
     const { extension_settings } = getAppContext();
     const isEnabled = extension_settings[extensionName]?.enableVisualDiff !== false;
-    const latestSet = new Set(runtimeState.latestDiffMessageIndices || []);
-    const shouldShow = isEnabled && latestSet.has(index);
+    const isTopInExtra = extension_settings[extensionName]?.diffButtonInExtraMenu === true;
+    const shouldShow = isEnabled && isTrackedDiffMessage(index);
 
-    const buttonArea = getActionBar(messageNode);
-    if (!buttonArea) return;
+    const buttonArea = messageNode.querySelector('.mes_buttons');
+    if (buttonArea) {
+        let existing = buttonArea.querySelector('.bl-diff-btn-top');
+        const extraMenu = buttonArea.querySelector('.extraMesButtons');
+        const targetContainer = (isTopInExtra && extraMenu) ? extraMenu : buttonArea;
 
-    let existing = messageNode.querySelector(`.bl-diff-btn[data-index="${index}"]`);
+        if (existing && existing.parentElement !== targetContainer) {
+            existing.remove();
+            existing = null;
+        }
 
-    if (!shouldShow) {
-        if (existing) existing.remove();
-        return;
+        if (!shouldShow) {
+            if (existing) existing.remove();
+        } else if (!existing) {
+            const button = document.createElement('div');
+            button.className = 'mes_button bl-diff-btn bl-diff-btn-top fa-solid fa-clock-rotate-left interactable';
+            button.title = '溯源净化前文';
+            button.setAttribute('data-index', String(index));
+            button.setAttribute('tabindex', '0');
+            button.setAttribute('role', 'button');
+
+            if (isTopInExtra && extraMenu) {
+                extraMenu.appendChild(button);
+            } else {
+                const editBtn = buttonArea.querySelector('.mes_edit');
+                if (editBtn) buttonArea.insertBefore(button, editBtn);
+                else buttonArea.appendChild(button);
+            }
+        } else {
+            existing.setAttribute('data-index', String(index));
+        }
     }
 
-    if (!existing) {
-        const button = makeDiffButton(index);
-        const editBtn = buttonArea.querySelector('.mes_edit');
-        if (editBtn) buttonArea.insertBefore(button, editBtn);
-        else buttonArea.appendChild(button);
-        existing = button;
-    }
+    const swipeBlock = messageNode.querySelector('.swipeRightBlock');
+    if (swipeBlock) {
+        const parent = swipeBlock.parentNode;
+        const existingBottom = parent?.querySelector('.bl-diff-btn-bottom');
 
-    existing.setAttribute('data-index', String(index));
+        if (!shouldShow) {
+            if (existingBottom) existingBottom.remove();
+        } else if (!existingBottom && parent) {
+            const btnBottom = document.createElement('div');
+            btnBottom.className = 'bl-diff-btn bl-diff-btn-bottom fa-solid fa-clock-rotate-left interactable';
+            btnBottom.title = '溯源净化前文 (尾部触发)';
+            btnBottom.setAttribute('data-index', String(index));
+            btnBottom.setAttribute('tabindex', '0');
+            btnBottom.setAttribute('role', 'button');
+            parent.insertBefore(btnBottom, swipeBlock);
+        } else if (existingBottom) {
+            existingBottom.setAttribute('data-index', String(index));
+        }
+    }
+}
+
+function cleanupStrayDiffButtons(trackedSet) {
+    document.querySelectorAll('.bl-diff-btn[data-index]').forEach((button) => {
+        const index = Number(button.getAttribute('data-index'));
+        if (!trackedSet.has(index)) button.remove();
+    });
 }
 
 /**
- * 扫描当前聊天区域并按最新三条消息注入差异按钮。
+ * 仅对最新 3 条可追踪消息定向注入差异按钮。
+ * @param {number[]} [targetIndices=[]] 可选的定向消息索引。
  * @returns {void}
  */
-export function injectDiffButtons() {
-    syncLatestThreeButtonsFromDOM();
+export function injectDiffButtons(targetIndices = []) {
+    const tracked = runtimeState.trackedDiffMessageOrder.slice(-maxTrackedDiffMessages);
+    const trackedSet = new Set(tracked);
+    const indices = Array.isArray(targetIndices) && targetIndices.length > 0
+        ? [...new Set(targetIndices.filter(index => trackedSet.has(index)))]
+        : tracked;
+
+    cleanupStrayDiffButtons(trackedSet);
+    for (const index of indices) {
+        const node = getMessageDomNode(index);
+        if (node) ensureMessageDiffButton(index, node);
+    }
 }
 
 /**
  * 获取指定消息的差异缓存数据。
  * @param {number} index 消息索引。
- * @returns {{snippets: string[], fullDiff: string}} 对应消息的差异片段与全文差异。
+ * @returns {{snippets: string[], fullDiff: string, signature: string}} 对应消息的差异片段与全文差异。
  */
 export function getDiffSnippetsForMessage(index) {
-    const cached = runtimeState.diffSnippetsCache.get(index);
-    if (!cached || typeof cached !== 'object') return { snippets: [], fullDiff: '' };
-    return {
-        snippets: Array.isArray(cached.snippets) ? cached.snippets : [],
-        fullDiff: String(cached.fullDiff || ''),
-    };
+    const cached = sanitizeCacheEntry(runtimeState.diffSnippetsCache.get(index));
+    if (!cached) return { snippets: [], fullDiff: '', signature: '' };
+    return cached;
 }
 
 /**
@@ -419,7 +479,7 @@ export function getDiffSnippetsForMessage(index) {
  * @returns {void}
  */
 export function clearDiffSnippetsCache() {
-    runtimeState.diffSnippetsCache.clear();
-    runtimeState.diffReadyState.clear();
-    emitDiffEvent('bl-diff-cache-updated', { index: -1 });
+    resetDiffRuntimeState();
+    const { chat_metadata } = getAppContext();
+    if (chat_metadata && typeof chat_metadata === 'object') delete chat_metadata[diffMetadataKey];
 }
