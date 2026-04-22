@@ -21,6 +21,12 @@ export const VeridisProfiler = {
         this.stats[label].calls += 1;
         if (cost > this.stats[label].max) this.stats[label].max = cost;
         this.stats[label].startTime = 0;
+
+        // 👇 新增：把历史卡顿记录打印到控制台
+        // 如果在你的电脑上单次执行超过 2 毫秒，就记入历史档案！
+        if (cost > 2.0) {
+            console.warn(`[Veridis 历史探针] 🚨 ${label} 出现耗时峰值: ${cost.toFixed(2)} ms (发生在第 ${this.stats[label].calls} 次调用)`);
+        }
         
         // 节流更新 UI（每 1.5 秒刷新一次面板，绝不卡顿）
         if (performance.now() - this.lastUIUpdate > 1500) {
