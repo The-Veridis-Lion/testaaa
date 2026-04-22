@@ -187,6 +187,54 @@ export function initRealtimeInterceptor() {
 }
 
 export function bindEvents() {
+    // 拖拽
+    let isDragging = false;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+
+    $(document).off('mousedown', '#bl-purifier-popup .bl-header-compact').on('mousedown', '#bl-purifier-popup .bl-header-compact', function(e) {
+        if (window.innerWidth <= 600) return; // 手机端禁用拖拽，防止误触
+        if ($(e.target).closest('button, input, select').length) return; // 点击交互按钮时不触发拖拽
+
+        isDragging = true;
+        const popup = document.getElementById('bl-purifier-popup');
+        const rect = popup.getBoundingClientRect();
+        
+        // 首次拖拽时，移除原本的 CSS transform 居中，转换为纯 left/top 定位，防止拖拽瞬间跳跃
+        if (window.getComputedStyle(popup).transform !== 'none') {
+            popup.style.setProperty('transform', 'none', 'important');
+            popup.style.setProperty('left', rect.left + 'px', 'important');
+            popup.style.setProperty('top', rect.top + 'px', 'important');
+        }
+        
+        dragOffsetX = e.clientX - rect.left;
+        dragOffsetY = e.clientY - rect.top;
+        
+        $('body').css('user-select', 'none'); // 防止拖拽时意外选中文本
+    });
+
+    $(document).off('mousemove.blDrag').on('mousemove.blDrag', function(e) {
+        if (!isDragging) return;
+        const popup = document.getElementById('bl-purifier-popup');
+        
+        let newX = e.clientX - dragOffsetX;
+        let newY = e.clientY - dragOffsetY;
+        
+        // 边缘保护：防止弹窗被彻底拖出屏幕外
+        newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
+        newY = Math.max(0, Math.min(newY, window.innerHeight - 50));
+
+        popup.style.setProperty('left', newX + 'px', 'important');
+        popup.style.setProperty('top', newY + 'px', 'important');
+    });
+
+    $(document).off('mouseup.blDrag').on('mouseup.blDrag', function() {
+        if (isDragging) {
+            isDragging = false;
+            $('body').css('user-select', '');
+        }
+    });
+    
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
 
     $(document).off('click', '#bl-wand-btn').on('click', '#bl-wand-btn', () => {
