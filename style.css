@@ -1073,3 +1073,15 @@
     .bl-edit-modal-title { font-size: 15px !important; }
     .bl-rule-name { font-size: 15px !important; }
 }
+
+/* --- 弹窗拖拽手势 --- */
+#bl-purifier-popup .bl-header-compact {
+    cursor: grab !important;
+}
+#bl-purifier-popup .bl-header-compact:active {
+    cursor: grabbing !important;
+}
+#bl-purifier-popup .bl-header-actions button,
+#bl-purifier-popup .bl-header-actions select {
+    cursor: pointer !important;
+}
