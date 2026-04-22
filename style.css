@@ -55,6 +55,7 @@
     margin-bottom: 12px !important;
     padding-bottom: 12px !important;
     border-bottom: 1px solid var(--bl-border-color) !important;
+    cursor: move !important;
 }
 
 .bl-header-actions {
@@ -686,7 +687,7 @@
         width: min(420px, 92vw) !important;
     }
     /* 缩小标题区域 */
-    .bl-header-compact { margin-bottom: 8px !important; padding-bottom: 8px !important; }
+    .bl-header-compact { margin-bottom: 8px !important; padding-bottom: 8px !important; cursor: default !important; }
     .bl-title { font-size: 17px !important; }
     .bl-close-icon { font-size: 24px !important; }
     
@@ -901,6 +902,9 @@
     #bl-rule-edit-modal {
         align-items: center !important; /* 修复方向反转：保证水平居中 */
         justify-content: flex-start !important; /* 修复方向反转：保证靠上对齐 */
+        background: rgba(0, 0, 0, 0.52) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
     }
 
     /* 2. 控制弹窗本体：缩短高度、完美居中 */

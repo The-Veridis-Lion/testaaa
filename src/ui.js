@@ -525,6 +525,13 @@ export function openEditModal(index = -1) {
         centerY = popupRect.top + popupRect.height / 2;
     }
 
+    if (window.innerWidth <= 600) {
+        centerY -= 10;
+    }
+
+    const halfCardHeight = Math.max(140, Math.min(cardEl.offsetHeight || 0, window.innerHeight * 0.4));
+    centerY = Math.max(halfCardHeight + 8, Math.min(centerY, window.innerHeight - halfCardHeight - 8));
+
     cardEl.style.setProperty('position', 'absolute', 'important');
     cardEl.style.setProperty('left', centerX + 'px', 'important');
     cardEl.style.setProperty('top', centerY + 'px', 'important');

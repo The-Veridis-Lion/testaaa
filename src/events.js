@@ -205,6 +205,7 @@ export function bindEvents() {
             popup.style.setProperty('transform', 'none', 'important');
             popup.style.setProperty('left', rect.left + 'px', 'important');
             popup.style.setProperty('top', rect.top + 'px', 'important');
+            popup.style.setProperty('right', 'auto', 'important');
         }
         
         dragOffsetX = e.clientX - rect.left;
@@ -226,6 +227,7 @@ export function bindEvents() {
 
         popup.style.setProperty('left', newX + 'px', 'important');
         popup.style.setProperty('top', newY + 'px', 'important');
+        popup.style.setProperty('right', 'auto', 'important');
     });
 
     $(document).off('mouseup.blDrag').on('mouseup.blDrag', function() {
