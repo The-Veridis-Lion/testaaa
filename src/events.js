@@ -187,55 +187,98 @@ export function initRealtimeInterceptor() {
 }
 
 export function bindEvents() {
-    // 拖拽
-    let isDragging = false;
+    let activeDragElement = null;
     let dragOffsetX = 0;
     let dragOffsetY = 0;
 
-    $(document).off('mousedown', '#bl-purifier-popup .bl-header-compact').on('mousedown', '#bl-purifier-popup .bl-header-compact', function(e) {
-        if (window.innerWidth <= 600) return; // 手机端禁用拖拽，防止误触
-        if ($(e.target).closest('button, input, select').length) return; // 点击交互按钮时不触发拖拽
-
-        isDragging = true;
-        const popup = document.getElementById('bl-purifier-popup');
-        const rect = popup.getBoundingClientRect();
+    function startDrag(e, elementToMove) {
+        if ($(e.target).closest('button, input, select, textarea').length) return;
+        activeDragElement = elementToMove;
+        const rect = activeDragElement.getBoundingClientRect();
         
-        // 首次拖拽时，移除原本的 CSS transform 居中，转换为纯 left/top 定位，防止拖拽瞬间跳跃
-        if (window.getComputedStyle(popup).transform !== 'none') {
-            popup.style.setProperty('transform', 'none', 'important');
-            popup.style.setProperty('left', rect.left + 'px', 'important');
-            popup.style.setProperty('top', rect.top + 'px', 'important');
-            popup.style.setProperty('right', 'auto', 'important');
+        // 剥离原有的 CSS 居中限制，改为绝对定位以释放移动自由度
+        if (window.getComputedStyle(activeDragElement).transform !== 'none' || activeDragElement.style.margin !== '0px') {
+            activeDragElement.style.setProperty('transform', 'none', 'important');
+            activeDragElement.style.setProperty('left', rect.left + 'px', 'important');
+            activeDragElement.style.setProperty('top', rect.top + 'px', 'important');
+            activeDragElement.style.setProperty('right', 'auto', 'important');
+            activeDragElement.style.setProperty('bottom', 'auto', 'important');
+            activeDragElement.style.setProperty('margin', '0', 'important');
         }
         
-        dragOffsetX = e.clientX - rect.left;
-        dragOffsetY = e.clientY - rect.top;
+        // 兼容触屏与鼠标位置获取
+        let clientX, clientY;
+        if (e.type.startsWith('touch')) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
         
-        $('body').css('user-select', 'none'); // 防止拖拽时意外选中文本
+        dragOffsetX = clientX - rect.left;
+        dragOffsetY = clientY - rect.top;
+        $('body').css('user-select', 'none'); // 防止误选文本
+    }
+
+    // 1. 电脑端：允许抓取主面板顶部进行拖拽（手机端已被拦截）
+    $(document).off('mousedown touchstart', '#bl-purifier-popup .bl-header-compact').on('mousedown touchstart', '#bl-purifier-popup .bl-header-compact', function(e) {
+        if (window.innerWidth <= 600) return; // 【拦截规则】手机端点击原本的标题栏不生效！必须拉把手。
+        startDrag(e, document.getElementById('bl-purifier-popup'));
     });
 
-    $(document).off('mousemove.blDrag').on('mousemove.blDrag', function(e) {
-        if (!isDragging) return;
-        const popup = document.getElementById('bl-purifier-popup');
+    // 2. 手机端/通用：绑定统一的“拖拽把手”，抓取最近的卡片本体
+    $(document).off('mousedown touchstart', '.bl-mobile-drag-handle').on('mousedown touchstart', '.bl-mobile-drag-handle', function(e) {
+        // 智能定位：看这个把手位于哪个弹窗内，就移动哪个
+        const popup = $(this).closest('#bl-purifier-popup')[0];
+        const editCard = $(this).closest('.bl-edit-modal-card')[0];
+        const diffCard = $(this).closest('.bl-diff-modal-card')[0];
+        const transferCard = $(this).closest('.bl-transfer-content')[0];
         
-        let newX = e.clientX - dragOffsetX;
-        let newY = e.clientY - dragOffsetY;
+        const targetEl = popup || editCard || diffCard || transferCard;
+        if (targetEl) {
+            startDrag(e, targetEl);
+            e.stopPropagation(); // 防止事件穿透
+        }
+    });
+
+    // 3. 全局移动处理
+    $(document).off('mousemove.blDrag touchmove.blDrag').on('mousemove.blDrag touchmove.blDrag', function(e) {
+        if (!activeDragElement) return;
         
-        // 边缘保护：防止弹窗被彻底拖出屏幕外
-        newX = Math.max(0, Math.min(newX, window.innerWidth - popup.offsetWidth));
+        // 手机端关键修复：处于拖拽状态时，拦截页面的默认滑动，防止整体屏幕跟着走
+        if (e.type === 'touchmove' && e.cancelable) {
+            e.preventDefault();
+        }
+        
+        let clientX, clientY;
+        if (e.type.startsWith('touch')) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        let newX = clientX - dragOffsetX;
+        let newY = clientY - dragOffsetY;
+        
+        // 边缘防丢保护：防止拖到屏幕外找不回来
+        newX = Math.max(0, Math.min(newX, window.innerWidth - activeDragElement.offsetWidth));
         newY = Math.max(0, Math.min(newY, window.innerHeight - 50));
 
-        popup.style.setProperty('left', newX + 'px', 'important');
-        popup.style.setProperty('top', newY + 'px', 'important');
-        popup.style.setProperty('right', 'auto', 'important');
-    });
+        activeDragElement.style.setProperty('left', newX + 'px', 'important');
+        activeDragElement.style.setProperty('top', newY + 'px', 'important');
+    }, { passive: false }); // 需要设为 false 才能执行 e.preventDefault()
 
-    $(document).off('mouseup.blDrag').on('mouseup.blDrag', function() {
-        if (isDragging) {
-            isDragging = false;
+    // 4. 全局松开重置
+    $(document).off('mouseup.blDrag touchend.blDrag touchcancel.blDrag').on('mouseup.blDrag touchend.blDrag touchcancel.blDrag', function() {
+        if (activeDragElement) {
+            activeDragElement = null;
             $('body').css('user-select', '');
         }
     });
+    // --- 拖拽系统结束 ---
     
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
 
