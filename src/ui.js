@@ -19,7 +19,6 @@ export function setupUI() {
         <div id="bl-purifier-popup" style="display:none;">
             <div class="bl-mobile-drag-handle" title="按住拖动弹窗">
                 <div class="bl-drag-pill"></div>
-                <span class="bl-drag-text">按住此处拖动</span>
             </div>
 
             <div class="bl-header-compact">
