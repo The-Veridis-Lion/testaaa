@@ -595,7 +595,6 @@ export function bindEvents() {
     if (event_types.STREAM_TOKEN_RECEIVED) {
         eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
             runtimeState.isStreamingGeneration = true;
-            visualMaskLatestOnly(payload);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, delayedIncrementalCleanse);
@@ -605,15 +604,25 @@ export function bindEvents() {
     
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
-            resetDiffRuntimeState();
-            runtimeState.currentDiffIndex = undefined;
-            $('#bl-diff-modal').hide();
-            applyCharacterPresetBinding(true, { skipCleanse: true });
-            restoreDiffStateFromChatMetadata();
-            setTimeout(() => {
-                injectDiffButtons();
+            const { chat_metadata } = getAppContext();
+            const currentChatId = chat_metadata ? chat_metadata.chat_id : null;
+            
+            // 智能判断切换聊天室重置界面
+            if (runtimeState.lastChatId !== currentChatId) {
+                runtimeState.lastChatId = currentChatId;
+                resetDiffRuntimeState();
+                runtimeState.currentDiffIndex = undefined;
+                $('#bl-diff-modal').hide();
+                applyCharacterPresetBinding(true, { skipCleanse: true });
+                restoreDiffStateFromChatMetadata();
+                setTimeout(() => {
+                    performGlobalCleanse();
+                    injectDiffButtons();
+                }, 120);
+            } else {
+                // 如果只是同一个聊天内发消息，只静默清洗底层。
                 performGlobalCleanse();
-            }, 120);
+            }
         });
     }
 
