@@ -81,6 +81,9 @@ export function purifyDOM(rootNode) {
             }
         }
     }
+    if (!runtimeState.isStreamingGeneration) {
+        rootNode.setAttribute('data-veridis-purified', 'true');
+    }
     VeridisProfiler.end('DOM遍历'); // ⏱️ 结束检测
 }
 
