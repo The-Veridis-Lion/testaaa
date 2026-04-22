@@ -14,6 +14,7 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
+    centerCardRelativeToMain // <-- 引入居中对齐函数
 } from './ui.js';
 import {
     buildProcessors,
@@ -28,7 +29,7 @@ import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode } from './dom.js';
 import { computeMessageSignature, getDiffSnippetsForMessage, getDiffStateForMessage, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, persistTrackedDiffState, resetDiffRuntimeState, restoreDiffStateFromChatMetadata } from './diff.js';
 
-// 流式期间 diff 按钮注入的节流状态（模块级别，避免 initRealtimeInterceptor 调用时函数未定义）
+// 流式期间 diff 按钮注入的节流状态
 let streamingDiffInjectTimer = null;
 let streamingPendingDiffIndices = [];
 
@@ -186,11 +187,44 @@ export function initRealtimeInterceptor() {
     }, true);
 }
 
-export function bindEvents() {
-    let activeDragElement = null;
-    let dragOffsetX = 0;
-    let dragOffsetY = 0;
+// 提取到外部域的拖拽状态和事件回调，保证可以正确解绑和挂载
+let activeDragElement = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
 
+function handleDragMove(e) {
+    if (!activeDragElement) return;
+    
+    // 处于拖拽状态时，拦截页面的默认滑动，防止整体屏幕跟着走 (特别是手机端)
+    if (e.type === 'touchmove' && e.cancelable) {
+        e.preventDefault();
+    }
+    
+    let clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+    let clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
+    
+    let newX = clientX - dragOffsetX;
+    let newY = clientY - dragOffsetY;
+    
+    // 边缘防丢保护：防止拖到屏幕外找不回来
+    newX = Math.max(0, Math.min(newX, window.innerWidth - activeDragElement.offsetWidth));
+    newY = Math.max(0, Math.min(newY, window.innerHeight - 50));
+
+    activeDragElement.style.setProperty('left', newX + 'px', 'important');
+    activeDragElement.style.setProperty('top', newY + 'px', 'important');
+}
+
+function handleDragEnd() {
+    if (activeDragElement) {
+        activeDragElement = null;
+        $('body').css('user-select', '');
+    }
+}
+
+export function bindEvents() {
+    // ==========================================
+    // --- 全新统一弹窗拖拽系统 (支持多弹窗、手机触屏、严格把手限制) ---
+    // ==========================================
     function startDrag(e, elementToMove) {
         if ($(e.target).closest('button, input, select, textarea').length) return;
         activeDragElement = elementToMove;
@@ -207,14 +241,8 @@ export function bindEvents() {
         }
         
         // 兼容触屏与鼠标位置获取
-        let clientX, clientY;
-        if (e.type.startsWith('touch')) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
+        let clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+        let clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
         
         dragOffsetX = clientX - rect.left;
         dragOffsetY = clientY - rect.top;
@@ -242,43 +270,19 @@ export function bindEvents() {
         }
     });
 
-    // 3. 全局移动处理
-    $(document).off('mousemove.blDrag touchmove.blDrag').on('mousemove.blDrag touchmove.blDrag', function(e) {
-        if (!activeDragElement) return;
-        
-        // 手机端关键修复：处于拖拽状态时，拦截页面的默认滑动，防止整体屏幕跟着走
-        if (e.type === 'touchmove' && e.cancelable) {
-            e.preventDefault();
-        }
-        
-        let clientX, clientY;
-        if (e.type.startsWith('touch')) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        } else {
-            clientX = e.clientX;
-            clientY = e.clientY;
-        }
-        
-        let newX = clientX - dragOffsetX;
-        let newY = clientY - dragOffsetY;
-        
-        // 边缘防丢保护：防止拖到屏幕外找不回来
-        newX = Math.max(0, Math.min(newX, window.innerWidth - activeDragElement.offsetWidth));
-        newY = Math.max(0, Math.min(newY, window.innerHeight - 50));
+    // 3. 挂载全局移动与松开处理 (使用 Vanilla JS 确保 passive: false 生效，以完美阻断触屏滑动)
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('touchmove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragEnd);
+    document.removeEventListener('touchend', handleDragEnd);
+    document.removeEventListener('touchcancel', handleDragEnd);
 
-        activeDragElement.style.setProperty('left', newX + 'px', 'important');
-        activeDragElement.style.setProperty('top', newY + 'px', 'important');
-    }, { passive: false }); // 需要设为 false 才能执行 e.preventDefault()
-
-    // 4. 全局松开重置
-    $(document).off('mouseup.blDrag touchend.blDrag touchcancel.blDrag').on('mouseup.blDrag touchend.blDrag touchcancel.blDrag', function() {
-        if (activeDragElement) {
-            activeDragElement = null;
-            $('body').css('user-select', '');
-        }
-    });
-    // --- 拖拽系统结束 ---
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchend', handleDragEnd);
+    document.addEventListener('touchcancel', handleDragEnd);
+    // ==========================================
     
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
 
@@ -298,6 +302,7 @@ export function bindEvents() {
         saveSettingsDebounced();
         injectDiffButtons();
     });
+
     function renderDiffModalContent(index) {
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -340,14 +345,10 @@ export function bindEvents() {
         renderDiffModalContent(runtimeState.currentDiffIndex);
     };
 
-    // ==========================================
-    // 新修改的区域开始：透视弹窗按钮与收纳逻辑
-    // ==========================================
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
         const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
 
-        // --- 新增：同步收纳按钮的图标和文本状态 ---
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         if (settings.diffButtonInExtraMenu) {
@@ -357,22 +358,22 @@ export function bindEvents() {
             $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-ellipsis');
             $('#bl-diff-pos-text').text('收纳按钮');
         }
-        // ------------------------------------------
 
         runtimeState.currentDiffIndex = index;
         renderDiffModalContent(index);
         $('#bl-diff-modal').css('display', 'flex');
+        
+        // 调用统一对齐，使透视弹窗处于中心
+        centerCardRelativeToMain($('.bl-diff-modal-card')[0]);
     });
 
     $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
         const settings = extension_settings[extensionName];
         
-        // 切换布尔值状态并存盘
         settings.diffButtonInExtraMenu = !settings.diffButtonInExtraMenu;
         saveSettingsDebounced();
 
-        // 切换UI显示
         if (settings.diffButtonInExtraMenu) {
             $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-thumbtack');
             $('#bl-diff-pos-text').text('外显按钮');
@@ -381,12 +382,8 @@ export function bindEvents() {
             $('#bl-diff-pos-text').text('收纳按钮');
         }
 
-        // 重新渲染当前屏幕上所有的透视按钮层级
         injectDiffButtons();
     });
-    // ==========================================
-    // 新修改的区域结束
-    // ==========================================
 
     $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
@@ -403,6 +400,7 @@ export function bindEvents() {
     $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) {
         if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').hide();
     });
+    
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });
@@ -437,7 +435,6 @@ export function bindEvents() {
     });
 
     $(document).off('click', '.bl-rule-del').on('click', '.bl-rule-del', function() {
-        // 误触拦截
         if (!confirm('确定要删除这个规则分组吗？删除后无法恢复。')) return; 
         
         extension_settings[extensionName].rules.splice($(this).data('index'), 1);
@@ -499,6 +496,7 @@ export function bindEvents() {
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
     $(document).off('click', '#bl-transfer-copy').on('click', '#bl-transfer-copy', () => runRuleTransfer(false));
     $(document).off('click', '#bl-transfer-move').on('click', '#bl-transfer-move', () => runRuleTransfer(true));
+    
     $(document).off('click', '#bl-rule-transfer-modal').on('click', '#bl-rule-transfer-modal', function(e) {
         if (e.target && e.target.id === 'bl-rule-transfer-modal') closeTransferModal();
     });
@@ -706,7 +704,6 @@ export function bindEvents() {
         };
         input.click();
     });
-    // ==========================================
 
     const markPendingFromPayload = (payload, options = {}) => {
         const { chat } = getAppContext();
