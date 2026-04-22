@@ -438,12 +438,11 @@ export function performGlobalCleanse() {
 
     syncTrackedIndicesToLatestAssistantMessages();
 
+syncTrackedIndicesToLatestAssistantMessages();
+
     if (chatChanged) {
-        try {
-            if (typeof saveChat === 'function') saveChat();
-        } catch (e) {
-            console.error("[Ultimate Purifier] 存盘失败", e);
-        }
+        // 改为调用防抖队列
+        queueIncrementalChatSave();
     }
     //purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
