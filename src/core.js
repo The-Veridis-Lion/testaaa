@@ -132,7 +132,7 @@ export function pickReplacement(replacements, deterministicKey = "") {
  * @returns {string} 替换后的文本。
  */
 export function applyReplacements(originalText, options = {}) {
-    if (typeof originalText !== 'string' || !originalText) return originalText;
+    if (typeof originalText !== 'string' || !originalText.trim()) return originalText;
     
     VeridisProfiler.start('正则替换'); // ⏱️ 开始检测纯文本替换
     
