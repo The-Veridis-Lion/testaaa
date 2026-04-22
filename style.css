@@ -677,35 +677,42 @@
 /* --- 手机端微调 --- */
 @media screen and (max-width: 600px) {
     #bl-purifier-popup {
-        /* 强制手机端全屏 */
+        position: fixed !important;
+        inset: 0 !important;
         top: 0 !important;
         left: 0 !important;
         width: 100vw !important;
-        height: 100vh !important;
+        height: 100dvh !important;
+        min-height: 100dvh !important;
         max-width: none !important;
         max-height: none !important;
-        border-radius: 0 !important; 
-        padding: 12px !important;
+        border-radius: 0 !important;
+        padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px)) 12px !important;
         transform: none !important;
+        box-shadow: none !important;
     }
 
-    /* 确保手机端编辑弹窗在屏幕中央，不偏移 */
+    .bl-modal-shell {
+        background: rgba(0, 0, 0, 0.32) !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+
     .bl-edit-modal-card {
         margin: auto !important;
-        width: 95% !important;
-        max-height: 90vh !important;
+        width: min(96vw, 560px) !important;
+        max-height: 90dvh !important;
     }
 
     #bl-rule-transfer-modal .bl-transfer-content {
         width: min(420px, 92vw) !important;
     }
-    /* 缩小标题区域 */
+
     .bl-header-compact { margin-bottom: 8px !important; padding-bottom: 8px !important; }
     .bl-title { font-size: 17px !important; }
     .bl-close-icon { font-size: 24px !important; }
-    
-    .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
-    
+    .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important; }
+
     #bl-preset-select {
         min-width: 0 !important;
         width: 100% !important;
@@ -713,7 +720,7 @@
         padding: 8px 32px 8px 10px !important;
         background-position: right 10px center !important;
     }
-    
+
     .bl-rule-card { padding: 8px 10px !important; }
     #bl-purifier-popup .bl-footer { gap: 10px !important; align-items: stretch !important; }
     .bl-footer-meta { flex-shrink: 0 !important; }
@@ -726,47 +733,47 @@
     .bl-subrule-mode-select { width: 100% !important; }
     .bl-rule-name { font-size: 13px !important; }
     .bl-rule-preview { font-size: 12px !important; }
-    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
-    } 
+    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important; }
+}
 
-    /* --- 优化遮罩层阴影 --- */
-    .bl-modal-shell {
-        background: rgba(0, 0, 0, 0.5) !important; 
-        backdrop-filter: blur(2px) !important; 
-        z-index: 10000001 !important; 
+@supports (-webkit-touch-callout: none) {
+    @media screen and (max-width: 600px) {
+        #bl-purifier-popup {
+            height: -webkit-fill-available !important;
+            min-height: -webkit-fill-available !important;
+        }
+    }
+}
+
+/* --- 电脑端字体放大一点 --- */
+@media screen and (min-width: 601px) {
+    #bl-purifier-popup {
+        font-size: 17px !important;
     }
 
-    #bl-rule-transfer-modal .bl-transfer-content {
-        width: min(420px, 92vw) !important;
+    .bl-title {
+        font-size: 24px !important;
     }
-    /* 缩小标题区域 */
-    .bl-header-compact { margin-bottom: 8px !important; padding-bottom: 8px !important; }
-    .bl-title { font-size: 17px !important; }
-    .bl-close-icon { font-size: 24px !important; }
-    
-    .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
-    
+
+    .bl-input,
+    .bl-textarea,
     #bl-preset-select {
-        min-width: 0 !important;
-        width: 100% !important;
-        font-size: 13px !important;
-        padding: 8px 32px 8px 10px !important;
-        background-position: right 10px center !important;
+        font-size: 19px !important;
     }
-    
-    .bl-rule-card { padding: 8px 10px !important; }
-    #bl-purifier-popup .bl-footer { gap: 10px !important; align-items: stretch !important; }
-    .bl-footer-meta { flex-shrink: 0 !important; }
-    .bl-footer-meta-text { font-size: 12px !important; }
-    .bl-deep-clean-btn { padding: 11px 12px !important; font-size: 14px !important; gap: 8px !important; }
-    .bl-add-rule-btn { padding: 11px 12px !important; font-size: 14px !important; }
-    .bl-icon-btn { min-height: 36px !important; }
-    .bl-subrule-summary-head { align-items: flex-start !important; }
-    .bl-subrule-row-head { align-items: flex-start !important; flex-direction: column !important; }
-    .bl-subrule-mode-select { width: 100% !important; }
-    .bl-rule-name { font-size: 13px !important; }
-    .bl-rule-preview { font-size: 12px !important; }
-    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
+
+    .bl-rule-name {
+        font-size: 18px !important;
+    }
+
+    .bl-rule-preview,
+    .bl-badge,
+    .bl-field-label,
+    .bl-footer-meta-text,
+    .bl-icon-btn,
+    .bl-add-rule-btn,
+    .bl-deep-clean-btn {
+        font-size: 16px !important;
+    }
 }
 
 .bl-diff-btn {
@@ -928,50 +935,6 @@
     padding: 0 3px !important;
     border-radius: 3px !important;
     font-weight: 600 !important;
-}
-
-/* ========================================================= */
-/* --- 手机端高度与软键盘适配 (修复遮罩未覆盖与高度过大) --- */
-@media screen and (max-width: 600px) {
-    
-    /* 1. 修复全屏灰色遮罩：死死锁住 100% 屏幕，绝对不留缝隙 */
-    #bl-rule-edit-modal,
-    #bl-diff-modal {
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 100% !important;
-        height: 100% !important;
-        padding: 0 !important; 
-        background: rgba(0, 0, 0, 0.65) !important; 
-        z-index: 10000000 !important; /* 加上无敌层级，防止被底下的主界面挡住 */
-    }
-
-    #bl-diff-modal {
-        align-items: flex-start !important; 
-        justify-content: center !important; 
-    }
-
-    #bl-rule-edit-modal {
-        align-items: center !important; /* 修复方向反转：保证水平居中 */
-        justify-content: flex-start !important; /* 修复方向反转：保证靠上对齐 */
-    }
-
-    /* 2. 控制弹窗本体：缩短高度、完美居中 */
-    #bl-rule-edit-modal > div,
-    .bl-diff-modal-card {
-        width: 90% !important;       
-        max-height: 68vh !important; 
-        margin: calc(env(safe-area-inset-top, 0px) + 12vh) 0 0 0 !important;
-        /* 👇 修复 Safari 压扁 Bug：删除了原有的 overflow-y，强制设为自动撑开 */
-        height: auto !important; 
-    }
-    
-    /* 3. 保持净化主面板的显示比例 */
-    #bl-purifier-popup {
-        top: 8vh !important; 
-        max-height: 80vh !important;
-    }
 }
 
 .bl-badge-compact {
