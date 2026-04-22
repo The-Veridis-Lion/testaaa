@@ -439,11 +439,5 @@ export function performGlobalCleanse() {
     syncTrackedIndicesToLatestAssistantMessages();
 
 syncTrackedIndicesToLatestAssistantMessages();
-
-    if (chatChanged) {
-        // 改为调用防抖队列
-        queueIncrementalChatSave();
-    }
-    //purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
 }
