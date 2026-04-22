@@ -161,6 +161,7 @@ export function applyReplacements(originalText, options = {}) {
             return pickReplacement(reps, repKey);
         });
     });
+    VeridisProfiler.end('正则替换'); // ⏱️ 结束检测
     return text;
 }
 
