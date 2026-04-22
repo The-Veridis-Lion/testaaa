@@ -507,21 +507,35 @@ export function openEditModal(index = -1) {
     }
 
     renderSubrulesToModal();
-    modal.css('display', 'flex');
+        const modal = $('#bl-rule-edit-modal');
+        modal.css('display', 'flex');
     
-    if (window.innerWidth > 600) {
-        const $popup = $('#bl-purifier-popup');
-        const popupRect = $popup[0].getBoundingClientRect();
         const $card = $('.bl-edit-modal-card');
-        
-        // 计算主弹窗的中心点，并让子弹窗绝对定位到该坐标
-        $card[0].style.setProperty('position', 'absolute', 'important');
-        $card[0].style.setProperty('left', (popupRect.left + popupRect.width / 2) + 'px', 'important');
-        $card[0].style.setProperty('top', (popupRect.top + popupRect.height / 2) + 'px', 'important');
-        $card[0].style.setProperty('transform', 'translate(-50%, -50%)', 'important');
-        $card[0].style.setProperty('margin', '0', 'important');
-    } else {
-        // 手机端清空注入的样式，恢复 CSS 默认的屏幕居中排版
-        $('.bl-edit-modal-card').css({ position: '', left: '', top: '', transform: '', margin: '' });
-    }
+    
+        if (window.innerWidth > 600) {
+            // PC 端：计算相对于主弹窗中心的位置
+            const $popup = $('#bl-purifier-popup');
+            const popupRect = $popup[0].getBoundingClientRect();
+            
+            $card[0].style.setProperty('position', 'absolute', 'important');
+            
+            // 使用 window.scroll 控制，防止页面滚动导致计算偏差
+            const centerX = popupRect.left + popupRect.width / 2;
+            const centerY = popupRect.top + popupRect.height / 2;
+    
+            $card[0].style.setProperty('left', centerX + 'px', 'important');
+            $card[0].style.setProperty('top', centerY + 'px', 'important');
+            $card[0].style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+            $card[0].style.setProperty('margin', '0', 'important');
+        } else {
+            // 手机端：彻底清除偏移样式，依靠 Flexbox (display: flex) 自动居中
+            // 这样即便主弹窗在底层是全屏，编辑弹窗也会稳稳在手机屏幕正中间
+            $card.css({
+                'position': '',
+                'left': '',
+                'top': '',
+                'transform': '',
+                'margin': 'auto'
+            });
+        }
 }
