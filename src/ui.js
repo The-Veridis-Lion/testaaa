@@ -17,7 +17,12 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-purifier-popup" style="display:none;">
-        <div class="bl-header-compact">
+            <div class="bl-mobile-drag-handle" title="按住拖动弹窗">
+                <div class="bl-drag-pill"></div>
+                <span class="bl-drag-text">按住此处拖动</span>
+            </div>
+
+            <div class="bl-header-compact">
                 <h3 class="bl-title">全局映射预设</h3>
                 <div class="bl-header-actions">
                     <button id="bl-default-toggle" title="设为默认预设" class="bl-icon-btn bl-bind-toggle"><i class="fas fa-star"></i></button>
@@ -93,7 +98,7 @@ export function setupUI() {
     `);
 
     $('body').append(`
-        <div id="bl-rule-transfer-modal" style="display:none;">
+        <div id="bl-rule-transfer-modal" style="display:none;" class="bl-modal-shell">
             <div class="bl-transfer-content">
                 <h3 class="bl-edit-modal-title bl-transfer-title"><i class="fas fa-copy"></i> 复制 / 转移规则合集</h3>
                 <select id="bl-transfer-target" class="bl-input bl-transfer-target"></select>
@@ -107,7 +112,7 @@ export function setupUI() {
     `);
 
     $('body').append(`
-        <div id="bl-diff-modal" style="display:none;">
+        <div id="bl-diff-modal" style="display:none;" class="bl-modal-shell">
             <div class="bl-diff-modal-card">
                 <div class="bl-diff-modal-header">
                     <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i> 净化前文透视</h3>
@@ -125,7 +130,7 @@ export function setupUI() {
             </div>
         </div>
     `);
-} // <--- 之前就是漏掉了这个大括号导致报错！！！
+}
 
 export function showDeepCleanOverlay() {
     $('body').append(`
@@ -145,12 +150,52 @@ export function updateDeepCleanOverlay(progressRatio, statusText) {
     if (statusText) $('#bl-loading-status').text(statusText);
 }
 
+/**
+ * 核心对齐函数：将任何传入的卡片节点强制定位到主面板中心（或屏幕中心）
+ */
+export function centerCardRelativeToMain(cardEl) {
+    if (!cardEl) return;
+    const $popup = $('#bl-purifier-popup');
+    const popupEl = $popup[0];
+    
+    // 默认回退：屏幕正中心
+    let centerX = window.innerWidth / 2;
+    let centerY = window.innerHeight / 2;
+
+    // 核心相对定位：如果主面板处于打开状态，则计算主面板的中心点
+    if (popupEl && $popup.is(':visible')) {
+        const popupRect = popupEl.getBoundingClientRect();
+        centerX = popupRect.left + popupRect.width / 2;
+        centerY = popupRect.top + popupRect.height / 2;
+    }
+
+    if (window.innerWidth <= 600) {
+        centerY -= 18; // 手机端稍微偏上一点，避免被软键盘完全遮挡
+    }
+
+    // 边界保护：防止弹窗被定位到屏幕边缘外导致显示不全或无法关闭
+    const halfCardHeight = Math.max(140, Math.min(cardEl.offsetHeight || 0, window.innerHeight * 0.4));
+    const halfCardWidth = Math.max(160, Math.min(cardEl.offsetWidth || 0, window.innerWidth * 0.4));
+    
+    centerX = Math.max(halfCardWidth + 8, Math.min(centerX, window.innerWidth - halfCardWidth - 8));
+    centerY = Math.max(halfCardHeight + 8, Math.min(centerY, window.innerHeight - halfCardHeight - 8));
+
+    // 强制复写位置
+    cardEl.style.setProperty('position', 'absolute', 'important');
+    cardEl.style.setProperty('left', centerX + 'px', 'important');
+    cardEl.style.setProperty('top', centerY + 'px', 'important');
+    cardEl.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+    cardEl.style.setProperty('margin', '0', 'important');
+}
+
 export function showConfirmModal(onConfirm = () => performDeepCleanse()) {
     const $modal = $('#bl-confirm-modal');
     const $confirmBtn = $('#bl-modal-confirm');
     const $cancelBtn = $('#bl-modal-cancel');
 
     $modal.css('display', 'flex');
+    centerCardRelativeToMain($('.bl-confirm-card')[0]); // 居中对齐
+
     $confirmBtn.prop('disabled', true).addClass('is-disabled');
 
     let timeLeft = 3;
@@ -453,7 +498,9 @@ export function openTransferModal(ruleIndex) {
     const $select = $('#bl-transfer-target');
     $select.empty();
     targetNames.forEach(name => $select.append($('<option>', { value: name, text: name })));
+    
     $('#bl-rule-transfer-modal').css('display', 'flex');
+    centerCardRelativeToMain($('.bl-transfer-content')[0]); // 居中对齐
 }
 
 export function closeTransferModal() {
@@ -492,7 +539,7 @@ export function openEditModal(index = -1) {
     const { extension_settings } = getAppContext();
     const settings = extension_settings[extensionName];
     runtimeState.currentEditingIndex = index;
-    const modal = $('#bl-rule-edit-modal'); // 声明一次就好
+    const modal = $('#bl-rule-edit-modal'); 
 
     if (index === -1) {
         $('#bl-edit-modal-title').html('<i class="fas fa-folder-plus"></i> 新增规则合集');
@@ -510,31 +557,5 @@ export function openEditModal(index = -1) {
     
     // 显示弹窗
     modal.css('display', 'flex');
-
-    const $card = $('.bl-edit-modal-card');
-    const $popup = $('#bl-purifier-popup');
-    const popupEl = $popup[0];
-    const cardEl = $card[0];
-
-    let centerX = window.innerWidth / 2;
-    let centerY = window.innerHeight / 2;
-
-    if (popupEl && $popup.is(':visible')) {
-        const popupRect = popupEl.getBoundingClientRect();
-        centerX = popupRect.left + popupRect.width / 2;
-        centerY = popupRect.top + popupRect.height / 2;
-    }
-
-    if (window.innerWidth <= 600) {
-        centerY -= 18;
-    }
-
-    const halfCardHeight = Math.max(140, Math.min(cardEl.offsetHeight || 0, window.innerHeight * 0.4));
-    centerY = Math.max(halfCardHeight + 8, Math.min(centerY, window.innerHeight - halfCardHeight - 8));
-
-    cardEl.style.setProperty('position', 'absolute', 'important');
-    cardEl.style.setProperty('left', centerX + 'px', 'important');
-    cardEl.style.setProperty('top', centerY + 'px', 'important');
-    cardEl.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
-    cardEl.style.setProperty('margin', '0', 'important');
+    centerCardRelativeToMain($('.bl-edit-modal-card')[0]); // 统一居中对齐逻辑
 }
