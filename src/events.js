@@ -607,7 +607,6 @@ export function bindEvents() {
             const { chat_metadata } = getAppContext();
             const currentChatId = chat_metadata ? chat_metadata.chat_id : null;
             
-            // 智能判断切换聊天室重置界面
             if (runtimeState.lastChatId !== currentChatId) {
                 runtimeState.lastChatId = currentChatId;
                 resetDiffRuntimeState();
@@ -619,9 +618,6 @@ export function bindEvents() {
                     performGlobalCleanse();
                     injectDiffButtons();
                 }, 120);
-            } else {
-                // 如果只是同一个聊天内发消息，只静默清洗底层。
-                performGlobalCleanse();
             }
         });
     }
