@@ -1,5 +1,6 @@
 import { runtimeState } from './state.js';
 import { applyReplacements, applyVisualMask, buildProcessors } from './core.js';
+import { VeridisProfiler } from './profiler.js';
 
 /**
  * 判断节点是否属于受保护区域。
@@ -34,8 +35,14 @@ export function isProtectedNode(node) {
  */
 export function purifyDOM(rootNode) {
     if (!rootNode) return;
+    
+    VeridisProfiler.start('DOM遍历'); // ⏱️ 开始检测 DOM 操作
+    
     buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) return;
+    if (runtimeState.activeProcessors.length === 0) {
+        VeridisProfiler.end('DOM遍历');
+        return;
+    }
 
     const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, null, false);
 
@@ -70,6 +77,7 @@ export function purifyDOM(rootNode) {
             }
         }
     }
+    VeridisProfiler.end('DOM遍历'); // ⏱️ 结束检测
 }
 
 /**
