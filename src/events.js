@@ -578,14 +578,6 @@ export function bindEvents() {
         injectDiffButtons([index]);
     };
 
-    const visualMaskLatestOnly = (payload) => {
-        if (!runtimeState.isStreamingGeneration) return;
-        markPendingFromPayload(payload);
-        performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true });
-    };
-
-    let delayedCleanseTimer = null;
-    let settleCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
         markPendingFromPayload(payload);
@@ -595,19 +587,7 @@ export function bindEvents() {
     if (event_types.MESSAGE_EDITED) {
         eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
             markPendingFromPayload(payload);
-            
             performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-        });
-    }
-
-    let editCleanseTimer = null;
-    if (event_types.MESSAGE_EDITED) {
-        eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
-            markPendingFromPayload(payload);
-            if (editCleanseTimer) clearTimeout(editCleanseTimer);
-            editCleanseTimer = setTimeout(() => {
-                performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-            }, 100);
         });
     }
 
@@ -622,6 +602,7 @@ export function bindEvents() {
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_RECEIVED) eventSource.on(event_types.MESSAGE_RECEIVED, delayedIncrementalCleanse);
     if (event_types.MESSAGE_SWIPED) eventSource.on(event_types.MESSAGE_SWIPED, delayedIncrementalCleanse);
+    
     if (event_types.CHAT_CHANGED) {
         eventSource.on(event_types.CHAT_CHANGED, () => {
             resetDiffRuntimeState();
