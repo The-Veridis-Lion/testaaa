@@ -205,7 +205,7 @@ export function queueIncrementalChatSave() {
             runtimeState.chatSaveInFlight = false;
             if (runtimeState.pendingChatSave) queueIncrementalChatSave();
         }
-    }, 180);
+    }, 1200);
 }
 
 /**
