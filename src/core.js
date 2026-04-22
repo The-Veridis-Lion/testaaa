@@ -436,8 +436,6 @@ export function performGlobalCleanse() {
         }
     }
 
-    syncTrackedIndicesToLatestAssistantMessages();
-
 syncTrackedIndicesToLatestAssistantMessages();
     injectDiffButtons();
 }
