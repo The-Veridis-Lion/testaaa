@@ -589,15 +589,16 @@ export function bindEvents() {
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
         markPendingFromPayload(payload);
-        if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
-        if (settleCleanseTimer) clearTimeout(settleCleanseTimer);
-        delayedCleanseTimer = setTimeout(() => {
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-        }, 150);
-        settleCleanseTimer = setTimeout(() => {
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-        }, 700);
+        performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
     };
+
+    if (event_types.MESSAGE_EDITED) {
+        eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
+            markPendingFromPayload(payload);
+            
+            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+        });
+    }
 
     let editCleanseTimer = null;
     if (event_types.MESSAGE_EDITED) {
