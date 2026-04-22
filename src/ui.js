@@ -508,4 +508,20 @@ export function openEditModal(index = -1) {
 
     renderSubrulesToModal();
     modal.css('display', 'flex');
+    
+    if (window.innerWidth > 600) {
+        const $popup = $('#bl-purifier-popup');
+        const popupRect = $popup[0].getBoundingClientRect();
+        const $card = $('.bl-edit-modal-card');
+        
+        // 计算主弹窗的中心点，并让子弹窗绝对定位到该坐标
+        $card[0].style.setProperty('position', 'absolute', 'important');
+        $card[0].style.setProperty('left', (popupRect.left + popupRect.width / 2) + 'px', 'important');
+        $card[0].style.setProperty('top', (popupRect.top + popupRect.height / 2) + 'px', 'important');
+        $card[0].style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+        $card[0].style.setProperty('margin', '0', 'important');
+    } else {
+        // 手机端清空注入的样式，恢复 CSS 默认的屏幕居中排版
+        $('.bl-edit-modal-card').css({ position: '', left: '', top: '', transform: '', margin: '' });
+    }
 }
