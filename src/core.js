@@ -419,9 +419,9 @@ export function performGlobalCleanse() {
 
             if (msgChanged) {
                 chatChanged = true;
-                try {
-                    if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50);
-                } catch (e) { }
+                //try {
+                    //if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50);
+                //} catch (e) { }
             }
         });
 
