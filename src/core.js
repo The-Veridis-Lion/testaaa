@@ -446,6 +446,6 @@ export function performGlobalCleanse() {
             console.error("[Ultimate Purifier] 存盘失败", e);
         }
     }
-    purifyDOM(document.getElementById('chat'));
+    //purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
 }
