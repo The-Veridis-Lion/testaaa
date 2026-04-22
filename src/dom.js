@@ -35,7 +35,8 @@ export function isProtectedNode(node) {
  */
 export function purifyDOM(rootNode) {
     if (!rootNode) return;
-    
+
+    if (rootNode.hasAttribute('data-veridis-purified')) return;
     VeridisProfiler.start('DOM遍历'); // ⏱️ 开始检测 DOM 操作
     
     buildProcessors();
