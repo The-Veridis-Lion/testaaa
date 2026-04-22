@@ -3,6 +3,8 @@ import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
 import { buildDiffSnippetsFromText, clearDiffSnippetsCache, computeMessageSignature, ensureMessageDiffButton, getLatestAssistantMessageIndices, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, updateDiffSnippetCache, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
+import { VeridisProfiler } from './profiler.js'; // 记得引入
+
 
 /**
  * 根据当前规则构建净化处理器（文本/正则/简易语法）。
@@ -131,6 +133,9 @@ export function pickReplacement(replacements, deterministicKey = "") {
  */
 export function applyReplacements(originalText, options = {}) {
     if (typeof originalText !== 'string' || !originalText) return originalText;
+    
+    VeridisProfiler.start('正则替换'); // ⏱️ 开始检测纯文本替换
+    
     const deterministic = options.deterministic === true;
     let text = originalText;
     const processors = buildProcessors();
