@@ -1,79 +1,119 @@
-// --- 轻量级性能探针 (Profiler) ---
+/**
+ * Veridis 性能探针 (方案一：隐藏后门版)
+ * 功能：记录代码执行耗时，平时隐藏，通过控制台指令 toggleVP() 唤起。
+ */
+
+const stats = {};
+let isPanelVisible = false;
+
 export const VeridisProfiler = {
-    stats: {},
-    isActive: true, // 调试完毕后可以改成 false 关闭
-    lastUIUpdate: 0,
-
-    // 1. 开始计时
-    start(label) {
-        if (!this.isActive) return;
-        if (!this.stats[label]) {
-            this.stats[label] = { total: 0, calls: 0, max: 0, startTime: 0 };
-        }
-        this.stats[label].startTime = performance.now();
+    /**
+     * 开始计时
+     * @param {string} label 计时标签
+     */
+    start: function(label) {
+        stats[label] = { start: performance.now() };
     },
 
-    // 2. 结束计时并累计
-    end(label) {
-        if (!this.isActive || !this.stats[label] || !this.stats[label].startTime) return;
-        const cost = performance.now() - this.stats[label].startTime;
-        this.stats[label].total += cost;
-        this.stats[label].calls += 1;
-        if (cost > this.stats[label].max) this.stats[label].max = cost;
-        this.stats[label].startTime = 0;
-
-        // 👇 新增：把历史卡顿记录打印到控制台
-        // 如果在你的电脑上单次执行超过 2 毫秒，就记入历史档案！
-        if (cost > 2.0) {
-            console.warn(`[Veridis 历史探针] 🚨 ${label} 出现耗时峰值: ${cost.toFixed(2)} ms (发生在第 ${this.stats[label].calls} 次调用)`);
-        }
+    /**
+     * 结束计时并记录
+     * @param {string} label 计时标签
+     */
+    end: function(label) {
+        if (!stats[label]) return;
+        const duration = performance.now() - stats[label].start;
+        stats[label].duration = duration;
         
-        // 节流更新 UI（每 1.5 秒刷新一次面板，绝不卡顿）
-        if (performance.now() - this.lastUIUpdate > 1500) {
+        // 只有在面板可见时，才去刷新 UI
+        if (isPanelVisible) {
             this.updateUI();
-            this.lastUIUpdate = performance.now();
         }
     },
 
-    // 3. 渲染悬浮窗
-    updateUI() {
-        let panel = document.getElementById('veridis-profiler-panel');
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.id = 'veridis-profiler-panel';
-            panel.style.cssText = `
-                position: fixed; top: 10px; right: 10px; z-index: 9999999;
-                background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace;
-                padding: 10px; border-radius: 8px; font-size: 12px; pointer-events: none;
-                white-space: pre; border: 1px solid #333;
-            `;
-            document.body.appendChild(panel);
+    /**
+     * 初始化探针 UI 面板 (默认隐藏)
+     */
+    initUI: function() {
+        if (document.getElementById('bl-profiler-panel')) return;
+
+        const panel = document.createElement('div');
+        panel.id = 'bl-profiler-panel';
+        // 核心样式：初始状态为 display: none
+        panel.setAttribute('style', `
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 240px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #00ff00;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            z-index: 1000000;
+            pointer-events: none;
+            border: 1px solid #333;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: none; 
+        `);
+
+        panel.innerHTML = `
+            <div style="border-bottom: 1px solid #444; padding-bottom: 5px; margin-bottom: 8px; font-weight: bold;">
+                🛡️ Veridis 性能探针
+            </div>
+            <div id="bl-profiler-content">等待数据...</div>
+            <div style="margin-top: 8px; color: #888; font-size: 10px;">控制台输入 toggleVP() 隐藏</div>
+        `;
+
+        document.body.appendChild(panel);
+    },
+
+    /**
+     * 刷新面板内容
+     */
+    updateUI: function() {
+        const contentEl = document.getElementById('bl-profiler-content');
+        if (!contentEl) return;
+
+        let html = '';
+        for (const [label, data] of Object.entries(stats)) {
+            if (data.duration !== undefined) {
+                const color = data.duration > 16 ? '#ff4444' : '#00ff00'; // 超过 16ms (一帧) 变红
+                html += `<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+                            <span>${label}:</span>
+                            <span style="color: ${color}">${data.duration.toFixed(2)} ms</span>
+                         </div>`;
+            }
         }
-
-        let html = '🚀 Veridis 性能探针 (1.5s刷新)\n';
-        html += '---------------------------------\n';
-        
-        // 读取内存 (仅限 Chrome/Edge/SillyTavern 桌面端环境有效)
-        if (performance.memory) {
-            const usedMB = (performance.memory.usedJSHeapSize / 1048576).toFixed(1);
-            const limitMB = (performance.memory.jsHeapSizeLimit / 1048576).toFixed(0);
-            html += `🧠 JS内存: ${usedMB} MB / ${limitMB} MB\n`;
-        }
-
-        html += '---------------------------------\n';
-        html += '[模块]       | 平均(ms) | 峰值(ms) | 调用次\n';
-
-        for (const [label, data] of Object.entries(this.stats)) {
-            if (data.calls === 0) continue;
-            const avg = (data.total / data.calls).toFixed(2);
-            const max = data.max.toFixed(1);
-            const padLabel = label.padEnd(10, ' ');
-            const padAvg = avg.padStart(8, ' ');
-            const padMax = max.padStart(8, ' ');
-            const padCalls = String(data.calls).padStart(6, ' ');
-            html += `${padLabel} | ${padAvg} | ${padMax} | ${padCalls}\n`;
-        }
-
-        panel.textContent = html;
+        contentEl.innerHTML = html;
     }
 };
+
+/**
+ * 挂载到 window，作为 F12 控制台后门
+ */
+window.toggleVP = () => {
+    const panel = document.getElementById('bl-profiler-panel');
+    if (!panel) {
+        // 如果还没初始化，先初始化一次
+        VeridisProfiler.initUI();
+        return window.toggleVP();
+    }
+
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        isPanelVisible = true;
+        console.log('%c[Ultimate Purifier] 🚀 性能探针已开启', 'color: #00ff00; font-weight: bold;');
+    } else {
+        panel.style.display = 'none';
+        isPanelVisible = false;
+        console.log('%c[Ultimate Purifier] 💤 性能探针已隐藏', 'color: #888;');
+    }
+};
+
+// 页面加载完成后自动初始化 UI (但保持隐藏)
+if (document.readyState === 'complete') {
+    VeridisProfiler.initUI();
+} else {
+    window.addEventListener('load', () => VeridisProfiler.initUI());
+}
