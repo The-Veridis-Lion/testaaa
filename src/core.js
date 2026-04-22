@@ -1,10 +1,9 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
+import { logger } from './log.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
 import { buildDiffSnippetsFromText, clearDiffSnippetsCache, computeMessageSignature, ensureMessageDiffButton, getLatestAssistantMessageIndices, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, updateDiffSnippetCache, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
-import { VeridisProfiler } from './profiler.js'; // 记得引入
-
 
 /**
  * 根据当前规则构建净化处理器（文本/正则/简易语法）。
@@ -52,13 +51,13 @@ export function buildProcessors() {
 
                             let testRegex = new RegExp(pattern, flags);
                             if (testRegex.test("")) {
-                                console.warn("[Ultimate Purifier] 拦截到一个危险的空匹配正则，已忽略:", t);
+                                logger.warn(`拦截到危险的空匹配正则，已忽略: ${t}`);
                                 return;
                             }
 
                             processors.push({ regex: testRegex, replacements, isRegexMode: true });
                         } catch (e) {
-                            console.warn("[Ultimate Purifier] 忽略非法正则表达式:", t);
+                            logger.warn(`忽略非法正则表达式: ${t}`);
                         }
                     }
                 }
@@ -76,13 +75,13 @@ export function buildProcessors() {
 
                             let testRegex = new RegExp(escaped, 'gmu');
                             if (testRegex.test("")) {
-                                console.warn("[Ultimate Purifier] 拦截到一个危险的简易空匹配规则，已忽略:", t);
+                                logger.warn(`拦截到危险的简易空匹配规则，已忽略: ${t}`);
                                 return;
                             }
 
                             processors.push({ regex: testRegex, replacements, isRegexMode: true });
                         } catch (e) {
-                            console.warn("[Ultimate Purifier] 简易规则解析失败:", t);
+                            logger.warn(`简易规则解析失败: ${t}`);
                         }
                     }
                 }
@@ -100,6 +99,7 @@ export function buildProcessors() {
 
     runtimeState.activeProcessors = processors;
     runtimeState.isRegexDirty = false;
+    logger.info(`规则处理器构建完成，共 ${processors.length} 个处理器（文本:${textTargets.length} | 正则:${processors.filter(p => p.isRegexMode).length}）`);
     return runtimeState.activeProcessors;
 }
 
@@ -132,10 +132,7 @@ export function pickReplacement(replacements, deterministicKey = "") {
  * @returns {string} 替换后的文本。
  */
 export function applyReplacements(originalText, options = {}) {
-    if (typeof originalText !== 'string' || !originalText.trim()) return originalText;
-    
-    VeridisProfiler.start('正则替换'); // ⏱️ 开始检测纯文本替换
-    
+    if (typeof originalText !== 'string' || !originalText) return originalText;
     const deterministic = options.deterministic === true;
     let text = originalText;
     const processors = buildProcessors();
@@ -161,7 +158,6 @@ export function applyReplacements(originalText, options = {}) {
             return pickReplacement(reps, repKey);
         });
     });
-    VeridisProfiler.end('正则替换'); // ⏱️ 结束检测
     return text;
 }
 
@@ -200,12 +196,12 @@ export function queueIncrementalChatSave() {
                 if (result instanceof Promise) await result;
             }
         } catch (e) {
-            console.error("[Ultimate Purifier] 增量存盘失败", e);
+            logger.error(`增量存盘失败`, e);
         } finally {
             runtimeState.chatSaveInFlight = false;
             if (runtimeState.pendingChatSave) queueIncrementalChatSave();
         }
-    }, 1200);
+    }, 180);
 }
 
 /**
@@ -281,13 +277,8 @@ export function cleanseMessageDataAtIndex(index) {
     }
 
     if (isAssistant) {
-        Object.defineProperty(msg, '__bl_diff_source_signature', { 
-            value: currentSignature, writable: true, enumerable: false, configurable: true 
-        });
-        Object.defineProperty(msg, '__bl_diff_last_cleaned_mes', { 
-            value: typeof msg.mes === 'string' ? msg.mes : '', writable: true, enumerable: false, configurable: true 
-        });
-
+        msg.__bl_diff_source_signature = currentSignature;
+        msg.__bl_diff_last_cleaned_mes = typeof msg.mes === 'string' ? msg.mes : '';
         writeReadyDiffCache(index, currentSignature, {
             snippets: mainCache.snippets,
             fullDiff: mainCache.fullDiff,
@@ -297,20 +288,21 @@ export function cleanseMessageDataAtIndex(index) {
     } else {
         clearTrackedDiffEntry(index);
     }
-    
-    return changed; 
+
+    return changed;
 }
 
 /**
  * 执行增量净化：处理单条消息并刷新对应 DOM。
  * @param {number|object} payload 事件载荷或消息索引。
- * @param {{visualOnly?: boolean, fallbackLatest?: boolean}} [options={}] 控制选项。
+ * @param {{visualOnly?: boolean, fallbackLatest?: boolean, skipPurifyDom?: boolean}} [options={}] 控制选项。
  * @returns {void}
  */
 export function performIncrementalCleanse(payload, options = {}) {
+    logger.debug(`[performIncrementalCleanse] payload=${JSON.stringify(payload)}, options=${JSON.stringify(options)}`);
     const { chat } = getAppContext();
-    buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) return;
+    if (!options.skipPurifyDom) buildProcessors();
+    if (!options.skipPurifyDom && runtimeState.activeProcessors.length === 0) return;
 
     const fallbackLatest = options.fallbackLatest !== false;
     let index = getMessageIndexFromEvent(payload);
@@ -342,18 +334,19 @@ export function performIncrementalCleanse(payload, options = {}) {
         }
     }
 
-    // 1. 清洗底层内存数据
     const dataChanged = options.visualOnly ? false : cleanseMessageDataAtIndex(index);
-    
-    // 2. 视觉层清洗 (MutationObserver 也会辅助，双保险)
     const messageNode = getMessageDomNode(index);
     if (messageNode) {
-        purifyDOM(messageNode);
+        if (!options.skipPurifyDom) purifyDOM(messageNode);
         ensureMessageDiffButton(index, messageNode);
     }
 
-    // 不再二次重绘
-    // 不再抢夺存盘
+    if (dataChanged) {
+        try {
+            if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
+        } catch (e) { logger.warn(`updateMessageBlock 调用失败 index=${index}`, e); }
+        queueIncrementalChatSave();
+    }
 }
 
 /**
@@ -361,6 +354,7 @@ export function performIncrementalCleanse(payload, options = {}) {
  * @returns {void}
  */
 export function performGlobalCleanse() {
+    logger.info(`[performGlobalCleanse] 全局净化开始`);
     const { chat, saveChat } = getAppContext();
     buildProcessors();
     clearDiffSnippetsCache();
@@ -423,9 +417,9 @@ export function performGlobalCleanse() {
 
             if (msgChanged) {
                 chatChanged = true;
-                //try {
-                    //if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50);
-                //} catch (e) { }
+                try {
+                    if (typeof updateMessageBlock === 'function') setTimeout(() => updateMessageBlock(index, chat[index]), 50);
+                } catch (e) { logger.warn(`updateMessageBlock 调用失败 index=${index}`, e); }
             }
         });
 
@@ -441,6 +435,15 @@ export function performGlobalCleanse() {
         }
     }
 
-syncTrackedIndicesToLatestAssistantMessages();
+    syncTrackedIndicesToLatestAssistantMessages();
+
+    if (chatChanged) {
+        try {
+            if (typeof saveChat === 'function') saveChat();
+        } catch (e) {
+            logger.error(`存盘失败`, e);
+        }
+    }
+    purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
 }

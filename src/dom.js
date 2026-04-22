@@ -1,6 +1,5 @@
 import { runtimeState } from './state.js';
 import { applyReplacements, applyVisualMask, buildProcessors } from './core.js';
-import { VeridisProfiler } from './profiler.js';
 
 /**
  * 判断节点是否属于受保护区域。
@@ -35,15 +34,8 @@ export function isProtectedNode(node) {
  */
 export function purifyDOM(rootNode) {
     if (!rootNode) return;
-
-    if (rootNode.hasAttribute('data-veridis-purified')) return;
-    VeridisProfiler.start('DOM遍历'); // ⏱️ 开始检测 DOM 操作
-    
     buildProcessors();
-    if (runtimeState.activeProcessors.length === 0) {
-        VeridisProfiler.end('DOM遍历');
-        return;
-    }
+    if (runtimeState.activeProcessors.length === 0) return;
 
     const walker = document.createTreeWalker(rootNode, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT, null, false);
 
@@ -53,9 +45,6 @@ export function purifyDOM(rootNode) {
         if (parent && (isProtectedNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
 
         const original = node.nodeValue || '';
-
-        // 跳过过短的无意义字符（比如标点符号、单个英文字母等）
-        if (original.trim().length < 1) continue;
         const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
         if (original !== nextValue) node.nodeValue = nextValue;
     }
@@ -81,10 +70,6 @@ export function purifyDOM(rootNode) {
             }
         }
     }
-    if (!runtimeState.isStreamingGeneration) {
-        rootNode.setAttribute('data-veridis-purified', 'true');
-    }
-    VeridisProfiler.end('DOM遍历'); // ⏱️ 结束检测
 }
 
 /**
