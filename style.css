@@ -472,6 +472,12 @@
     backdrop-filter: blur(4px) !important;
 }
 
+#bl-rule-edit-modal {
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+
 .bl-modal-card {
     background: var(--bl-background-popup) !important;
     border: 1px solid var(--bl-border-color) !important;
@@ -902,7 +908,7 @@
     #bl-rule-edit-modal {
         align-items: center !important; /* 修复方向反转：保证水平居中 */
         justify-content: flex-start !important; /* 修复方向反转：保证靠上对齐 */
-        background: rgba(0, 0, 0, 0.52) !important;
+        background: rgba(0, 0, 0, 0.68) !important;
         backdrop-filter: none !important;
         -webkit-backdrop-filter: none !important;
     }

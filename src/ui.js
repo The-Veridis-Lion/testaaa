@@ -526,7 +526,7 @@ export function openEditModal(index = -1) {
     }
 
     if (window.innerWidth <= 600) {
-        centerY -= 10;
+        centerY -= 18;
     }
 
     const halfCardHeight = Math.max(140, Math.min(cardEl.offsetHeight || 0, window.innerHeight * 0.4));
