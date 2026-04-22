@@ -1083,3 +1083,64 @@
     .bl-edit-modal-title { font-size: 15px !important; }
     .bl-rule-name { font-size: 15px !important; }
 }
+
+/* ========================================================= */
+/* --- 手机端拖拽把手与遮罩强化 (新增区块) --- */
+.bl-mobile-drag-handle {
+    display: none !important; /* 电脑端默认隐藏 */
+}
+
+@media screen and (max-width: 600px) {
+    /* 1. 强化编辑弹窗的遮罩阴影（盖住其他内容） */
+    #bl-rule-edit-modal,
+    #bl-diff-modal {
+        background: rgba(0, 0, 0, 0.85) !important; /* 加深背景纯黑透明度 */
+        backdrop-filter: blur(5px) !important; /* 加入模糊效果隔离底层 */
+        -webkit-backdrop-filter: blur(5px) !important;
+        z-index: 10000000 !important; /* 确保层级绝对最高 */
+    }
+
+    /* 2. 让弹窗本体在悬浮时阴影更明显 */
+    .bl-edit-modal-card, .bl-diff-modal-card, .bl-transfer-content, #bl-purifier-popup {
+        box-shadow: 0 15px 50px rgba(0,0,0,0.6) !important;
+    }
+
+    /* 3. 拖拽把手样式 */
+    .bl-mobile-drag-handle {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        padding: 10px 0 12px 0 !important;
+        margin-top: -8px !important;
+        margin-bottom: 4px !important;
+        cursor: grab !important;
+        touch-action: none !important; /* 防止拖拽时屏幕跟着滚动 */
+        width: 100% !important;
+    }
+    
+    .bl-mobile-drag-handle:active {
+        cursor: grabbing !important;
+    }
+    
+    .bl-drag-pill {
+        width: 40px !important;
+        height: 5px !important;
+        background: var(--bl-text-secondary) !important;
+        border-radius: 4px !important;
+        opacity: 0.4 !important;
+        transition: background 0.2s, opacity 0.2s !important;
+    }
+    
+    .bl-mobile-drag-handle:active .bl-drag-pill {
+        background: var(--bl-accent-color) !important;
+        opacity: 0.8 !important;
+    }
+    
+    .bl-drag-text {
+        font-size: 11px !important;
+        color: var(--bl-text-secondary) !important;
+        margin-left: 8px !important;
+        opacity: 0.6 !important;
+        user-select: none !important; /* 防止文字被选中 */
+    }
+}
