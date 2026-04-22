@@ -1026,7 +1026,6 @@
     .bl-transfer-actions > .bl-transfer-btn { flex: 1 1 calc(50% - 4px) !important; }
 }
 
-/* --- 修复移动按钮边框过粗问题 --- */
 .bl-rule-move-up,
 .bl-rule-move-down,
 .bl-move-subrule-up-btn,
@@ -1036,17 +1035,6 @@
     width: 32px !important;
     min-height: 32px !important;
     padding: 0 !important;
-    border: 1px solid var(--bl-border-color) !important;
-    background: var(--bl-background-secondary) !important;
-    color: var(--bl-text-primary) !important;
-}
-
-/* 悬停效果：保持丝滑 */
-.bl-rule-move-up:hover,
-.bl-rule-move-down:hover,
-.bl-move-subrule-up-btn:hover,
-.bl-move-subrule-down-btn:hover {
-    background: var(--bl-background-tertiary) !important;
 }
 
 .bl-subrule-summary-actions .bl-icon-btn,
