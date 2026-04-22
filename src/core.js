@@ -297,6 +297,9 @@ export function cleanseMessageDataAtIndex(index) {
     } else {
         clearTrackedDiffEntry(index);
     }
+    
+    return changed; 
+}
 
 /**
  * 执行增量净化：处理单条消息并刷新对应 DOM。
