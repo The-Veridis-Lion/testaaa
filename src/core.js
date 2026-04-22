@@ -337,19 +337,18 @@ export function performIncrementalCleanse(payload, options = {}) {
         }
     }
 
+    // 1. 清洗底层内存数据
     const dataChanged = options.visualOnly ? false : cleanseMessageDataAtIndex(index);
+    
+    // 2. 视觉层清洗 (MutationObserver 也会辅助，双保险)
     const messageNode = getMessageDomNode(index);
     if (messageNode) {
         purifyDOM(messageNode);
         ensureMessageDiffButton(index, messageNode);
     }
 
-    if (dataChanged) {
-        //try {
-            //if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
-        //} catch (e) { }
-        queueIncrementalChatSave();
-    }
+    // 不再二次重绘
+    // 不再抢夺存盘
 }
 
 /**
