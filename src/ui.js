@@ -512,29 +512,22 @@ export function openEditModal(index = -1) {
     modal.css('display', 'flex');
 
     const $card = $('.bl-edit-modal-card');
+    const $popup = $('#bl-purifier-popup');
+    const popupEl = $popup[0];
+    const cardEl = $card[0];
 
-    if (window.innerWidth > 600) {
-        // PC 端：计算相对于主弹窗中心的位置
-        const $popup = $('#bl-purifier-popup');
-        const popupRect = $popup[0].getBoundingClientRect();
-        
-        $card[0].style.setProperty('position', 'absolute', 'important');
-        
-        const centerX = popupRect.left + popupRect.width / 2;
-        const centerY = popupRect.top + popupRect.height / 2;
+    let centerX = window.innerWidth / 2;
+    let centerY = window.innerHeight / 2;
 
-        $card[0].style.setProperty('left', centerX + 'px', 'important');
-        $card[0].style.setProperty('top', centerY + 'px', 'important');
-        $card[0].style.setProperty('transform', 'translate(-50%, -50%)', 'important');
-        $card[0].style.setProperty('margin', '0', 'important');
-    } else {
-        // 手机端：自动居中
-        $card.css({
-            'position': '',
-            'left': '',
-            'top': '',
-            'transform': '',
-            'margin': 'auto'
-        });
+    if (popupEl && $popup.is(':visible')) {
+        const popupRect = popupEl.getBoundingClientRect();
+        centerX = popupRect.left + popupRect.width / 2;
+        centerY = popupRect.top + popupRect.height / 2;
     }
+
+    cardEl.style.setProperty('position', 'absolute', 'important');
+    cardEl.style.setProperty('left', centerX + 'px', 'important');
+    cardEl.style.setProperty('top', centerY + 'px', 'important');
+    cardEl.style.setProperty('transform', 'translate(-50%, -50%)', 'important');
+    cardEl.style.setProperty('margin', '0', 'important');
 }
