@@ -684,7 +684,7 @@
         height: 100vh !important;
         max-width: none !important;
         max-height: none !important;
-        border-radius: 0 !important; /* 全屏不需要圆角 */
+        border-radius: 0 !important; 
         padding: 12px !important;
         transform: none !important;
     }
@@ -695,14 +695,45 @@
         width: 95% !important;
         max-height: 90vh !important;
     }
-}
 
-    /* --- 优化遮罩层阴影，增加“舒适感” --- */
+    #bl-rule-transfer-modal .bl-transfer-content {
+        width: min(420px, 92vw) !important;
+    }
+    /* 缩小标题区域 */
+    .bl-header-compact { margin-bottom: 8px !important; padding-bottom: 8px !important; }
+    .bl-title { font-size: 17px !important; }
+    .bl-close-icon { font-size: 24px !important; }
+    
+    .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
+    
+    #bl-preset-select {
+        min-width: 0 !important;
+        width: 100% !important;
+        font-size: 13px !important;
+        padding: 8px 32px 8px 10px !important;
+        background-position: right 10px center !important;
+    }
+    
+    .bl-rule-card { padding: 8px 10px !important; }
+    #bl-purifier-popup .bl-footer { gap: 10px !important; align-items: stretch !important; }
+    .bl-footer-meta { flex-shrink: 0 !important; }
+    .bl-footer-meta-text { font-size: 12px !important; }
+    .bl-deep-clean-btn { padding: 11px 12px !important; font-size: 14px !important; gap: 8px !important; }
+    .bl-add-rule-btn { padding: 11px 12px !important; font-size: 14px !important; }
+    .bl-icon-btn { min-height: 36px !important; }
+    .bl-subrule-summary-head { align-items: flex-start !important; }
+    .bl-subrule-row-head { align-items: flex-start !important; flex-direction: column !important; }
+    .bl-subrule-mode-select { width: 100% !important; }
+    .bl-rule-name { font-size: 13px !important; }
+    .bl-rule-preview { font-size: 12px !important; }
+    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
+    } 
+
+    /* --- 优化遮罩层阴影 --- */
     .bl-modal-shell {
-        /* 使用稍深一点的微透明黑色，并增加磨砂玻璃感 */
         background: rgba(0, 0, 0, 0.5) !important; 
         backdrop-filter: blur(2px) !important; 
-        z-index: 10000001 !important; /* 必须高于主弹窗的 999999 */
+        z-index: 10000001 !important; 
     }
 
     #bl-rule-transfer-modal .bl-transfer-content {
