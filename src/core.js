@@ -345,9 +345,9 @@ export function performIncrementalCleanse(payload, options = {}) {
     }
 
     if (dataChanged) {
-        try {
-            if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
-        } catch (e) { }
+        //try {
+            //if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
+        //} catch (e) { }
         queueIncrementalChatSave();
     }
 }
