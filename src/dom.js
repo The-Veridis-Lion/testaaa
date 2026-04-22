@@ -52,6 +52,9 @@ export function purifyDOM(rootNode) {
         if (parent && (isProtectedNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
 
         const original = node.nodeValue || '';
+
+        // 跳过过短的无意义字符（比如标点符号、单个英文字母等）
+        if (original.trim().length < 1) continue;
         const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
         if (original !== nextValue) node.nodeValue = nextValue;
     }
