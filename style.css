@@ -676,12 +676,35 @@
 
 /* --- 手机端微调 --- */
 @media screen and (max-width: 600px) {
-    #bl-purifier-popup { padding: 14px 16px !important; width: 92% !important; top: 7vh !important; max-width: 420px !important; border-radius: 12px !important; max-height: 78vh !important;}
-    #bl-rule-transfer-modal {
-        align-items: flex-start !important;
-        background: transparent !important;
-        padding-top: calc(env(safe-area-inset-top, 0px) + 16vh) !important;
+    #bl-purifier-popup {
+        /* 强制手机端全屏 */
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        max-width: none !important;
+        max-height: none !important;
+        border-radius: 0 !important; /* 全屏不需要圆角 */
+        padding: 12px !important;
+        transform: none !important;
     }
+
+    /* 确保手机端编辑弹窗在屏幕中央，不偏移 */
+    .bl-edit-modal-card {
+        margin: auto !important;
+        width: 95% !important;
+        max-height: 90vh !important;
+    }
+}
+
+    /* --- 优化遮罩层阴影，增加“舒适感” --- */
+    .bl-modal-shell {
+        /* 使用稍深一点的微透明黑色，并增加磨砂玻璃感 */
+        background: rgba(0, 0, 0, 0.5) !important; 
+        backdrop-filter: blur(2px) !important; 
+        z-index: 10000001 !important; /* 必须高于主弹窗的 999999 */
+    }
+
     #bl-rule-transfer-modal .bl-transfer-content {
         width: min(420px, 92vw) !important;
     }
