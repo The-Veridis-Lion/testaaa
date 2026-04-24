@@ -14,7 +14,6 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
-    centerCardRelativeToMain // <-- 引入居中对齐函数
 } from './ui.js';
 import {
     buildProcessors,
@@ -29,7 +28,7 @@ import { performDeepCleanse } from './cleanse.js';
 import { purifyDOM, isProtectedNode } from './dom.js';
 import { computeMessageSignature, getDiffSnippetsForMessage, getDiffStateForMessage, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, persistTrackedDiffState, resetDiffRuntimeState, restoreDiffStateFromChatMetadata } from './diff.js';
 
-// 流式期间 diff 按钮注入的节流状态
+// 流式期间 diff 按钮注入的节流状态（模块级别，避免 initRealtimeInterceptor 调用时函数未定义）
 let streamingDiffInjectTimer = null;
 let streamingPendingDiffIndices = [];
 
@@ -187,103 +186,7 @@ export function initRealtimeInterceptor() {
     }, true);
 }
 
-// 提取到外部域的拖拽状态和事件回调，保证可以正确解绑和挂载
-let activeDragElement = null;
-let dragOffsetX = 0;
-let dragOffsetY = 0;
-
-function handleDragMove(e) {
-    if (!activeDragElement) return;
-    
-    // 处于拖拽状态时，拦截页面的默认滑动，防止整体屏幕跟着走 (特别是手机端)
-    if (e.type === 'touchmove' && e.cancelable) {
-        e.preventDefault();
-    }
-    
-    let clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
-    let clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
-    
-    let newX = clientX - dragOffsetX;
-    let newY = clientY - dragOffsetY;
-    
-    // 边缘防丢保护：防止拖到屏幕外找不回来
-    newX = Math.max(0, Math.min(newX, window.innerWidth - activeDragElement.offsetWidth));
-    newY = Math.max(0, Math.min(newY, window.innerHeight - 50));
-
-    activeDragElement.style.setProperty('left', newX + 'px', 'important');
-    activeDragElement.style.setProperty('top', newY + 'px', 'important');
-}
-
-function handleDragEnd() {
-    if (activeDragElement) {
-        activeDragElement = null;
-        $('body').css('user-select', '');
-    }
-}
-
 export function bindEvents() {
-    // ==========================================
-    // --- 全新统一弹窗拖拽系统 (支持多弹窗、手机触屏、严格把手限制) ---
-    // ==========================================
-    function startDrag(e, elementToMove) {
-        if ($(e.target).closest('button, input, select, textarea').length) return;
-        activeDragElement = elementToMove;
-        const rect = activeDragElement.getBoundingClientRect();
-        
-        // 剥离原有的 CSS 居中限制，改为绝对定位以释放移动自由度
-        if (window.getComputedStyle(activeDragElement).transform !== 'none' || activeDragElement.style.margin !== '0px') {
-            activeDragElement.style.setProperty('transform', 'none', 'important');
-            activeDragElement.style.setProperty('left', rect.left + 'px', 'important');
-            activeDragElement.style.setProperty('top', rect.top + 'px', 'important');
-            activeDragElement.style.setProperty('right', 'auto', 'important');
-            activeDragElement.style.setProperty('bottom', 'auto', 'important');
-            activeDragElement.style.setProperty('margin', '0', 'important');
-        }
-        
-        // 兼容触屏与鼠标位置获取
-        let clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
-        let clientY = e.type.startsWith('touch') ? e.touches[0].clientY : e.clientY;
-        
-        dragOffsetX = clientX - rect.left;
-        dragOffsetY = clientY - rect.top;
-        $('body').css('user-select', 'none'); // 防止误选文本
-    }
-
-    // 1. 电脑端：允许抓取主面板顶部进行拖拽（手机端已被拦截）
-    $(document).off('mousedown touchstart', '#bl-purifier-popup .bl-header-compact').on('mousedown touchstart', '#bl-purifier-popup .bl-header-compact', function(e) {
-        if (window.innerWidth <= 600) return; // 【拦截规则】手机端点击原本的标题栏不生效！必须拉把手。
-        startDrag(e, document.getElementById('bl-purifier-popup'));
-    });
-
-    // 2. 手机端/通用：绑定统一的“拖拽把手”，抓取最近的卡片本体
-    $(document).off('mousedown touchstart', '.bl-mobile-drag-handle').on('mousedown touchstart', '.bl-mobile-drag-handle', function(e) {
-        // 智能定位：看这个把手位于哪个弹窗内，就移动哪个
-        const popup = $(this).closest('#bl-purifier-popup')[0];
-        const editCard = $(this).closest('.bl-edit-modal-card')[0];
-        const diffCard = $(this).closest('.bl-diff-modal-card')[0];
-        const transferCard = $(this).closest('.bl-transfer-content')[0];
-        
-        const targetEl = popup || editCard || diffCard || transferCard;
-        if (targetEl) {
-            startDrag(e, targetEl);
-            e.stopPropagation(); // 防止事件穿透
-        }
-    });
-
-    // 3. 挂载全局移动与松开处理 (使用 Vanilla JS 确保 passive: false 生效，以完美阻断触屏滑动)
-    document.removeEventListener('mousemove', handleDragMove);
-    document.removeEventListener('touchmove', handleDragMove);
-    document.removeEventListener('mouseup', handleDragEnd);
-    document.removeEventListener('touchend', handleDragEnd);
-    document.removeEventListener('touchcancel', handleDragEnd);
-
-    document.addEventListener('mousemove', handleDragMove);
-    document.addEventListener('touchmove', handleDragMove, { passive: false });
-    document.addEventListener('mouseup', handleDragEnd);
-    document.addEventListener('touchend', handleDragEnd);
-    document.addEventListener('touchcancel', handleDragEnd);
-    // ==========================================
-    
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
 
     $(document).off('click', '#bl-wand-btn').on('click', '#bl-wand-btn', () => {
@@ -302,7 +205,6 @@ export function bindEvents() {
         saveSettingsDebounced();
         injectDiffButtons();
     });
-
     function renderDiffModalContent(index) {
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
@@ -345,10 +247,14 @@ export function bindEvents() {
         renderDiffModalContent(runtimeState.currentDiffIndex);
     };
 
+    // ==========================================
+    // 新修改的区域开始：透视弹窗按钮与收纳逻辑
+    // ==========================================
     $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
         const index = Number($(this).attr('data-index'));
         if (!Number.isInteger(index) || index < 0) return;
 
+        // --- 新增：同步收纳按钮的图标和文本状态 ---
         const { extension_settings } = getAppContext();
         const settings = extension_settings[extensionName];
         if (settings.diffButtonInExtraMenu) {
@@ -358,22 +264,22 @@ export function bindEvents() {
             $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-ellipsis');
             $('#bl-diff-pos-text').text('收纳按钮');
         }
+        // ------------------------------------------
 
         runtimeState.currentDiffIndex = index;
         renderDiffModalContent(index);
         $('#bl-diff-modal').css('display', 'flex');
-        
-        // 调用统一对齐，使透视弹窗处于中心
-        centerCardRelativeToMain($('.bl-diff-modal-card')[0]);
     });
 
     $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
         const settings = extension_settings[extensionName];
         
+        // 切换布尔值状态并存盘
         settings.diffButtonInExtraMenu = !settings.diffButtonInExtraMenu;
         saveSettingsDebounced();
 
+        // 切换UI显示
         if (settings.diffButtonInExtraMenu) {
             $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-thumbtack');
             $('#bl-diff-pos-text').text('外显按钮');
@@ -382,8 +288,12 @@ export function bindEvents() {
             $('#bl-diff-pos-text').text('收纳按钮');
         }
 
+        // 重新渲染当前屏幕上所有的透视按钮层级
         injectDiffButtons();
     });
+    // ==========================================
+    // 新修改的区域结束
+    // ==========================================
 
     $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
         const { extension_settings, saveSettingsDebounced } = getAppContext();
@@ -400,7 +310,6 @@ export function bindEvents() {
     $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) {
         if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').hide();
     });
-    
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });
     $(document).off('click', '.bl-rule-transfer').on('click', '.bl-rule-transfer', function() { openTransferModal($(this).data('index')); });
@@ -435,6 +344,7 @@ export function bindEvents() {
     });
 
     $(document).off('click', '.bl-rule-del').on('click', '.bl-rule-del', function() {
+        // 误触拦截
         if (!confirm('确定要删除这个规则分组吗？删除后无法恢复。')) return; 
         
         extension_settings[extensionName].rules.splice($(this).data('index'), 1);
@@ -496,7 +406,6 @@ export function bindEvents() {
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
     $(document).off('click', '#bl-transfer-copy').on('click', '#bl-transfer-copy', () => runRuleTransfer(false));
     $(document).off('click', '#bl-transfer-move').on('click', '#bl-transfer-move', () => runRuleTransfer(true));
-    
     $(document).off('click', '#bl-rule-transfer-modal').on('click', '#bl-rule-transfer-modal', function(e) {
         if (e.target && e.target.id === 'bl-rule-transfer-modal') closeTransferModal();
     });
@@ -704,6 +613,7 @@ export function bindEvents() {
         };
         input.click();
     });
+    // ==========================================
 
     const markPendingFromPayload = (payload, options = {}) => {
         const { chat } = getAppContext();
