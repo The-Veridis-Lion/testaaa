@@ -15,42 +15,66 @@ export function setupUI() {
             </div>`);
     }
 
-    $('body').append(`
-        <div id="bl-purifier-popup" style="display:none;">
-        <div class="bl-header-compact">
-                <h3 class="bl-title">全局映射预设</h3>
-                <div class="bl-header-actions">
-                    <button id="bl-default-toggle" title="设为默认预设" class="bl-icon-btn bl-bind-toggle"><i class="fas fa-star"></i></button>
-                    <button id="bl-character-bind-toggle" title="将当前角色绑定到当前预设" class="bl-icon-btn bl-bind-toggle"><i class="fas fa-link-slash"></i></button>
-                    <div class="bl-divider-v"></div>
-                    <button id="bl-preset-import" title="导入存档" class="bl-icon-btn"><i class="fas fa-file-import"></i></button>
-                    <button id="bl-preset-export" title="导出存档" class="bl-icon-btn"><i class="fas fa-file-export"></i></button>
-                    <button id="bl-close-btn" class="bl-close-icon" title="关闭">&times;</button>
-                </div>
+$('body').append(`
+        <div id="bl-purifier-popup" data-bl-theme="auto" style="display:none;">
+          <div class="header">
+            <div class="title">
+              <i class="fas fa-globe"></i> 全局映射预设
             </div>
-            
-            <div class="bl-preset-compact-row">
-                <select id="bl-preset-select" class="bl-preset-select"></select>
-                <div class="bl-preset-actions">
-                    <button id="bl-preset-rename" title="重命名" class="bl-icon-btn"><i class="fas fa-pen"></i></button>
-                    <button id="bl-preset-save" title="保存" class="bl-icon-btn"><i class="fas fa-save"></i></button>
-                    <button id="bl-preset-new" title="新建" class="bl-icon-btn"><i class="fas fa-plus"></i></button>
-                    <button id="bl-preset-delete" title="删除存档" class="bl-icon-btn bl-danger-btn"><i class="fas fa-trash"></i></button>
-                </div>
+            <div class="icon-group">
+              <button id="bl-theme-toggle" title="切换主题(Auto/Light/Dark)"><i class="fas fa-adjust"></i></button>
+              <button id="bl-default-toggle" title="设为默认预设"><i class="fas fa-star"></i></button>
+              <button id="bl-character-bind-toggle" title="绑定当前角色"><i class="fas fa-paperclip"></i></button>
+              <button id="bl-preset-import" title="导入存档"><i class="fas fa-file-import"></i></button>
+              <button id="bl-preset-export" title="导出存档"><i class="fas fa-file-export"></i></button>
+              <button id="bl-close-btn" title="关闭"><i class="fas fa-times"></i></button>
             </div>
+          </div>
 
-            <button id="bl-open-new-rule-btn" class="bl-add-rule-btn"><i class="fas fa-folder-plus"></i> 新增规则分组</button>
-            <div id="bl-tags-container" class="bl-scroll-region"></div>
-            <div class="bl-footer">
-                <div class="bl-footer-meta">
-                    <label class="bl-toggle-switch" title="开启后，被修改过的消息旁会显示溯源按钮">
-                        <input type="checkbox" id="bl-diff-global-toggle">
-                        <span class="bl-toggle-slider"></span>
-                    </label>
-                    <span class="bl-footer-meta-text">透视模式</span>
-                </div>
-                <button id="bl-deep-clean-btn" class="bl-deep-clean-btn"><i class="fas fa-broom"></i> 深度清理</button>
+          <div class="toolbar">
+            <div class="select-box">
+              <select id="bl-preset-select" style="background:transparent; border:none; width:100%; color:inherit; outline:none; appearance:none;"></select>
+              <i class="fas fa-chevron-down" style="pointer-events:none; margin-left:-20px;"></i>
             </div>
+            <div class="icon-group">
+              <button id="bl-preset-rename" title="重命名"><i class="fas fa-pen"></i></button>
+              <button id="bl-preset-save" title="保存"><i class="fas fa-save"></i></button>
+              <button id="bl-preset-new" title="新建"><i class="fas fa-plus"></i></button>
+              <button id="bl-preset-delete" title="删除存档"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button id="bl-open-new-rule-btn" class="btn-secondary">
+              <i class="fas fa-folder-plus"></i> 新增规则分组
+            </button>
+            <button class="btn-secondary" id="bl-batch-toggle">
+              <i class="fas fa-list-check"></i> 批量编辑模式
+            </button>
+          </div>
+
+          <div class="batch-operations" id="bl-batch-operations" style="display:none;">
+            <button class="batch-btn" id="bl-batch-select-all"><i class="far fa-check-square"></i> 全选</button>
+            <button class="batch-btn" id="bl-batch-select-invert"><i class="fas fa-minus-square"></i> 反选</button>
+            <button class="batch-btn" id="bl-batch-copy"><i class="fas fa-copy"></i> 复制</button>
+            <button class="batch-btn" id="bl-batch-move"><i class="fas fa-arrows-alt"></i> 移动</button>
+            <button class="batch-btn danger" id="bl-batch-delete"><i class="fas fa-trash"></i> 删除</button>
+          </div>
+
+          <div class="divider"></div>
+
+          <div id="bl-tags-container" class="card-list" style="overflow-y:auto; flex:1;"></div>
+
+          <div class="bottom-bar">
+            <label class="checkbox-label" title="开启后，被修改过的消息旁会显示溯源按钮">
+              <input type="checkbox" id="bl-diff-global-toggle">
+              <span class="custom-checkbox square"></span>
+              <span class="bottom-text">透视模式</span>
+            </label>
+            <button id="bl-deep-clean-btn" class="btn-danger">
+              <i class="fas fa-broom"></i> 深度清理
+            </button>
+          </div>
         </div>`);
 
     $('body').append(`
