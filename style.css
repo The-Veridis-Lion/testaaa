@@ -202,14 +202,16 @@
     border: none;
     padding: 8px;
     border-radius: 6px;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 500;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    flex: 1;
+    flex: 1 1 0;
+    min-height: 32px;
+    box-sizing: border-box;
     transition: background-color 0.2s;
 }
 
@@ -1352,12 +1354,13 @@
         gap: 1px;
     }
 
-    .icon-group button,
-    .icon-group.compact button {
-        min-width: 20px;
-        min-height: 20px;
-        padding: 3px;
-        font-size: 11px;
+    #bl-purifier-popup .icon-group button,
+    #bl-purifier-popup .icon-group.compact button {
+        min-width: 38px !important;
+        min-height: 38px !important;
+        padding: 0 !important;
+        margin: 0 2px !important;
+        font-size: 16px !important;
     }
 
     .toolbar,
@@ -1393,5 +1396,12 @@
     .bottom-bar {
         padding-top: 6px;
         gap: 8px;
+    }
+
+    .action-buttons .btn-secondary {
+        min-height: 38px !important;
+        font-size: 13px !important;
+        flex: 1 1 0 !important;
+        padding: 0 8px !important;
     }
 }
