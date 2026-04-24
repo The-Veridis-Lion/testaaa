@@ -196,62 +196,6 @@ export function bindEvents() {
         $('#bl-purifier-popup').css('display', 'flex').hide().fadeIn(200);
     });
 
-    // --- 1. 主题循环切换逻辑 (Auto -> Light -> Dark -> Auto) ---
-    $(document).off('click', '#bl-theme-toggle').on('click', '#bl-theme-toggle', function() {
-        const popup = $('#bl-purifier-popup');
-        const icon = $(this).find('i');
-        const currentTheme = popup.attr('data-bl-theme') || 'auto';
-        
-        let nextTheme = 'auto';
-        if (currentTheme === 'auto') {
-            nextTheme = 'light';
-            icon.attr('class', 'fas fa-sun');
-        } else if (currentTheme === 'light') {
-            nextTheme = 'dark';
-            icon.attr('class', 'fas fa-moon');
-        } else {
-            nextTheme = 'auto';
-            icon.attr('class', 'fas fa-adjust');
-        }
-        
-        popup.attr('data-bl-theme', nextTheme);
-        // 可选：如果需要持久化主题，可将 nextTheme 存入 extension_settings[extensionName].uiTheme 并 saveSettingsDebounced()
-    });
-
-    // 初始化时读取主题（如有持久化）
-    /*
-    const savedTheme = extension_settings[extensionName].uiTheme || 'auto';
-    $('#bl-purifier-popup').attr('data-bl-theme', savedTheme);
-    */
-
-    // --- 2. 批量模式切换逻辑 ---
-    $(document).off('click', '#bl-batch-toggle').on('click', '#bl-batch-toggle', function() {
-        const popup = $('#bl-purifier-popup');
-        const batchBar = $('#bl-batch-operations');
-        
-        popup.toggleClass('is-batch-mode');
-        $(this).toggleClass('active');
-        
-        if (popup.hasClass('is-batch-mode')) {
-            batchBar.css('display', 'flex');
-            $('.batch-checkbox-label').css('display', 'flex'); // 显示卡片左侧的复选框
-        } else {
-            batchBar.hide();
-            $('.batch-checkbox-label').hide(); // 隐藏卡片左侧的复选框
-        }
-    });
-
-    // --- 3. 批量选择逻辑 ---
-    $(document).off('click', '#bl-batch-select-all').on('click', '#bl-batch-select-all', function() {
-        $('.batch-item-checkbox').prop('checked', true);
-    });
-
-    $(document).off('click', '#bl-batch-select-invert').on('click', '#bl-batch-select-invert', function() {
-        $('.batch-item-checkbox').each(function() {
-            $(this).prop('checked', !$(this).prop('checked'));
-        });
-    });
-
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
     const settings = extension_settings[extensionName];
     $('#bl-diff-global-toggle').prop('checked', settings.enableVisualDiff !== false);
