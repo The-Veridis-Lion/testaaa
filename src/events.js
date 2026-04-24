@@ -198,12 +198,48 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-close-btn').on('click', '#bl-close-btn', () => $('#bl-purifier-popup').fadeOut(200));
     const settings = extension_settings[extensionName];
+
+    const applyThemeMode = (mode) => {
+        const normalized = ['auto', 'light', 'dark'].includes(mode) ? mode : 'auto';
+        settings.themeMode = normalized;
+        $('#bl-purifier-popup').attr('data-bl-theme', normalized);
+    };
+
+    applyThemeMode(settings.themeMode || 'auto');
+
+    $(document).off('click', '#bl-theme-toggle').on('click', '#bl-theme-toggle', function() {
+        const current = settings.themeMode || 'auto';
+        const next = current === 'auto' ? 'light' : current === 'light' ? 'dark' : 'auto';
+        applyThemeMode(next);
+        saveSettingsDebounced();
+    });
+
     $('#bl-diff-global-toggle').prop('checked', settings.enableVisualDiff !== false);
 
     $(document).off('change', '#bl-diff-global-toggle').on('change', '#bl-diff-global-toggle', function() {
         settings.enableVisualDiff = $(this).prop('checked');
         saveSettingsDebounced();
         injectDiffButtons();
+    });
+
+    $(document).off('click', '#bl-batch-toggle').on('click', '#bl-batch-toggle', function() {
+        const $popup = $('#bl-purifier-popup');
+        const isBatchMode = !$popup.hasClass('is-batch-mode');
+        $popup.toggleClass('is-batch-mode', isBatchMode);
+        $('#bl-batch-operations').toggle(isBatchMode);
+        $('.batch-checkbox-label').toggle(isBatchMode);
+        $(this).toggleClass('active', isBatchMode);
+        if (!isBatchMode) $('.batch-item-checkbox').prop('checked', false);
+    });
+
+    $(document).off('click', '#bl-btn-select-all').on('click', '#bl-btn-select-all', () => {
+        $('.batch-item-checkbox').prop('checked', true);
+    });
+
+    $(document).off('click', '#bl-btn-select-invert').on('click', '#bl-btn-select-invert', () => {
+        $('.batch-item-checkbox').each(function() {
+            $(this).prop('checked', !$(this).prop('checked'));
+        });
     });
     function renderDiffModalContent(index) {
         const { extension_settings } = getAppContext();
