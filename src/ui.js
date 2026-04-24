@@ -15,7 +15,7 @@ export function setupUI() {
             </div>`);
     }
 
-$('body').append(`
+    $('body').append(`
         <div id="bl-purifier-popup" data-bl-theme="auto" style="display:none;">
           <div class="header">
             <div class="title">
