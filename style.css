@@ -94,11 +94,11 @@
 
 #bl-purifier-popup {
     position: fixed !important;
-    top: 10vh !important;
+    top: 10% !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
     width: 90% !important;
-    max-width: 680px !important;
+    max-width: 480px !important;
     max-height: 85vh !important;
     background-color: var(--bg-container) !important;
     box-sizing: border-box !important;
@@ -107,7 +107,7 @@
     flex-direction: column;
     gap: 8px;
     border-radius: 12px !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.25) !important;
     border: 1px solid var(--border-color) !important;
     z-index: 999999 !important;
     backdrop-filter: blur(20px) !important;
@@ -156,6 +156,17 @@
     box-sizing: border-box;
 }
 
+#bl-purifier-popup .header .icon-group button,
+#bl-purifier-popup .header .icon-group.compact button {
+    min-width: 38px !important;
+    width: 38px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+}
+
 .icon-group.compact {
     gap: 3px;
 }
@@ -167,10 +178,26 @@
 }
 
 .toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch !important;
+    gap: 8px !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group {
+    height: 100%;
+    gap: 8px !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group button,
+#bl-purifier-popup .toolbar .icon-group.compact button {
+    min-width: 38px !important;
+    width: 38px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
 }
 
 .select-box {
@@ -191,28 +218,35 @@
 }
 
 .action-buttons {
-    display: flex;
-    gap: 8px;
-    width: 100%;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
 }
 
 .btn-secondary {
     background-color: var(--bg-button);
     color: var(--btn-secondary-color);
     border: none;
-    padding: 8px;
+    padding: 6px 4px !important;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px !important;
     font-weight: 500;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
-    flex: 1 1 0;
-    min-height: 32px;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    line-height: 1 !important;
+    text-align: center !important;
     box-sizing: border-box;
     transition: background-color 0.2s;
+    white-space: nowrap !important;
 }
 
 .btn-secondary.active {
@@ -227,6 +261,9 @@
 .btn-secondary i {
     font-size: 14px;
     color: var(--icon-color);
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .batch-operations {
@@ -651,6 +688,7 @@
 #bl-preset-select {
     flex: 1 1 auto !important;
     min-width: 0 !important;
+    height: 38px !important;
     min-height: 38px !important;
     padding: 9px 36px 9px 12px !important;
     border-radius: 8px !important;
@@ -674,7 +712,11 @@
 
 #bl-open-new-rule-btn {
     width: 100% !important;
-    margin-bottom: 14px !important;
+    margin-bottom: 0 !important;
+}
+
+.action-buttons .btn-secondary {
+    padding: 0 12px !important;
 }
 
 #bl-tags-container {
@@ -928,7 +970,6 @@
 
 /* --- 手机端微调 --- */
 @media screen and (max-width: 600px) {
-    #bl-purifier-popup { padding: 14px 16px !important; width: 92% !important; top: 7vh !important; max-width: 420px !important; border-radius: 12px !important; max-height: 78vh !important;}
     #bl-rule-transfer-modal {
         align-items: flex-start !important;
         background: transparent !important;
@@ -1165,11 +1206,6 @@
         height: auto !important; 
     }
     
-    /* 3. 保持净化主面板的显示比例 */
-    #bl-purifier-popup {
-        top: 8vh !important; 
-        max-height: 80vh !important;
-    }
 }
 
 .bl-badge-compact {
@@ -1283,9 +1319,10 @@
 .bl-move-subrule-up-btn,
 .bl-move-subrule-down-btn {
     border-radius: 10px !important;
-    min-width: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
     padding: 0 !important;
     border: 1px solid var(--bl-border-color) !important;
     background: var(--bl-background-secondary) !important;
@@ -1310,15 +1347,22 @@
 .bl-rule-transfer,
 .bl-rule-edit,
 .bl-rule-del {
-    min-width: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
     padding: 0 !important;
 }
 
 .bl-subrule-summary-actions i,
 .bl-rule-actions i {
-    font-size: 13px !important;
+    font-size: 12px !important;
+}
+
+.bl-rule-actions,
+.bl-subrule-summary-actions {
+    gap: 6px !important;
+    align-items: center !important;
 }
 
 @media screen and (max-width: 600px) {
@@ -1337,6 +1381,7 @@
         transform: none !important;
         border-radius: 0 !important;
         border: none !important;
+        box-shadow: none !important;
         padding: 10px 8px 8px 8px !important;
         gap: 6px !important;
     }
@@ -1401,7 +1446,8 @@
     .action-buttons .btn-secondary {
         min-height: 38px !important;
         font-size: 13px !important;
-        flex: 1 1 0 !important;
-        padding: 0 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 }
