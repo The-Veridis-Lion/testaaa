@@ -683,6 +683,9 @@
     color: var(--bl-text-primary) !important;
     cursor: pointer !important;
     transition: background 0.2s !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    line-height: 1.2 !important;
 }
 
 .bl-transfer-btn:hover { background: var(--bl-background-tertiary) !important; }
@@ -1376,13 +1379,18 @@
 .bl-confirm-btn { padding: 12px !important; }
 .bl-transfer-title { margin-bottom: 10px !important; font-size: 16px !important; }
 .bl-transfer-target { font-size: 14px !important; padding: 8px 36px 8px 10px !important; margin-bottom: 12px !important; }
-.bl-transfer-actions { display: flex !important; gap: 8px !important; }
+.bl-transfer-actions { display: flex !important; gap: 8px !important; flex-wrap: nowrap !important; }
 .bl-diff-header-actions { display: flex !important; align-items: center !important; gap: 12px !important; }
 .bl-diff-header-btn { padding: 6px 12px !important; min-height: 30px !important; font-size: 13px !important; }
 
 @media screen and (max-width: 600px) {
-    .bl-transfer-actions { flex-wrap: wrap !important; }
-    .bl-transfer-actions > .bl-transfer-btn { flex: 1 1 calc(50% - 4px) !important; }
+    .bl-transfer-actions { flex-wrap: nowrap !important; }
+    .bl-transfer-actions > .bl-transfer-btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        font-size: 12px !important;
+        padding: 8px 6px !important;
+    }
 }
 
 .bl-rule-move-up,

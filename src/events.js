@@ -376,14 +376,7 @@ export function bindEvents() {
         syncBatchSelectionStateFromDom(rules);
     });
 
-    $(document).off('click', '#bl-btn-batch-copy').on('click', '#bl-btn-batch-copy', () => {
-        const rules = extension_settings[extensionName].rules || [];
-        const selectedIndexes = getSelectedIndexesFromState(rules);
-        if (selectedIndexes.length <= 0) return;
-        openTransferModal(selectedIndexes);
-    });
-
-    $(document).off('click', '#bl-btn-batch-move').on('click', '#bl-btn-batch-move', () => {
+    $(document).off('click', '#bl-btn-batch-transfer').on('click', '#bl-btn-batch-transfer', () => {
         const rules = extension_settings[extensionName].rules || [];
         const selectedIndexes = getSelectedIndexesFromState(rules);
         if (selectedIndexes.length <= 0) return;
