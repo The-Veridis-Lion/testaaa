@@ -1,6 +1,6 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { logger } from './log.js';
-import { parseInputToWords, getCurrentCharacterContext } from './utils.js';
+import { deepClone, parseInputToWords, getCurrentCharacterContext } from './utils.js';
 import {
     applyPresetByName,
     renderTags,
