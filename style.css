@@ -42,6 +42,15 @@
     --bl-success-soft: color-mix(in srgb, var(--bl-success-color) 16%, transparent);
     --bl-panel-shadow: 0 10px 30px color-mix(in srgb, black 18%, transparent);
     --bl-chip-text: var(--SmartThemeBlurTintColor, #ffffff);
+    --bl-title-size: 23px;
+    --bl-title-weight: 650;
+    --bl-title-gap: 8px;
+    --bl-header-divider: rgba(80, 72, 64, 0.12);
+    --bl-header-bottom-space: 16px;
+    --bl-control-height: 46px;
+    --bl-icon-button-size: 46px;
+    --bl-control-gap: 8px;
+    --bl-control-radius: 10px;
 }
 
 [data-bl-theme="light"] {
@@ -94,11 +103,11 @@
 
 #bl-purifier-popup {
     position: fixed !important;
-    top: 10vh !important;
+    top: 10% !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
     width: 90% !important;
-    max-width: 680px !important;
+    max-width: 480px !important;
     max-height: 85vh !important;
     background-color: var(--bg-container) !important;
     box-sizing: border-box !important;
@@ -107,7 +116,7 @@
     flex-direction: column;
     gap: 8px;
     border-radius: 12px !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.25) !important;
     border: 1px solid var(--border-color) !important;
     z-index: 999999 !important;
     backdrop-filter: blur(20px) !important;
@@ -118,20 +127,28 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--bl-header-divider);
+    margin-bottom: var(--bl-header-bottom-space);
     width: 100%;
 }
 
 .title {
-    font-size: calc(18px - 0.05rem);
-    font-weight: bold;
+    font-size: var(--bl-title-size);
+    font-weight: var(--bl-title-weight);
     color: var(--text-main);
-    line-height: 1;
+    line-height: 1.2;
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--bl-title-gap);
+}
+
+.title i {
+    font-size: 1em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
 }
 
 .icon-group {
@@ -156,6 +173,17 @@
     box-sizing: border-box;
 }
 
+#bl-purifier-popup .header .icon-group button,
+#bl-purifier-popup .header .icon-group.compact button {
+    min-width: 42px !important;
+    width: 42px !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    font-size: 21px !important;
+}
+
 .icon-group.compact {
     gap: 3px;
 }
@@ -167,10 +195,32 @@
 }
 
 .toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center !important;
+    gap: var(--bl-control-gap) !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group {
+    display: grid !important;
+    grid-template-columns: repeat(4, var(--bl-icon-button-size));
+    align-items: center !important;
+    gap: var(--bl-control-gap) !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group button,
+#bl-purifier-popup .toolbar .icon-group.compact button {
+    min-width: var(--bl-icon-button-size) !important;
+    width: var(--bl-icon-button-size) !important;
+    min-height: var(--bl-icon-button-size) !important;
+    height: var(--bl-icon-button-size) !important;
+    padding: 0 !important;
+    border-radius: var(--bl-control-radius) !important;
+    font-size: 21px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .select-box {
@@ -179,40 +229,47 @@
     justify-content: space-between;
     align-items: center;
     background-color: var(--bg-button);
-    padding: 4px 10px;
+    padding: 0 14px;
     border-radius: 6px;
     font-size: 14px;
     color: var(--text-main);
     cursor: pointer;
-    height: 28px;
+    height: var(--bl-control-height);
     box-sizing: border-box;
     border: none;
     outline: none;
 }
 
 .action-buttons {
-    display: flex;
-    gap: 8px;
-    width: 100%;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    width: 100% !important;
 }
 
 .btn-secondary {
     background-color: var(--bg-button);
     color: var(--btn-secondary-color);
     border: none;
-    padding: 8px;
+    padding: 6px 4px !important;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px !important;
     font-weight: 500;
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
-    flex: 1 1 0;
-    min-height: 32px;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    line-height: 1 !important;
+    text-align: center !important;
     box-sizing: border-box;
     transition: background-color 0.2s;
+    white-space: nowrap !important;
 }
 
 .btn-secondary.active {
@@ -227,6 +284,9 @@
 .btn-secondary i {
     font-size: 14px;
     color: var(--icon-color);
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .batch-operations {
@@ -651,10 +711,11 @@
 #bl-preset-select {
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    min-height: 38px !important;
-    padding: 9px 36px 9px 12px !important;
-    border-radius: 8px !important;
-    border: 1px solid var(--bl-border-color) !important;
+    height: var(--bl-control-height) !important;
+    min-height: var(--bl-control-height) !important;
+    padding: 0 44px 0 14px !important;
+    border-radius: var(--bl-control-radius) !important;
+    border: 1px solid color-mix(in srgb, var(--bl-text-primary) 16%, transparent) !important;
     background-color: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
@@ -663,8 +724,11 @@
     color: var(--bl-text-primary) !important;
     outline: none !important;
     font-family: inherit !important;
+    font-size: 16px !important;
+    line-height: normal !important;
     appearance: none !important;
     -webkit-appearance: none !important;
+    box-sizing: border-box !important;
 }
 
 #bl-preset-select:hover,
@@ -674,7 +738,11 @@
 
 #bl-open-new-rule-btn {
     width: 100% !important;
-    margin-bottom: 14px !important;
+    margin-bottom: 0 !important;
+}
+
+.action-buttons .btn-secondary {
+    padding: 0 12px !important;
 }
 
 #bl-tags-container {
@@ -928,7 +996,6 @@
 
 /* --- 手机端微调 --- */
 @media screen and (max-width: 600px) {
-    #bl-purifier-popup { padding: 14px 16px !important; width: 92% !important; top: 7vh !important; max-width: 420px !important; border-radius: 12px !important; max-height: 78vh !important;}
     #bl-rule-transfer-modal {
         align-items: flex-start !important;
         background: transparent !important;
@@ -947,6 +1014,8 @@
     #bl-preset-select {
         min-width: 0 !important;
         width: 100% !important;
+        height: 38px !important;
+        min-height: 38px !important;
         font-size: 13px !important;
         padding: 8px 32px 8px 10px !important;
         background-position: right 10px center !important;
@@ -1165,11 +1234,6 @@
         height: auto !important; 
     }
     
-    /* 3. 保持净化主面板的显示比例 */
-    #bl-purifier-popup {
-        top: 8vh !important; 
-        max-height: 80vh !important;
-    }
 }
 
 .bl-badge-compact {
@@ -1283,9 +1347,10 @@
 .bl-move-subrule-up-btn,
 .bl-move-subrule-down-btn {
     border-radius: 10px !important;
-    min-width: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
     padding: 0 !important;
     border: 1px solid var(--bl-border-color) !important;
     background: var(--bl-background-secondary) !important;
@@ -1310,15 +1375,22 @@
 .bl-rule-transfer,
 .bl-rule-edit,
 .bl-rule-del {
-    min-width: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
     padding: 0 !important;
 }
 
 .bl-subrule-summary-actions i,
 .bl-rule-actions i {
-    font-size: 13px !important;
+    font-size: 12px !important;
+}
+
+.bl-rule-actions,
+.bl-subrule-summary-actions {
+    gap: 6px !important;
+    align-items: center !important;
 }
 
 @media screen and (max-width: 600px) {
@@ -1337,6 +1409,7 @@
         transform: none !important;
         border-radius: 0 !important;
         border: none !important;
+        box-shadow: none !important;
         padding: 10px 8px 8px 8px !important;
         gap: 6px !important;
     }
@@ -1366,7 +1439,12 @@
     .toolbar,
     .action-buttons,
     .batch-operations {
-        gap: 4px;
+        gap: 4px !important;
+    }
+
+    #bl-purifier-popup .toolbar .icon-group {
+        gap: 4px !important;
+        grid-template-columns: repeat(4, 38px);
     }
 
     .select-box,
@@ -1401,7 +1479,8 @@
     .action-buttons .btn-secondary {
         min-height: 38px !important;
         font-size: 13px !important;
-        flex: 1 1 0 !important;
-        padding: 0 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 }
