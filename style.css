@@ -50,7 +50,7 @@
     --bl-control-height: 40px;
     --bl-icon-button-size: 40px;
     --bl-control-gap: 8px;
-    --bl-top-section-gap: 8px;
+    --bl-top-section-gap: 6px;
     --bl-control-radius: 10px;
     --bl-header-hit-size: 26px;
     --bl-header-icon-size: 16px;
@@ -130,8 +130,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--bl-header-divider);
+    padding-bottom: 0;
+    border-bottom: none;
     margin-bottom: 0;
     width: 100%;
 }
@@ -347,7 +347,7 @@
     height: 1px;
     background-color: var(--divider-color);
     width: 100%;
-    margin: 4px 0;
+    margin: 2px 0 0;
 }
 
 .card-list {
