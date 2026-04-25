@@ -452,7 +452,7 @@ export function syncSubrulesFromDOM() {
     });
 }
 
-export function openTransferModal(ruleIndex) {
+export function openTransferModal(ruleIndexOrIndexes) {
     const { extension_settings } = getAppContext();
     const settings = extension_settings[extensionName];
     const presets = settings?.presets || {};
@@ -463,7 +463,11 @@ export function openTransferModal(ruleIndex) {
         return;
     }
 
-    runtimeState.currentTransferRuleIndex = ruleIndex;
+    const indexes = Array.isArray(ruleIndexOrIndexes) ? ruleIndexOrIndexes : [ruleIndexOrIndexes];
+    runtimeState.currentTransferRuleIndexes = indexes
+        .map((v) => Number(v))
+        .filter((v) => Number.isInteger(v) && v >= 0);
+    runtimeState.currentTransferRuleIndex = runtimeState.currentTransferRuleIndexes[0] ?? -1;
     const $select = $('#bl-transfer-target');
     $select.empty();
     targetNames.forEach(name => $select.append($('<option>', { value: name, text: name })));
@@ -472,6 +476,7 @@ export function openTransferModal(ruleIndex) {
 
 export function closeTransferModal() {
     runtimeState.currentTransferRuleIndex = -1;
+    runtimeState.currentTransferRuleIndexes = [];
     $('#bl-rule-transfer-modal').hide();
 }
 
@@ -479,22 +484,33 @@ export function runRuleTransfer(isMove) {
     const { extension_settings, saveSettingsDebounced } = getAppContext();
     const settings = extension_settings[extensionName];
     const targetPreset = String($('#bl-transfer-target').val() || '');
-    if (runtimeState.currentTransferRuleIndex < 0) return;
+    const transferIndexes = Array.isArray(runtimeState.currentTransferRuleIndexes) && runtimeState.currentTransferRuleIndexes.length > 0
+        ? runtimeState.currentTransferRuleIndexes
+        : [runtimeState.currentTransferRuleIndex];
+    const validIndexes = transferIndexes
+        .map((v) => Number(v))
+        .filter((v) => Number.isInteger(v) && v >= 0);
+    if (validIndexes.length === 0) return;
     if (!targetPreset) {
         alert('请选择目标存档。');
         return;
     }
 
     const sourceRules = settings.rules || [];
-    const selectedRule = sourceRules[runtimeState.currentTransferRuleIndex];
-    if (!selectedRule) {
+    const uniqueIndexes = [...new Set(validIndexes)].sort((a, b) => a - b).filter((idx) => idx < sourceRules.length);
+    if (uniqueIndexes.length === 0) {
         closeTransferModal();
         return;
     }
 
     if (!Array.isArray(settings.presets[targetPreset])) settings.presets[targetPreset] = [];
-    settings.presets[targetPreset].push(JSON.parse(JSON.stringify(selectedRule)));
-    if (isMove) sourceRules.splice(runtimeState.currentTransferRuleIndex, 1);
+    const movingRules = uniqueIndexes.map((idx) => sourceRules[idx]).filter(Boolean);
+    movingRules.forEach((rule) => settings.presets[targetPreset].push(JSON.parse(JSON.stringify(rule))));
+    if (isMove) {
+        for (let i = uniqueIndexes.length - 1; i >= 0; i--) {
+            sourceRules.splice(uniqueIndexes[i], 1);
+        }
+    }
 
     runtimeState.isRegexDirty = true;
     closeTransferModal();

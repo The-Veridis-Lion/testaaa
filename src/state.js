@@ -33,6 +33,8 @@ export const runtimeState = {
     trackedDiffMessageOrder: [],
     currentDiffIndex: undefined,
     diffModalRefresh: null,
+    batchSelectedRuleIds: [],
+    currentTransferRuleIndexes: [],
 };
 
 const appContext = {
