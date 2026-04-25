@@ -156,6 +156,17 @@
     box-sizing: border-box;
 }
 
+#bl-purifier-popup .header .icon-group button,
+#bl-purifier-popup .header .icon-group.compact button {
+    min-width: 38px !important;
+    width: 38px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
+}
+
 .icon-group.compact {
     gap: 3px;
 }
@@ -167,10 +178,26 @@
 }
 
 .toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch !important;
+    gap: 8px !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group {
+    height: 100%;
+    gap: 8px !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group button,
+#bl-purifier-popup .toolbar .icon-group.compact button {
+    min-width: 38px !important;
+    width: 38px !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+    border-radius: 10px !important;
+    font-size: 16px !important;
 }
 
 .select-box {
@@ -193,6 +220,7 @@
 .action-buttons {
     display: flex !important;
     flex-wrap: nowrap !important;
+    align-items: stretch !important;
     gap: 8px !important;
     width: 100% !important;
 }
@@ -208,11 +236,14 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     cursor: pointer;
     flex: 1 1 0 !important;
     min-width: 0 !important;
-    min-height: 32px;
+    min-height: 40px !important;
+    height: 40px !important;
+    line-height: 1 !important;
+    text-align: center !important;
     box-sizing: border-box;
     transition: background-color 0.2s;
     white-space: nowrap !important;
@@ -230,6 +261,9 @@
 .btn-secondary i {
     font-size: 14px;
     color: var(--icon-color);
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
 }
 
 .batch-operations {
@@ -654,6 +688,7 @@
 #bl-preset-select {
     flex: 1 1 auto !important;
     min-width: 0 !important;
+    height: 38px !important;
     min-height: 38px !important;
     padding: 9px 36px 9px 12px !important;
     border-radius: 8px !important;
@@ -677,7 +712,11 @@
 
 #bl-open-new-rule-btn {
     width: 100% !important;
-    margin-bottom: 14px !important;
+    margin-bottom: 0 !important;
+}
+
+.action-buttons .btn-secondary {
+    padding: 0 12px !important;
 }
 
 #bl-tags-container {
@@ -1280,9 +1319,10 @@
 .bl-move-subrule-up-btn,
 .bl-move-subrule-down-btn {
     border-radius: 10px !important;
-    min-width: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
     padding: 0 !important;
     border: 1px solid var(--bl-border-color) !important;
     background: var(--bl-background-secondary) !important;
@@ -1307,15 +1347,22 @@
 .bl-rule-transfer,
 .bl-rule-edit,
 .bl-rule-del {
-    min-width: 32px !important;
-    width: 32px !important;
-    min-height: 32px !important;
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
     padding: 0 !important;
 }
 
 .bl-subrule-summary-actions i,
 .bl-rule-actions i {
-    font-size: 13px !important;
+    font-size: 12px !important;
+}
+
+.bl-rule-actions,
+.bl-subrule-summary-actions {
+    gap: 6px !important;
+    align-items: center !important;
 }
 
 @media screen and (max-width: 600px) {
