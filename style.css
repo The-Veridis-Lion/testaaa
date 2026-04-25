@@ -94,11 +94,11 @@
 
 #bl-purifier-popup {
     position: fixed !important;
-    top: 10vh !important;
+    top: 10% !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
     width: 90% !important;
-    max-width: 680px !important;
+    max-width: 480px !important;
     max-height: 85vh !important;
     background-color: var(--bg-container) !important;
     box-sizing: border-box !important;
@@ -107,7 +107,7 @@
     flex-direction: column;
     gap: 8px;
     border-radius: 12px !important;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.1) !important;
+    box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.25) !important;
     border: 1px solid var(--border-color) !important;
     z-index: 999999 !important;
     backdrop-filter: blur(20px) !important;
@@ -191,28 +191,31 @@
 }
 
 .action-buttons {
-    display: flex;
-    gap: 8px;
-    width: 100%;
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 8px !important;
+    width: 100% !important;
 }
 
 .btn-secondary {
     background-color: var(--bg-button);
     color: var(--btn-secondary-color);
     border: none;
-    padding: 8px;
+    padding: 6px 4px !important;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px !important;
     font-weight: 500;
     display: flex;
     justify-content: center;
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    flex: 1 1 0;
+    flex: 1 1 0 !important;
+    min-width: 0 !important;
     min-height: 32px;
     box-sizing: border-box;
     transition: background-color 0.2s;
+    white-space: nowrap !important;
 }
 
 .btn-secondary.active {
@@ -928,7 +931,6 @@
 
 /* --- 手机端微调 --- */
 @media screen and (max-width: 600px) {
-    #bl-purifier-popup { padding: 14px 16px !important; width: 92% !important; top: 7vh !important; max-width: 420px !important; border-radius: 12px !important; max-height: 78vh !important;}
     #bl-rule-transfer-modal {
         align-items: flex-start !important;
         background: transparent !important;
@@ -1165,11 +1167,6 @@
         height: auto !important; 
     }
     
-    /* 3. 保持净化主面板的显示比例 */
-    #bl-purifier-popup {
-        top: 8vh !important; 
-        max-height: 80vh !important;
-    }
 }
 
 .bl-badge-compact {
@@ -1337,6 +1334,7 @@
         transform: none !important;
         border-radius: 0 !important;
         border: none !important;
+        box-shadow: none !important;
         padding: 10px 8px 8px 8px !important;
         gap: 6px !important;
     }
@@ -1401,7 +1399,8 @@
     .action-buttons .btn-secondary {
         min-height: 38px !important;
         font-size: 13px !important;
-        flex: 1 1 0 !important;
-        padding: 0 8px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 }
