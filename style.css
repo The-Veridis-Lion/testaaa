@@ -50,7 +50,7 @@
     --bl-control-height: 40px;
     --bl-icon-button-size: 40px;
     --bl-control-gap: 8px;
-    --bl-top-section-gap: 8px;
+    --bl-top-section-gap: 6px;
     --bl-control-radius: 10px;
     --bl-header-hit-size: 26px;
     --bl-header-icon-size: 16px;
@@ -130,8 +130,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 14px;
-    border-bottom: 1px solid var(--bl-header-divider);
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(80, 72, 64, 0.12);
     margin-bottom: 0;
     width: 100%;
 }
@@ -344,10 +344,11 @@
 }
 
 .divider {
-    height: 1px;
-    background-color: var(--divider-color);
+    height: 0;
+    border-top: 1px solid rgba(80, 72, 64, 0.12);
+    background: none;
     width: 100%;
-    margin: 4px 0;
+    margin: 2px 0 0;
 }
 
 .card-list {
@@ -682,6 +683,9 @@
     color: var(--bl-text-primary) !important;
     cursor: pointer !important;
     transition: background 0.2s !important;
+    white-space: nowrap !important;
+    font-size: 13px !important;
+    line-height: 1.2 !important;
 }
 
 .bl-transfer-btn:hover { background: var(--bl-background-tertiary) !important; }
@@ -1375,13 +1379,18 @@
 .bl-confirm-btn { padding: 12px !important; }
 .bl-transfer-title { margin-bottom: 10px !important; font-size: 16px !important; }
 .bl-transfer-target { font-size: 14px !important; padding: 8px 36px 8px 10px !important; margin-bottom: 12px !important; }
-.bl-transfer-actions { display: flex !important; gap: 8px !important; }
+.bl-transfer-actions { display: flex !important; gap: 8px !important; flex-wrap: nowrap !important; }
 .bl-diff-header-actions { display: flex !important; align-items: center !important; gap: 12px !important; }
 .bl-diff-header-btn { padding: 6px 12px !important; min-height: 30px !important; font-size: 13px !important; }
 
 @media screen and (max-width: 600px) {
-    .bl-transfer-actions { flex-wrap: wrap !important; }
-    .bl-transfer-actions > .bl-transfer-btn { flex: 1 1 calc(50% - 4px) !important; }
+    .bl-transfer-actions { flex-wrap: nowrap !important; }
+    .bl-transfer-actions > .bl-transfer-btn {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+        font-size: 12px !important;
+        padding: 8px 6px !important;
+    }
 }
 
 .bl-rule-move-up,
@@ -1469,8 +1478,8 @@
         gap: 1px;
     }
 
-    #bl-purifier-popup .icon-group button,
-    #bl-purifier-popup .icon-group.compact button {
+    #bl-purifier-popup .header .icon-group button,
+    #bl-purifier-popup .header .icon-group.compact button {
         min-width: 38px !important;
         min-height: 38px !important;
         padding: 0 !important;
@@ -1524,5 +1533,30 @@
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    #bl-tags-container .card .card-header .icon-group.compact {
+        gap: 5px !important;
+    }
+
+    #bl-tags-container .card .card-header .icon-group.compact button {
+        width: 32px !important;
+        height: 32px !important;
+        min-width: 32px !important;
+        min-height: 32px !important;
+        max-width: 32px !important;
+        max-height: 32px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+    }
+
+    #bl-tags-container .card .card-header .icon-group.compact button i,
+    #bl-tags-container .card .card-header .icon-group.compact button svg {
+        width: 16px !important;
+        height: 16px !important;
+        font-size: 16px !important;
+        line-height: 1 !important;
     }
 }

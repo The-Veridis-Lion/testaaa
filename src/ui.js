@@ -50,8 +50,7 @@ export function setupUI() {
             <div class="batch-operations" id="bl-batch-operations">
                 <button class="batch-btn" id="bl-btn-select-all"><i class="far fa-check-square"></i> 全选</button>
                 <button class="batch-btn" id="bl-btn-select-invert"><i class="fas fa-minus-square"></i> 反选</button>
-                <button class="batch-btn" id="bl-btn-batch-copy"><i class="fas fa-copy"></i> 复制</button>
-                <button class="batch-btn" id="bl-btn-batch-move"><i class="fas fa-arrows-alt"></i> 移动</button>
+                <button class="batch-btn" id="bl-btn-batch-transfer"><i class="fas fa-copy"></i> 复制 / 转移</button>
                 <button class="batch-btn danger" id="bl-btn-batch-delete"><i class="fas fa-trash"></i> 删除</button>
             </div>
 
