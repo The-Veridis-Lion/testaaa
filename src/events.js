@@ -1,6 +1,6 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { logger } from './log.js';
-import { parseInputToWords, getCurrentCharacterContext } from './utils.js';
+import { deepClone, parseInputToWords, getCurrentCharacterContext } from './utils.js';
 import {
     applyPresetByName,
     renderTags,
@@ -82,6 +82,67 @@ function getBatchOperationContext(clickedIndex, rules) {
     const selectedSet = new Set(selectedIndexes);
     const shouldBatch = isBatchMode && selectedIndexes.length > 1 && selectedSet.has(clickedIndex);
     return { isBatchMode, selectedIndexes, selectedSet, shouldBatch };
+}
+
+function shouldBatchOperateRule(clickedIndex, rules) {
+    if (!Number.isInteger(clickedIndex) || clickedIndex < 0 || clickedIndex >= rules.length) return false;
+    const ctx = getBatchOperationContext(clickedIndex, rules);
+    return ctx.shouldBatch;
+}
+
+function copySingleRule(rules, index) {
+    const source = rules[index];
+    if (!source) return false;
+    const clone = deepClone(source);
+    rules.splice(index + 1, 0, clone);
+    return true;
+}
+
+function copySelectedRules(rules, selectedIndexes) {
+    if (!Array.isArray(selectedIndexes) || selectedIndexes.length <= 1) return false;
+    const sorted = [...selectedIndexes].sort((a, b) => a - b);
+    const clones = sorted
+        .map((idx) => deepClone(rules[idx]))
+        .filter(Boolean);
+    if (clones.length === 0) return false;
+    const insertAfter = sorted[sorted.length - 1];
+    rules.splice(insertAfter + 1, 0, ...clones);
+    return true;
+}
+
+function handleCopyRule(index, rules) {
+    if (shouldBatchOperateRule(index, rules)) {
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        return copySelectedRules(rules, selectedIndexes);
+    }
+    return copySingleRule(rules, index);
+}
+
+function deleteSingleRule(rules, index) {
+    const deletingRule = rules[index];
+    if (!deletingRule) return false;
+    const deletingId = ensureRuleObjectId(deletingRule);
+    rules.splice(index, 1);
+    runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => id !== deletingId);
+    return true;
+}
+
+function deleteSelectedRules(rules, selectedIndexes) {
+    if (!Array.isArray(selectedIndexes) || selectedIndexes.length <= 1) return false;
+    const deletingSet = new Set(selectedIndexes);
+    const deletingIds = new Set(getRuleIdsByIndexes(rules, selectedIndexes));
+    const nextRules = rules.filter((_, idx) => !deletingSet.has(idx));
+    rules.splice(0, rules.length, ...nextRules);
+    runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => !deletingIds.has(id));
+    return true;
+}
+
+function handleDeleteRule(index, rules) {
+    if (shouldBatchOperateRule(index, rules)) {
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        return deleteSelectedRules(rules, selectedIndexes);
+    }
+    return deleteSingleRule(rules, index);
 }
 
 function renderTagsPreserveBatchSelection() {
@@ -343,6 +404,33 @@ export function bindEvents() {
         syncBatchSelectionStateFromDom(rules);
     });
 
+    $(document).off('click', '#bl-btn-batch-copy').on('click', '#bl-btn-batch-copy', () => {
+        const rules = extension_settings[extensionName].rules || [];
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        if (selectedIndexes.length <= 0) return;
+        const changed = selectedIndexes.length > 1
+            ? copySelectedRules(rules, selectedIndexes)
+            : copySingleRule(rules, selectedIndexes[0]);
+        if (!changed) return;
+        runtimeState.isRegexDirty = true;
+        saveSettingsDebounced();
+        renderTagsPreserveBatchSelection();
+    });
+
+    $(document).off('click', '#bl-btn-batch-delete').on('click', '#bl-btn-batch-delete', () => {
+        const rules = extension_settings[extensionName].rules || [];
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        if (selectedIndexes.length <= 0) return;
+        if (!confirm(`确定要删除选中的 ${selectedIndexes.length} 个规则分组吗？删除后无法恢复。`)) return;
+        const changed = selectedIndexes.length > 1
+            ? deleteSelectedRules(rules, selectedIndexes)
+            : deleteSingleRule(rules, selectedIndexes[0]);
+        if (!changed) return;
+        runtimeState.isRegexDirty = true;
+        saveSettingsDebounced();
+        renderTagsPreserveBatchSelection();
+    });
+
     $(document).off('change', '.batch-item-checkbox').on('change', '.batch-item-checkbox', function() {
         const rules = extension_settings[extensionName].rules || [];
         syncBatchSelectionStateFromDom(rules);
@@ -458,9 +546,11 @@ export function bindEvents() {
         const index = Number($(this).data('index'));
         const rules = extension_settings[extensionName].rules || [];
         if (!Number.isInteger(index) || index < 0 || index >= rules.length) return;
-        const ctx = getBatchOperationContext(index, rules);
-        if (ctx.shouldBatch) openTransferModal(ctx.selectedIndexes);
-        else openTransferModal(index);
+        const changed = handleCopyRule(index, rules);
+        if (!changed) return;
+        runtimeState.isRegexDirty = true;
+        saveSettingsDebounced();
+        renderTagsPreserveBatchSelection();
     });
 
     $(document).off('click', '.bl-rule-move-up').on('click', '.bl-rule-move-up', function() {
@@ -517,17 +607,8 @@ export function bindEvents() {
         const rules = extension_settings[extensionName].rules || [];
         const index = Number($(this).data('index'));
         if (!Number.isInteger(index) || index < 0 || index >= rules.length) return;
-        const ctx = getBatchOperationContext(index, rules);
-        if (ctx.shouldBatch) {
-            const deletingSet = new Set(ctx.selectedIndexes);
-            const deletingIds = new Set(getRuleIdsByIndexes(rules, ctx.selectedIndexes));
-            extension_settings[extensionName].rules = rules.filter((_, idx) => !deletingSet.has(idx));
-            runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => !deletingIds.has(id));
-        } else {
-            const deletingId = ensureRuleObjectId(rules[index]);
-            extension_settings[extensionName].rules.splice(index, 1);
-            runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => id !== deletingId);
-        }
+        const changed = handleDeleteRule(index, rules);
+        if (!changed) return;
         runtimeState.isRegexDirty = true;
         saveSettingsDebounced();
         renderTagsPreserveBatchSelection();
