@@ -40,6 +40,7 @@ export function setupUI() {
                     <button id="bl-preset-save" title="保存"><i class="fas fa-save"></i></button>
                     <button id="bl-preset-new" title="新建"><i class="fas fa-plus"></i></button>
                     <button id="bl-preset-delete" title="删除存档"><i class="fas fa-trash"></i></button>
+                    <button id="bl-perf-toggle" class="bl-tool-btn" title="性能监控"><i class="fa-solid fa-microchip"></i></button>
                 </div>
             </div>
 

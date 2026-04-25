@@ -213,14 +213,14 @@
 
 .toolbar {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) repeat(4, var(--bl-control-height));
+    grid-template-columns: minmax(0, 1fr) repeat(5, var(--bl-control-height));
     align-items: center !important;
     gap: var(--bl-control-gap) !important;
 }
 
 #bl-purifier-popup .toolbar .icon-group {
     display: grid !important;
-    grid-template-columns: repeat(4, var(--bl-control-height));
+    grid-template-columns: repeat(5, var(--bl-control-height));
     align-items: center !important;
     gap: var(--bl-control-gap) !important;
 }
@@ -1522,7 +1522,7 @@
 
     #bl-purifier-popup .toolbar .icon-group {
         gap: 4px !important;
-        grid-template-columns: repeat(4, 38px);
+        grid-template-columns: repeat(5, 38px);
     }
 
     .select-box,
