@@ -47,8 +47,8 @@
     --bl-title-gap: 8px;
     --bl-header-divider: rgba(80, 72, 64, 0.12);
     --bl-header-bottom-space: 16px;
-    --bl-control-height: 37px;
-    --bl-icon-button-size: 37px;
+    --bl-control-height: 40px;
+    --bl-icon-button-size: 40px;
     --bl-control-gap: 8px;
     --bl-control-radius: 10px;
     --bl-header-hit-size: 26px;
@@ -212,24 +212,26 @@
 
 .toolbar {
     display: grid !important;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) repeat(4, var(--bl-control-height));
     align-items: center !important;
     gap: var(--bl-control-gap) !important;
 }
 
 #bl-purifier-popup .toolbar .icon-group {
     display: grid !important;
-    grid-template-columns: repeat(4, var(--bl-icon-button-size));
+    grid-template-columns: repeat(4, var(--bl-control-height));
     align-items: center !important;
     gap: var(--bl-control-gap) !important;
 }
 
 #bl-purifier-popup .toolbar .icon-group button,
 #bl-purifier-popup .toolbar .icon-group.compact button {
-    min-width: var(--bl-icon-button-size) !important;
-    width: var(--bl-icon-button-size) !important;
-    min-height: var(--bl-icon-button-size) !important;
-    height: var(--bl-icon-button-size) !important;
+    min-width: var(--bl-control-height) !important;
+    width: var(--bl-control-height) !important;
+    min-height: var(--bl-control-height) !important;
+    height: var(--bl-control-height) !important;
+    max-width: var(--bl-control-height) !important;
+    max-height: var(--bl-control-height) !important;
     padding: 0 !important;
     border-radius: var(--bl-control-radius) !important;
     font-size: 17px !important;
@@ -729,6 +731,7 @@
     min-width: 0 !important;
     height: var(--bl-control-height) !important;
     min-height: var(--bl-control-height) !important;
+    max-height: var(--bl-control-height) !important;
     padding: 0 38px 0 12px !important;
     border-radius: var(--bl-control-radius) !important;
     border: 1px solid color-mix(in srgb, var(--bl-text-primary) 16%, transparent) !important;
@@ -741,10 +744,24 @@
     outline: none !important;
     font-family: inherit !important;
     font-size: 16px !important;
-    line-height: normal !important;
+    line-height: 1 !important;
     appearance: none !important;
     -webkit-appearance: none !important;
     box-sizing: border-box !important;
+    display: block !important;
+    margin: 0 !important;
+}
+
+#bl-purifier-popup .toolbar .icon-group button i,
+#bl-purifier-popup .toolbar .icon-group.compact button i,
+#bl-purifier-popup .toolbar .icon-group button svg,
+#bl-purifier-popup .toolbar .icon-group.compact button svg {
+    width: 18px !important;
+    height: 18px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 #bl-preset-select:hover,
