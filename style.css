@@ -105,11 +105,11 @@
 
 #bl-purifier-popup {
     position: fixed !important;
-    top: 10% !important;
+    top: 8% !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
     width: 90% !important;
-    max-width: 480px !important;
+    max-width: 580px !important;
     max-height: 85vh !important;
     background-color: var(--bg-container) !important;
     box-sizing: border-box !important;
