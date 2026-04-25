@@ -130,8 +130,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 0;
-    border-bottom: none;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(80, 72, 64, 0.12);
     margin-bottom: 0;
     width: 100%;
 }
@@ -344,8 +344,9 @@
 }
 
 .divider {
-    height: 1px;
-    background-color: var(--divider-color);
+    height: 0;
+    border-top: 1px solid rgba(80, 72, 64, 0.12);
+    background: none;
     width: 100%;
     margin: 2px 0 0;
 }
