@@ -484,6 +484,7 @@ export function runRuleTransfer(isMove) {
     const { extension_settings, saveSettingsDebounced } = getAppContext();
     const settings = extension_settings[extensionName];
     const targetPreset = String($('#bl-transfer-target').val() || '');
+    const sourcePreset = String(settings.activePreset || '');
     const transferIndexes = Array.isArray(runtimeState.currentTransferRuleIndexes) && runtimeState.currentTransferRuleIndexes.length > 0
         ? runtimeState.currentTransferRuleIndexes
         : [runtimeState.currentTransferRuleIndex];
@@ -493,6 +494,10 @@ export function runRuleTransfer(isMove) {
     if (validIndexes.length === 0) return;
     if (!targetPreset) {
         alert('请选择目标存档。');
+        return;
+    }
+    if (targetPreset === sourcePreset) {
+        closeTransferModal();
         return;
     }
 
@@ -510,6 +515,7 @@ export function runRuleTransfer(isMove) {
         for (let i = uniqueIndexes.length - 1; i >= 0; i--) {
             sourceRules.splice(uniqueIndexes[i], 1);
         }
+        runtimeState.batchSelectedRuleIds = [];
     }
 
     runtimeState.isRegexDirty = true;

@@ -84,6 +84,39 @@ function getBatchOperationContext(clickedIndex, rules) {
     return { isBatchMode, selectedIndexes, selectedSet, shouldBatch };
 }
 
+function shouldBatchTransferRule(clickedIndex, rules) {
+    if (!Number.isInteger(clickedIndex) || clickedIndex < 0 || clickedIndex >= rules.length) return false;
+    const ctx = getBatchOperationContext(clickedIndex, rules);
+    return ctx.shouldBatch;
+}
+
+function deleteSingleRule(rules, index) {
+    const deletingRule = rules[index];
+    if (!deletingRule) return false;
+    const deletingId = ensureRuleObjectId(deletingRule);
+    rules.splice(index, 1);
+    runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => id !== deletingId);
+    return true;
+}
+
+function deleteSelectedRules(rules, selectedIndexes) {
+    if (!Array.isArray(selectedIndexes) || selectedIndexes.length <= 1) return false;
+    const deletingSet = new Set(selectedIndexes);
+    const deletingIds = new Set(getRuleIdsByIndexes(rules, selectedIndexes));
+    const nextRules = rules.filter((_, idx) => !deletingSet.has(idx));
+    rules.splice(0, rules.length, ...nextRules);
+    runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => !deletingIds.has(id));
+    return true;
+}
+
+function handleDeleteRule(index, rules) {
+    if (shouldBatchTransferRule(index, rules)) {
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        return deleteSelectedRules(rules, selectedIndexes);
+    }
+    return deleteSingleRule(rules, index);
+}
+
 function renderTagsPreserveBatchSelection() {
     renderTags();
     const { extension_settings } = getAppContext();
@@ -343,6 +376,34 @@ export function bindEvents() {
         syncBatchSelectionStateFromDom(rules);
     });
 
+    $(document).off('click', '#bl-btn-batch-copy').on('click', '#bl-btn-batch-copy', () => {
+        const rules = extension_settings[extensionName].rules || [];
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        if (selectedIndexes.length <= 0) return;
+        openTransferModal(selectedIndexes);
+    });
+
+    $(document).off('click', '#bl-btn-batch-move').on('click', '#bl-btn-batch-move', () => {
+        const rules = extension_settings[extensionName].rules || [];
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        if (selectedIndexes.length <= 0) return;
+        openTransferModal(selectedIndexes);
+    });
+
+    $(document).off('click', '#bl-btn-batch-delete').on('click', '#bl-btn-batch-delete', () => {
+        const rules = extension_settings[extensionName].rules || [];
+        const selectedIndexes = getSelectedIndexesFromState(rules);
+        if (selectedIndexes.length <= 0) return;
+        if (!confirm(`确定要删除选中的 ${selectedIndexes.length} 个规则分组吗？删除后无法恢复。`)) return;
+        const changed = selectedIndexes.length > 1
+            ? deleteSelectedRules(rules, selectedIndexes)
+            : deleteSingleRule(rules, selectedIndexes[0]);
+        if (!changed) return;
+        runtimeState.isRegexDirty = true;
+        saveSettingsDebounced();
+        renderTagsPreserveBatchSelection();
+    });
+
     $(document).off('change', '.batch-item-checkbox').on('change', '.batch-item-checkbox', function() {
         const rules = extension_settings[extensionName].rules || [];
         syncBatchSelectionStateFromDom(rules);
@@ -458,9 +519,12 @@ export function bindEvents() {
         const index = Number($(this).data('index'));
         const rules = extension_settings[extensionName].rules || [];
         if (!Number.isInteger(index) || index < 0 || index >= rules.length) return;
-        const ctx = getBatchOperationContext(index, rules);
-        if (ctx.shouldBatch) openTransferModal(ctx.selectedIndexes);
-        else openTransferModal(index);
+        if (shouldBatchTransferRule(index, rules)) {
+            const selectedIndexes = getSelectedIndexesFromState(rules);
+            openTransferModal(selectedIndexes);
+            return;
+        }
+        openTransferModal(index);
     });
 
     $(document).off('click', '.bl-rule-move-up').on('click', '.bl-rule-move-up', function() {
@@ -517,17 +581,8 @@ export function bindEvents() {
         const rules = extension_settings[extensionName].rules || [];
         const index = Number($(this).data('index'));
         if (!Number.isInteger(index) || index < 0 || index >= rules.length) return;
-        const ctx = getBatchOperationContext(index, rules);
-        if (ctx.shouldBatch) {
-            const deletingSet = new Set(ctx.selectedIndexes);
-            const deletingIds = new Set(getRuleIdsByIndexes(rules, ctx.selectedIndexes));
-            extension_settings[extensionName].rules = rules.filter((_, idx) => !deletingSet.has(idx));
-            runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => !deletingIds.has(id));
-        } else {
-            const deletingId = ensureRuleObjectId(rules[index]);
-            extension_settings[extensionName].rules.splice(index, 1);
-            runtimeState.batchSelectedRuleIds = (runtimeState.batchSelectedRuleIds || []).filter((id) => id !== deletingId);
-        }
+        const changed = handleDeleteRule(index, rules);
+        if (!changed) return;
         runtimeState.isRegexDirty = true;
         saveSettingsDebounced();
         renderTagsPreserveBatchSelection();
