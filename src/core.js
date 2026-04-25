@@ -4,6 +4,7 @@ import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
 import { buildDiffSnippetsFromText, clearDiffSnippetsCache, computeMessageSignature, ensureMessageDiffButton, getLatestAssistantMessageIndices, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, updateDiffSnippetCache, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
+import { updatePerfMonitorUI } from './ui.js';
 
 /**
  * 根据当前规则构建净化处理器（文本/正则/简易语法）。
@@ -171,6 +172,36 @@ export function applyVisualMask(originalText) {
     return applyReplacements(originalText, { deterministic: true });
 }
 
+function countReplacementHits(originalText) {
+    if (typeof originalText !== 'string' || !originalText) return 0;
+    let hits = 0;
+    const processors = buildProcessors();
+    let text = originalText;
+    processors.forEach((proc) => {
+        text = text.replace(proc.regex, (match, ...args) => {
+            const replacement = proc.isRegexMode
+                ? (() => {
+                    const reps = proc.replacements;
+                    if (!reps || reps.length === 0) return '';
+                    let rep = pickReplacement(reps);
+                    rep = String(rep ?? '');
+                    return rep.replace(/\$(\d+)/g, (m, g) => {
+                        const idx = parseInt(g, 10);
+                        return args[idx - 1] !== undefined ? args[idx - 1] : m;
+                    });
+                })()
+                : (() => {
+                    const reps = proc.replacerMap[match];
+                    if (!reps || reps.length === 0) return '';
+                    return pickReplacement(reps);
+                })();
+            if (replacement !== match) hits += 1;
+            return replacement;
+        });
+    });
+    return hits;
+}
+
 /**
  * 排队执行增量聊天保存，合并短时间内的重复请求。
  * @returns {void}
@@ -300,6 +331,7 @@ export function cleanseMessageDataAtIndex(index) {
  */
 export function performIncrementalCleanse(payload, options = {}) {
     logger.debug(`[performIncrementalCleanse] payload=${JSON.stringify(payload)}, options=${JSON.stringify(options)}`);
+    const incrementalStart = performance.now();
     const { chat } = getAppContext();
     if (!options.skipPurifyDom) buildProcessors();
     if (!options.skipPurifyDom && runtimeState.activeProcessors.length === 0) return;
@@ -347,6 +379,14 @@ export function performIncrementalCleanse(payload, options = {}) {
         } catch (e) { logger.warn(`updateMessageBlock 调用失败 index=${index}`, e); }
         queueIncrementalChatSave();
     }
+
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings?.[extensionName];
+    if (settings?.enablePerfMonitor && runtimeState.isStreamingGeneration) {
+        const elapsed = performance.now() - incrementalStart;
+        runtimeState.perfStats.streamTimes.push(elapsed);
+        updatePerfMonitorUI();
+    }
 }
 
 /**
@@ -355,7 +395,11 @@ export function performIncrementalCleanse(payload, options = {}) {
  */
 export function performGlobalCleanse() {
     logger.info(`[performGlobalCleanse] 全局净化开始`);
-    const { chat, saveChat } = getAppContext();
+    const { chat, saveChat, extension_settings } = getAppContext();
+    const settings = extension_settings?.[extensionName] || {};
+    const shouldTrackPerf = settings.enablePerfMonitor === true;
+    const globalStart = shouldTrackPerf ? performance.now() : 0;
+    let globalHits = 0;
     buildProcessors();
     clearDiffSnippetsCache();
 
@@ -375,6 +419,7 @@ export function performGlobalCleanse() {
             const signature = assistant ? computeMessageSignature(msg) : '';
 
             if (typeof msg?.mes === 'string') {
+                if (shouldTrackPerf) globalHits += countReplacementHits(msg.mes);
                 const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
                 mainCache = {
                     snippets: Array.from(new Set(mesSnippets)),
@@ -389,12 +434,14 @@ export function performGlobalCleanse() {
             if (msg?.swipes && Array.isArray(msg.swipes)) {
                 for (let i = 0; i < msg.swipes.length; i++) {
                     if (typeof msg.swipes[i] === 'string') {
+                        if (shouldTrackPerf) globalHits += countReplacementHits(msg.swipes[i]);
                         const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
                         if (msg.swipes[i] !== cleanedText) {
                             msg.swipes[i] = cleanedText;
                             msgChanged = true;
                         }
                     } else if (typeof msg.swipes[i] === 'object' && msg.swipes[i] !== null && typeof msg.swipes[i].mes === 'string') {
+                        if (shouldTrackPerf) globalHits += countReplacementHits(msg.swipes[i].mes);
                         const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i].mes);
                         if (msg.swipes[i].mes !== cleanedText) {
                             msg.swipes[i].mes = cleanedText;
@@ -446,4 +493,10 @@ export function performGlobalCleanse() {
     }
     purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
+
+    if (shouldTrackPerf) {
+        runtimeState.perfStats.globalTime = performance.now() - globalStart;
+        runtimeState.perfStats.globalHits = globalHits;
+        updatePerfMonitorUI();
+    }
 }
