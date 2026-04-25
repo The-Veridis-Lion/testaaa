@@ -42,6 +42,15 @@
     --bl-success-soft: color-mix(in srgb, var(--bl-success-color) 16%, transparent);
     --bl-panel-shadow: 0 10px 30px color-mix(in srgb, black 18%, transparent);
     --bl-chip-text: var(--SmartThemeBlurTintColor, #ffffff);
+    --bl-title-size: 30px;
+    --bl-title-weight: 700;
+    --bl-title-gap: 8px;
+    --bl-header-divider: rgba(80, 72, 64, 0.16);
+    --bl-header-bottom-space: 16px;
+    --bl-control-height: 56px;
+    --bl-icon-button-size: 56px;
+    --bl-control-gap: 12px;
+    --bl-control-radius: 12px;
 }
 
 [data-bl-theme="light"] {
@@ -118,20 +127,28 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-bottom: 4px;
-    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--bl-header-divider);
+    margin-bottom: var(--bl-header-bottom-space);
     width: 100%;
 }
 
 .title {
-    font-size: calc(18px - 0.05rem);
-    font-weight: bold;
+    font-size: var(--bl-title-size);
+    font-weight: var(--bl-title-weight);
     color: var(--text-main);
-    line-height: 1;
+    line-height: 1.2;
     white-space: nowrap;
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: var(--bl-title-gap);
+}
+
+.title i {
+    font-size: 1em;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
 }
 
 .icon-group {
@@ -158,13 +175,13 @@
 
 #bl-purifier-popup .header .icon-group button,
 #bl-purifier-popup .header .icon-group.compact button {
-    min-width: 38px !important;
-    width: 38px !important;
-    min-height: 38px !important;
-    height: 38px !important;
+    min-width: 46px !important;
+    width: 46px !important;
+    min-height: 46px !important;
+    height: 46px !important;
     padding: 0 !important;
     border-radius: 10px !important;
-    font-size: 16px !important;
+    font-size: 22px !important;
 }
 
 .icon-group.compact {
@@ -180,24 +197,30 @@
 .toolbar {
     display: grid !important;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: stretch !important;
-    gap: 8px !important;
+    align-items: center !important;
+    gap: var(--bl-control-gap) !important;
 }
 
 #bl-purifier-popup .toolbar .icon-group {
-    height: 100%;
-    gap: 8px !important;
+    display: grid !important;
+    grid-template-columns: repeat(4, var(--bl-icon-button-size));
+    align-items: center !important;
+    gap: var(--bl-control-gap) !important;
 }
 
 #bl-purifier-popup .toolbar .icon-group button,
 #bl-purifier-popup .toolbar .icon-group.compact button {
-    min-width: 38px !important;
-    width: 38px !important;
-    min-height: 38px !important;
-    height: 38px !important;
+    min-width: var(--bl-icon-button-size) !important;
+    width: var(--bl-icon-button-size) !important;
+    min-height: var(--bl-icon-button-size) !important;
+    height: var(--bl-icon-button-size) !important;
     padding: 0 !important;
-    border-radius: 10px !important;
-    font-size: 16px !important;
+    border-radius: var(--bl-control-radius) !important;
+    font-size: 24px !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 .select-box {
@@ -206,12 +229,12 @@
     justify-content: space-between;
     align-items: center;
     background-color: var(--bg-button);
-    padding: 4px 10px;
+    padding: 0 14px;
     border-radius: 6px;
     font-size: 14px;
     color: var(--text-main);
     cursor: pointer;
-    height: 28px;
+    height: var(--bl-control-height);
     box-sizing: border-box;
     border: none;
     outline: none;
@@ -688,10 +711,10 @@
 #bl-preset-select {
     flex: 1 1 auto !important;
     min-width: 0 !important;
-    height: 38px !important;
-    min-height: 38px !important;
-    padding: 9px 36px 9px 12px !important;
-    border-radius: 8px !important;
+    height: var(--bl-control-height) !important;
+    min-height: var(--bl-control-height) !important;
+    padding: 0 44px 0 14px !important;
+    border-radius: var(--bl-control-radius) !important;
     border: 1px solid var(--bl-border-color) !important;
     background-color: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
@@ -701,8 +724,11 @@
     color: var(--bl-text-primary) !important;
     outline: none !important;
     font-family: inherit !important;
+    font-size: 16px !important;
+    line-height: normal !important;
     appearance: none !important;
     -webkit-appearance: none !important;
+    box-sizing: border-box !important;
 }
 
 #bl-preset-select:hover,
@@ -988,6 +1014,8 @@
     #bl-preset-select {
         min-width: 0 !important;
         width: 100% !important;
+        height: 38px !important;
+        min-height: 38px !important;
         font-size: 13px !important;
         padding: 8px 32px 8px 10px !important;
         background-position: right 10px center !important;
@@ -1411,7 +1439,12 @@
     .toolbar,
     .action-buttons,
     .batch-operations {
-        gap: 4px;
+        gap: 4px !important;
+    }
+
+    #bl-purifier-popup .toolbar .icon-group {
+        gap: 4px !important;
+        grid-template-columns: repeat(4, 38px);
     }
 
     .select-box,
