@@ -769,7 +769,7 @@
     justify-content: center !important;
 }
 
-#bl-perf-toggle.is-active {
+#bl-purifier-popup .bl-header #bl-perf-toggle.is-active {
     color: #61ff7a !important;
     box-shadow: 0 0 0 1px color-mix(in srgb, #61ff7a 40%, transparent) inset !important;
 }

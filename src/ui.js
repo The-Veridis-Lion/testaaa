@@ -17,12 +17,13 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-purifier-popup" data-bl-theme="auto" style="display:none;">
-            <div class="header">
+            <div class="header bl-header">
                 <div class="title">
                     <i class="fas fa-globe"></i>
                     全局映射预设
                 </div>
                 <div class="icon-group">
+                    <button id="bl-perf-toggle" class="bl-tool-btn" title="开发者性能监控"><i class="fa-solid fa-bug"></i></button>
                     <button id="bl-theme-toggle" title="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
                     <button id="bl-default-toggle" title="设为默认预设" class="bl-bind-toggle"><i class="fas fa-star"></i></button>
                     <button id="bl-character-bind-toggle" title="将当前角色绑定到当前预设" class="bl-bind-toggle"><i class="fas fa-link-slash"></i></button>
