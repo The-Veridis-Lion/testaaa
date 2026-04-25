@@ -42,15 +42,15 @@
     --bl-success-soft: color-mix(in srgb, var(--bl-success-color) 16%, transparent);
     --bl-panel-shadow: 0 10px 30px color-mix(in srgb, black 18%, transparent);
     --bl-chip-text: var(--SmartThemeBlurTintColor, #ffffff);
-    --bl-title-size: 30px;
-    --bl-title-weight: 700;
+    --bl-title-size: 23px;
+    --bl-title-weight: 650;
     --bl-title-gap: 8px;
-    --bl-header-divider: rgba(80, 72, 64, 0.16);
+    --bl-header-divider: rgba(80, 72, 64, 0.12);
     --bl-header-bottom-space: 16px;
-    --bl-control-height: 56px;
-    --bl-icon-button-size: 56px;
-    --bl-control-gap: 12px;
-    --bl-control-radius: 12px;
+    --bl-control-height: 46px;
+    --bl-icon-button-size: 46px;
+    --bl-control-gap: 8px;
+    --bl-control-radius: 10px;
 }
 
 [data-bl-theme="light"] {
@@ -175,13 +175,13 @@
 
 #bl-purifier-popup .header .icon-group button,
 #bl-purifier-popup .header .icon-group.compact button {
-    min-width: 46px !important;
-    width: 46px !important;
-    min-height: 46px !important;
-    height: 46px !important;
+    min-width: 42px !important;
+    width: 42px !important;
+    min-height: 42px !important;
+    height: 42px !important;
     padding: 0 !important;
     border-radius: 10px !important;
-    font-size: 22px !important;
+    font-size: 21px !important;
 }
 
 .icon-group.compact {
@@ -216,7 +216,7 @@
     height: var(--bl-icon-button-size) !important;
     padding: 0 !important;
     border-radius: var(--bl-control-radius) !important;
-    font-size: 24px !important;
+    font-size: 21px !important;
     line-height: 1 !important;
     display: inline-flex !important;
     align-items: center !important;
@@ -715,7 +715,7 @@
     min-height: var(--bl-control-height) !important;
     padding: 0 44px 0 14px !important;
     border-radius: var(--bl-control-radius) !important;
-    border: 1px solid var(--bl-border-color) !important;
+    border: 1px solid color-mix(in srgb, var(--bl-text-primary) 16%, transparent) !important;
     background-color: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") !important;
     background-repeat: no-repeat !important;
