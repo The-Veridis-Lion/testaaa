@@ -50,6 +50,7 @@
     --bl-control-height: 40px;
     --bl-icon-button-size: 40px;
     --bl-control-gap: 8px;
+    --bl-top-section-gap: 8px;
     --bl-control-radius: 10px;
     --bl-header-hit-size: 26px;
     --bl-header-icon-size: 16px;
@@ -116,7 +117,7 @@
     padding: 15px 12px 12px 12px !important;
     display: none;
     flex-direction: column;
-    gap: 8px;
+    gap: var(--bl-top-section-gap);
     border-radius: 12px !important;
     box-shadow: 0 0 20px 10px rgba(0, 0, 0, 0.25) !important;
     border: 1px solid var(--border-color) !important;
@@ -131,7 +132,7 @@
     align-items: center;
     padding-bottom: 14px;
     border-bottom: 1px solid var(--bl-header-divider);
-    margin-bottom: var(--bl-header-bottom-space);
+    margin-bottom: 0;
     width: 100%;
 }
 
