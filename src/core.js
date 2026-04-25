@@ -2,9 +2,8 @@ import { extensionName, getAppContext, runtimeState } from './state.js';
 import { logger } from './log.js';
 import { buildSimpleWildcardPattern } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
-import { buildDiffSnippetsFromText, clearDiffSnippetsCache, computeMessageSignature, ensureMessageDiffButton, getLatestAssistantMessageIndices, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, updateDiffSnippetCache, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
+import { buildDiffSnippetsFromText, computeMessageSignature, ensureMessageDiffButton, getLatestTrackableDiffIndices, hasRealDiffCache, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
-import { updatePerfMonitorUI } from './ui.js';
 
 /**
  * 根据当前规则构建净化处理器（文本/正则/简易语法）。
@@ -172,36 +171,6 @@ export function applyVisualMask(originalText) {
     return applyReplacements(originalText, { deterministic: true });
 }
 
-function countReplacementHits(originalText) {
-    if (typeof originalText !== 'string' || !originalText) return 0;
-    let hits = 0;
-    const processors = buildProcessors();
-    let text = originalText;
-    processors.forEach((proc) => {
-        text = text.replace(proc.regex, (match, ...args) => {
-            const replacement = proc.isRegexMode
-                ? (() => {
-                    const reps = proc.replacements;
-                    if (!reps || reps.length === 0) return '';
-                    let rep = pickReplacement(reps);
-                    rep = String(rep ?? '');
-                    return rep.replace(/\$(\d+)/g, (m, g) => {
-                        const idx = parseInt(g, 10);
-                        return args[idx - 1] !== undefined ? args[idx - 1] : m;
-                    });
-                })()
-                : (() => {
-                    const reps = proc.replacerMap[match];
-                    if (!reps || reps.length === 0) return '';
-                    return pickReplacement(reps);
-                })();
-            if (replacement !== match) hits += 1;
-            return replacement;
-        });
-    });
-    return hits;
-}
-
 /**
  * 排队执行增量聊天保存，合并短时间内的重复请求。
  * @returns {void}
@@ -261,32 +230,70 @@ export function getLatestMessageIndex() {
 }
 
 /**
+ * 解析“可追踪非 user 消息”的最新索引。
+ * @param {number|object} payload 事件载荷或消息索引。
+ * @returns {number} 可追踪消息索引，失败返回 -1。
+ */
+export function resolveLatestTrackableMessageIndex(payload) {
+    const { chat } = getAppContext();
+    if (!Array.isArray(chat)) return -1;
+
+    const explicit = getMessageIndexFromEvent(payload);
+
+    if (explicit >= 0 && explicit < chat.length) {
+        if (isAssistantMessage(chat[explicit])) return explicit;
+
+        for (let i = explicit + 1; i < chat.length; i++) {
+            if (isAssistantMessage(chat[i])) return i;
+        }
+    }
+
+    for (let i = chat.length - 1; i >= 0; i--) {
+        if (isAssistantMessage(chat[i])) return i;
+    }
+
+    return -1;
+}
+
+/**
  * 清理指定索引消息的数据并更新差异缓存。
  * @param {number} index 消息索引。
  * @returns {boolean} 是否发生数据变更。
  */
-export function cleanseMessageDataAtIndex(index) {
+export function cleanseMessageDataAtIndex(index, options = {}) {
     const { chat } = getAppContext();
     if (!Array.isArray(chat) || index < 0 || index >= chat.length) return false;
     const msg = chat[index];
     if (!msg || typeof msg !== 'object') return false;
 
     const isAssistant = isAssistantMessage(msg);
-    const rawMes = typeof msg.mes === 'string' ? msg.mes : '';
-    const currentSignature = isAssistant ? computeMessageSignature(msg) : '';
+    if (!isAssistant) {
+        clearTrackedDiffEntry(index);
+        return false;
+    }
+
+    const diffSourceMes = typeof options.diffSourceMes === 'string' ? options.diffSourceMes : null;
+    const currentMes = typeof msg.mes === 'string' ? msg.mes : '';
+    const sourceMes = diffSourceMes || currentMes;
+
+    const sourceSignature = computeMessageSignature({
+        ...msg,
+        mes: sourceMes,
+        __bl_diff_source_signature: '',
+        __bl_diff_last_cleaned_mes: '',
+    });
     let changed = false;
 
-    let mainCache = { snippets: [], fullDiff: '' };
-    if (typeof msg.mes === 'string') {
-        const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
-        mainCache = {
-            snippets: Array.from(new Set(mesSnippets)),
-            fullDiff,
-        };
-        if (cleanedText !== msg.mes) {
-            msg.mes = cleanedText;
-            changed = true;
-        }
+    const diffResult = buildDiffSnippetsFromText(sourceMes);
+    const dataResult = buildDiffSnippetsFromText(currentMes);
+    const mainCache = {
+        snippets: Array.from(new Set(diffResult.snippets || [])),
+        fullDiff: diffResult.fullDiff || '',
+    };
+
+    if (typeof msg.mes === 'string' && dataResult.cleanedText !== msg.mes) {
+        msg.mes = dataResult.cleanedText;
+        changed = true;
     }
 
     if (Array.isArray(msg.swipes)) {
@@ -307,20 +314,73 @@ export function cleanseMessageDataAtIndex(index) {
         }
     }
 
-    if (isAssistant) {
-        msg.__bl_diff_source_signature = currentSignature;
-        msg.__bl_diff_last_cleaned_mes = typeof msg.mes === 'string' ? msg.mes : '';
-        writeReadyDiffCache(index, currentSignature, {
-            snippets: mainCache.snippets,
-            fullDiff: mainCache.fullDiff,
-            signature: currentSignature,
-            rawMes,
-        });
-    } else {
-        clearTrackedDiffEntry(index);
-    }
+    msg.__bl_diff_source_signature = sourceSignature;
+    msg.__bl_diff_last_cleaned_mes = typeof msg.mes === 'string' ? msg.mes : '';
+    writeReadyDiffCache(index, sourceSignature, {
+        snippets: mainCache.snippets,
+        fullDiff: mainCache.fullDiff,
+        signature: sourceSignature,
+    }, {
+        preserveExistingRealDiff: options.preserveExistingRealDiff === true,
+    });
+    runtimeState.diffRawSourceCache.delete(index);
 
     return changed;
+}
+
+/**
+ * 非流式生成结束后的专用收敛流程。
+ * @param {number|object} payload 事件载荷或消息索引。
+ * @returns {void}
+ */
+export function performNonStreamingFinalCleanse(payload) {
+    const { chat } = getAppContext();
+
+    buildProcessors();
+    if (runtimeState.activeProcessors.length === 0) return;
+
+    const index = resolveLatestTrackableMessageIndex(payload);
+    if (index < 0 || !Array.isArray(chat)) return;
+
+    const msg = chat[index];
+    if (!isAssistantMessage(msg)) return;
+
+    const previousState = runtimeState.diffMessageStates.get(index);
+    const currentSignature = computeMessageSignature(msg);
+    const alreadyFinalizedSameSource = previousState?.status === 'ready'
+        && previousState.signature === currentSignature
+        && typeof msg?.mes === 'string'
+        && typeof msg?.__bl_diff_last_cleaned_mes === 'string'
+        && msg.mes === msg.__bl_diff_last_cleaned_mes;
+
+    if (alreadyFinalizedSameSource && hasRealDiffCache(index)) {
+        const messageNode = getMessageDomNode(index);
+        if (messageNode) {
+            purifyDOM(messageNode);
+            ensureMessageDiffButton(index, messageNode);
+        }
+        return;
+    }
+
+    const dataChanged = cleanseMessageDataAtIndex(index, {
+        preserveExistingRealDiff: true,
+    });
+    runtimeState.nonStreamingRawMessageCache.delete(index);
+
+    const messageNode = getMessageDomNode(index);
+    if (messageNode) {
+        purifyDOM(messageNode);
+        ensureMessageDiffButton(index, messageNode);
+    }
+
+    if (dataChanged) {
+        try {
+            if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
+        } catch (e) {
+            logger?.warn?.(`updateMessageBlock 调用失败 index=${index}`, e);
+        }
+        queueIncrementalChatSave();
+    }
 }
 
 /**
@@ -331,18 +391,25 @@ export function cleanseMessageDataAtIndex(index) {
  */
 export function performIncrementalCleanse(payload, options = {}) {
     logger.debug(`[performIncrementalCleanse] payload=${JSON.stringify(payload)}, options=${JSON.stringify(options)}`);
-    const incrementalStart = performance.now();
     const { chat } = getAppContext();
     if (!options.skipPurifyDom) buildProcessors();
     if (!options.skipPurifyDom && runtimeState.activeProcessors.length === 0) return;
 
-    const fallbackLatest = options.fallbackLatest !== false;
+    const fallbackLatest = options.fallbackLatest === true;
     let index = getMessageIndexFromEvent(payload);
-    if (index < 0 && fallbackLatest) index = getLatestMessageIndex();
+    if (index < 0 && fallbackLatest && Array.isArray(chat)) {
+        for (let i = chat.length - 1; i >= 0; i--) {
+            if (isAssistantMessage(chat[i])) {
+                index = i;
+                break;
+            }
+        }
+    }
     if (index < 0) return;
 
     const msg = Array.isArray(chat) ? chat[index] : null;
     const assistant = isAssistantMessage(msg);
+    if (!assistant) return;
     if (assistant) {
         const signature = computeMessageSignature(msg);
         if (options.visualOnly) markDiffComparisonPending(index, signature);
@@ -379,14 +446,6 @@ export function performIncrementalCleanse(payload, options = {}) {
         } catch (e) { logger.warn(`updateMessageBlock 调用失败 index=${index}`, e); }
         queueIncrementalChatSave();
     }
-
-    const { extension_settings } = getAppContext();
-    const settings = extension_settings?.[extensionName];
-    if (settings?.enablePerfMonitor && runtimeState.isStreamingGeneration) {
-        const elapsed = performance.now() - incrementalStart;
-        runtimeState.perfStats.streamTimes.push(elapsed);
-        updatePerfMonitorUI();
-    }
 }
 
 /**
@@ -395,21 +454,15 @@ export function performIncrementalCleanse(payload, options = {}) {
  */
 export function performGlobalCleanse() {
     logger.info(`[performGlobalCleanse] 全局净化开始`);
-    const { chat, saveChat, extension_settings } = getAppContext();
-    const settings = extension_settings?.[extensionName] || {};
-    const shouldTrackPerf = settings.enablePerfMonitor === true;
-    const globalStart = shouldTrackPerf ? performance.now() : 0;
-    let globalHits = 0;
+    const { chat, saveChat } = getAppContext();
     buildProcessors();
-    clearDiffSnippetsCache();
-
     if (runtimeState.activeProcessors.length === 0) {
         injectDiffButtons();
         return;
     }
 
     let chatChanged = false;
-    const latestDiffIndices = new Set(getLatestAssistantMessageIndices(chat));
+    const latestDiffIndices = new Set(getLatestTrackableDiffIndices(3));
 
     if (chat && Array.isArray(chat)) {
         chat.forEach((msg, index) => {
@@ -419,7 +472,6 @@ export function performGlobalCleanse() {
             const signature = assistant ? computeMessageSignature(msg) : '';
 
             if (typeof msg?.mes === 'string') {
-                if (shouldTrackPerf) globalHits += countReplacementHits(msg.mes);
                 const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
                 mainCache = {
                     snippets: Array.from(new Set(mesSnippets)),
@@ -434,14 +486,12 @@ export function performGlobalCleanse() {
             if (msg?.swipes && Array.isArray(msg.swipes)) {
                 for (let i = 0; i < msg.swipes.length; i++) {
                     if (typeof msg.swipes[i] === 'string') {
-                        if (shouldTrackPerf) globalHits += countReplacementHits(msg.swipes[i]);
                         const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
                         if (msg.swipes[i] !== cleanedText) {
                             msg.swipes[i] = cleanedText;
                             msgChanged = true;
                         }
                     } else if (typeof msg.swipes[i] === 'object' && msg.swipes[i] !== null && typeof msg.swipes[i].mes === 'string') {
-                        if (shouldTrackPerf) globalHits += countReplacementHits(msg.swipes[i].mes);
                         const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i].mes);
                         if (msg.swipes[i].mes !== cleanedText) {
                             msg.swipes[i].mes = cleanedText;
@@ -452,12 +502,9 @@ export function performGlobalCleanse() {
             }
 
             if (assistant && latestDiffIndices.has(index)) {
-                updateDiffSnippetCache(index, {
-                    snippets: mainCache.snippets,
-                    fullDiff: mainCache.fullDiff,
-                    signature,
+                writeReadyDiffCache(index, signature, mainCache, {
+                    preserveExistingRealDiff: true,
                 });
-                writeReadyDiffCache(index, signature, mainCache);
             } else {
                 clearTrackedDiffEntry(index, { persist: false });
             }
@@ -493,10 +540,4 @@ export function performGlobalCleanse() {
     }
     purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
-
-    if (shouldTrackPerf) {
-        runtimeState.perfStats.globalTime = performance.now() - globalStart;
-        runtimeState.perfStats.globalHits = globalHits;
-        updatePerfMonitorUI();
-    }
 }

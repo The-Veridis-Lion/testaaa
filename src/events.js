@@ -14,7 +14,6 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
-    updatePerfMonitorUI,
 } from './ui.js';
 import {
     buildProcessors,
@@ -22,16 +21,18 @@ import {
     applyReplacements,
     applyVisualMask,
     performIncrementalCleanse,
-    getMessageIndexFromEvent,
-    getLatestMessageIndex,
+    resolveLatestTrackableMessageIndex,
+    performNonStreamingFinalCleanse,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
-import { purifyDOM, isProtectedNode } from './dom.js';
-import { computeMessageSignature, getDiffSnippetsForMessage, getDiffStateForMessage, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, persistTrackedDiffState, resetDiffRuntimeState, restoreDiffStateFromChatMetadata } from './diff.js';
+import { purifyDOM, isProtectedNode, isTrackableMessageDomNode, resolveMessageIndexFromDomNode } from './dom.js';
+import { captureDiffRawSource, computeMessageSignature, getDiffSnippetsForMessage, getDiffStateForMessage, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, primeLatestDiffButtons, resetDiffRuntimeState, restoreDiffStateFromChatMetadata } from './diff.js';
 
 // 流式期间 diff 按钮注入的节流状态（模块级别，避免 initRealtimeInterceptor 调用时函数未定义）
 let streamingDiffInjectTimer = null;
 let streamingPendingDiffIndices = [];
+let delayedCleanseTimer = null;
+let editCleanseTimer = null;
 const ruleObjectIdMap = new WeakMap();
 let nextRuleObjectId = 1;
 
@@ -178,19 +179,6 @@ export function injectDiffButtonsStreamingSafe(indices = []) {
 export function initRealtimeInterceptor() {
     let isPurifying = false;
 
-    const resolveNodeMessageIndex = (node) => {
-        if (!node || node.nodeType !== 1) return -1;
-        const attrs = [node.getAttribute('mesid'), node.getAttribute('data-mesid'), node.getAttribute('messageid'), node.getAttribute('data-message-id')];
-        for (const raw of attrs) {
-            const n = Number(raw);
-            if (Number.isInteger(n) && n >= 0) return n;
-        }
-        const chatEl = document.getElementById('chat');
-        if (!chatEl) return -1;
-        const nodes = Array.from(chatEl.querySelectorAll('.mes'));
-        return nodes.indexOf(node);
-    };
-
     const collectMessageNodes = (node, bucket) => {
         if (!node || node.nodeType !== 1) return;
         if (node.matches?.('.mes')) bucket.push(node);
@@ -199,10 +187,40 @@ export function initRealtimeInterceptor() {
 
     const primePendingComparisonForNode = (messageNode, options = {}) => {
         const { chat } = getAppContext();
-        const index = resolveNodeMessageIndex(messageNode);
+        if (!isTrackableMessageDomNode(messageNode)) return -1;
+        const index = resolveMessageIndexFromDomNode(messageNode);
         if (index < 0 || !Array.isArray(chat) || !isAssistantMessage(chat[index])) return -1;
+        captureDiffRawSource(index);
         markDiffComparisonPending(index, computeMessageSignature(chat[index]), options);
         return index;
+    };
+
+    const extractMessageTextSnapshot = (mesNode) => {
+        if (!mesNode || mesNode.nodeType !== 1) return '';
+        const textNode = mesNode.querySelector?.('.mes_text');
+        const raw = textNode
+            ? (textNode.innerText || textNode.textContent || '')
+            : (mesNode.innerText || mesNode.textContent || '');
+        return typeof raw === 'string' ? raw.trim() : '';
+    };
+
+    const captureNonStreamingRawMessage = (mesNode) => {
+        const { chat } = getAppContext();
+        if (!mesNode || !isTrackableMessageDomNode(mesNode)) return;
+
+        const index = resolveMessageIndexFromDomNode(mesNode);
+        if (index < 0 || !Array.isArray(chat) || !isAssistantMessage(chat[index])) return;
+        if (runtimeState.nonStreamingRawMessageCache.has(index)) return;
+
+        const chatMes = typeof chat[index]?.mes === 'string' ? chat[index].mes : '';
+        const domMes = extractMessageTextSnapshot(mesNode);
+        const raw = chatMes || domMes;
+        if (!raw) return;
+
+        runtimeState.nonStreamingRawMessageCache.set(index, {
+            mes: raw,
+            capturedAt: Date.now(),
+        });
     };
 
     const chatObserver = new MutationObserver((mutations) => {
@@ -230,13 +248,21 @@ export function initRealtimeInterceptor() {
                             logger.debug(`MutationObserver 文本替换 ${node.nodeType === 3 ? '文本' : '注释'}节点`);
                         }
                     } else if (node.nodeType === 1) {
-                        if (!isStreaming) purifyDOM(node);
-                        const messageNodes = [];
-                        collectMessageNodes(node, messageNodes);
-                        messageNodes.forEach((mesNode) => {
-                            const index = primePendingComparisonForNode(mesNode, { skipPersist: isStreaming });
-                            if (index >= 0) touchedMessageIndices.add(index);
-                        });
+                        if (!isStreaming) {
+                            const messageNodes = [];
+                            collectMessageNodes(node, messageNodes);
+                            for (const mesNode of messageNodes) {
+                                captureNonStreamingRawMessage(mesNode);
+                            }
+                            purifyDOM(node);
+                        } else {
+                            const messageNodes = [];
+                            collectMessageNodes(node, messageNodes);
+                            messageNodes.forEach((mesNode) => {
+                                const index = primePendingComparisonForNode(mesNode, { skipPersist: true });
+                                if (index >= 0) touchedMessageIndices.add(index);
+                            });
+                        }
                     }
                 }
                 if (m.type === 'characterData') {
@@ -251,7 +277,9 @@ export function initRealtimeInterceptor() {
             }
         } finally {
             chatObserver.takeRecords();
-            injectDiffButtonsStreamingSafe([...touchedMessageIndices]);
+            if (runtimeState.isStreamingGeneration) {
+                injectDiffButtonsStreamingSafe([...touchedMessageIndices]);
+            }
             isPurifying = false;
         }
     });
@@ -316,7 +344,6 @@ export function initRealtimeInterceptor() {
 
 export function bindEvents() {
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
-    updatePerfMonitorUI();
 
     $(document).off('click', '#bl-wand-btn').on('click', '#bl-wand-btn', () => {
         logger.debug('点击了词汇映射工具栏按钮');
@@ -675,13 +702,6 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
 
-    $(document).off('click', '#bl-perf-toggle').on('click', '#bl-perf-toggle', () => {
-        const settings = extension_settings[extensionName];
-        settings.enablePerfMonitor = settings.enablePerfMonitor !== true;
-        saveSettingsDebounced();
-        updatePerfMonitorUI();
-    });
-
     $(document).off('change', '#bl-preset-select').on('change', '#bl-preset-select', function() {
         applyPresetByName($(this).val(), { skipRender: true });
         renderTags();
@@ -852,72 +872,45 @@ export function bindEvents() {
     });
     // ==========================================
 
-    const markPendingFromPayload = (payload, options = {}) => {
-        const { chat } = getAppContext();
-        let index = getMessageIndexFromEvent(payload);
-        if (index < 0) index = getLatestMessageIndex();
-        if (index < 0 || !Array.isArray(chat) || !isAssistantMessage(chat[index])) return;
-        markDiffComparisonPending(index, computeMessageSignature(chat[index]), options);
-        if (options.skipInject !== true) injectDiffButtonsStreamingSafe([index]);
-    };
-
     const visualMaskLatestOnly = (payload) => {
         if (!runtimeState.isStreamingGeneration) return;
-        markPendingFromPayload(payload, { skipPersist: true, skipInject: true });
-        performIncrementalCleanse(payload, { visualOnly: true, fallbackLatest: true, skipPurifyDom: true });
+        const { chat } = getAppContext();
+        const index = resolveLatestTrackableMessageIndex(payload);
+        if (index < 0 || !Array.isArray(chat) || !isAssistantMessage(chat[index])) return;
+        markDiffComparisonPending(index, computeMessageSignature(chat[index]), { skipPersist: true, skipInject: true });
+        performIncrementalCleanse(index, { visualOnly: true, fallbackLatest: false, skipPurifyDom: true });
     };
 
-    let delayedCleanseTimer = null;
-    let settleCleanseTimer = null;
     const delayedIncrementalCleanse = (payload) => {
         runtimeState.isStreamingGeneration = false;
-        markPendingFromPayload(payload, { skipPersist: false });
         if (delayedCleanseTimer) clearTimeout(delayedCleanseTimer);
-        if (settleCleanseTimer) clearTimeout(settleCleanseTimer);
         delayedCleanseTimer = setTimeout(() => {
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+            performNonStreamingFinalCleanse(payload);
         }, 150);
-        settleCleanseTimer = setTimeout(() => {
-            performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
-        }, 700);
     };
 
-    let editCleanseTimer = null;
     if (event_types.MESSAGE_EDITED) {
         eventSource.on(event_types.MESSAGE_EDITED, (payload) => {
-            markPendingFromPayload(payload);
             if (editCleanseTimer) clearTimeout(editCleanseTimer);
             editCleanseTimer = setTimeout(() => {
-                performIncrementalCleanse(payload, { visualOnly: false, fallbackLatest: true });
+                performNonStreamingFinalCleanse(payload);
             }, 100);
         });
     }
 
     if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => {
         runtimeState.isStreamingGeneration = true;
-        runtimeState.perfStats.streamTimes = [];
-        runtimeState.perfStats.streamMax = 0;
-        runtimeState.perfStats.streamAvg = 0;
-        updatePerfMonitorUI();
         logger.debug('事件: GENERATION_STARTED');
     });
     if (event_types.STREAM_TOKEN_RECEIVED) {
         eventSource.on(event_types.STREAM_TOKEN_RECEIVED, (payload) => {
             runtimeState.isStreamingGeneration = true;
             logger.debug(`事件: STREAM_TOKEN_RECEIVED`);
+            visualMaskLatestOnly(payload);
         });
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, (payload) => {
         logger.debug('事件: GENERATION_ENDED');
-        const streamTimes = runtimeState.perfStats.streamTimes || [];
-        if (streamTimes.length > 0) {
-            runtimeState.perfStats.streamMax = Math.max(...streamTimes);
-            runtimeState.perfStats.streamAvg = streamTimes.reduce((sum, ms) => sum + ms, 0) / streamTimes.length;
-        } else {
-            runtimeState.perfStats.streamMax = 0;
-            runtimeState.perfStats.streamAvg = 0;
-        }
-        updatePerfMonitorUI();
         delayedIncrementalCleanse(payload);
     });
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, (payload) => {
@@ -941,11 +934,17 @@ export function bindEvents() {
             applyCharacterPresetBinding(true, { skipCleanse: true });
             restoreDiffStateFromChatMetadata();
             setTimeout(() => {
-                injectDiffButtons();
+                primeLatestDiffButtons();
                 performGlobalCleanse();
+                injectDiffButtons();
             }, 120);
         });
     }
+
+    setTimeout(() => {
+        primeLatestDiffButtons();
+        injectDiffButtons();
+    }, 200);
 
     setInterval(() => applyCharacterPresetBinding(false, { skipCleanse: true }), 1200);
 }

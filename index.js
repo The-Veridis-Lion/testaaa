@@ -27,7 +27,6 @@ function ensureSettingsShape() {
     if (settings.defaultPreset === undefined) settings.defaultPreset = "";
     if (!settings.characterBindings || typeof settings.characterBindings !== 'object') settings.characterBindings = {};
     if (settings.enableVisualDiff === undefined) settings.enableVisualDiff = true;
-    if (settings.enablePerfMonitor === undefined) settings.enablePerfMonitor = false;
     if (!settings.diffViewMode) settings.diffViewMode = 'snippet';
     if (settings.diffButtonInExtraMenu === undefined) settings.diffButtonInExtraMenu = false;
     if (settings.logLevel === undefined) settings.logLevel = 2;
