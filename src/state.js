@@ -11,6 +11,7 @@ export const defaultSettings = {
     enableVisualDiff: true,
     diffViewMode: "snippet",
     diffButtonInExtraMenu: false,
+    enablePerfMonitor: false,
     deepCleanTimeoutSec: 120,
     themeMode: "auto",
     logLevel: 2  // 0=off, 1=error, 2=warn(default), 3=info, 4=debug
@@ -35,6 +36,13 @@ export const runtimeState = {
     diffModalRefresh: null,
     batchSelectedRuleIds: [],
     currentTransferRuleIndexes: [],
+    perfStats: {
+        globalTime: 0,
+        globalHits: 0,
+        streamTimes: [],
+        streamMax: 0,
+        streamAvg: 0,
+    },
 };
 
 const appContext = {

@@ -14,6 +14,7 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
+    updatePerfMonitorUI,
 } from './ui.js';
 import {
     buildProcessors,
@@ -315,6 +316,7 @@ export function initRealtimeInterceptor() {
 
 export function bindEvents() {
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
+    updatePerfMonitorUI();
 
     $(document).off('click', '#bl-wand-btn').on('click', '#bl-wand-btn', () => {
         logger.debug('点击了词汇映射工具栏按钮');
@@ -673,6 +675,13 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
 
+    $(document).off('click', '#bl-perf-toggle').on('click', '#bl-perf-toggle', () => {
+        const settings = extension_settings[extensionName];
+        settings.enablePerfMonitor = settings.enablePerfMonitor !== true;
+        saveSettingsDebounced();
+        updatePerfMonitorUI();
+    });
+
     $(document).off('change', '#bl-preset-select').on('change', '#bl-preset-select', function() {
         applyPresetByName($(this).val(), { skipRender: true });
         renderTags();
@@ -886,6 +895,10 @@ export function bindEvents() {
 
     if (event_types.GENERATION_STARTED) eventSource.on(event_types.GENERATION_STARTED, () => {
         runtimeState.isStreamingGeneration = true;
+        runtimeState.perfStats.streamTimes = [];
+        runtimeState.perfStats.streamMax = 0;
+        runtimeState.perfStats.streamAvg = 0;
+        updatePerfMonitorUI();
         logger.debug('事件: GENERATION_STARTED');
     });
     if (event_types.STREAM_TOKEN_RECEIVED) {
@@ -896,6 +909,15 @@ export function bindEvents() {
     }
     if (event_types.GENERATION_ENDED) eventSource.on(event_types.GENERATION_ENDED, (payload) => {
         logger.debug('事件: GENERATION_ENDED');
+        const streamTimes = runtimeState.perfStats.streamTimes || [];
+        if (streamTimes.length > 0) {
+            runtimeState.perfStats.streamMax = Math.max(...streamTimes);
+            runtimeState.perfStats.streamAvg = streamTimes.reduce((sum, ms) => sum + ms, 0) / streamTimes.length;
+        } else {
+            runtimeState.perfStats.streamMax = 0;
+            runtimeState.perfStats.streamAvg = 0;
+        }
+        updatePerfMonitorUI();
         delayedIncrementalCleanse(payload);
     });
     if (event_types.GENERATION_STOPPED) eventSource.on(event_types.GENERATION_STOPPED, (payload) => {

@@ -769,6 +769,33 @@
     justify-content: center !important;
 }
 
+#bl-purifier-popup .bl-header #bl-perf-toggle.is-active {
+    color: #61ff7a !important;
+    box-shadow: 0 0 0 1px color-mix(in srgb, #61ff7a 40%, transparent) inset !important;
+}
+
+#bl-perf-monitor {
+    position: fixed;
+    top: 60px;
+    right: 20px;
+    z-index: 9999;
+    pointer-events: none;
+    display: none;
+    background: rgba(0, 0, 0, 0.75);
+    color: #9dffae;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 12px;
+    line-height: 1.35;
+    border-radius: 6px;
+    padding: 8px 10px;
+    white-space: nowrap;
+}
+
+#bl-perf-monitor .bl-perf-title {
+    color: #ffffff;
+    margin-bottom: 4px;
+}
+
 #bl-preset-select:hover,
 #bl-preset-select:focus {
     border-color: var(--bl-accent-color) !important;

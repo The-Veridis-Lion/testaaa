@@ -17,12 +17,13 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-purifier-popup" data-bl-theme="auto" style="display:none;">
-            <div class="header">
+            <div class="header bl-header">
                 <div class="title">
                     <i class="fas fa-globe"></i>
                     全局映射预设
                 </div>
                 <div class="icon-group">
+                    <button id="bl-perf-toggle" class="bl-tool-btn" title="开发者性能监控"><i class="fa-solid fa-bug"></i></button>
                     <button id="bl-theme-toggle" title="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
                     <button id="bl-default-toggle" title="设为默认预设" class="bl-bind-toggle"><i class="fas fa-star"></i></button>
                     <button id="bl-character-bind-toggle" title="将当前角色绑定到当前预设" class="bl-bind-toggle"><i class="fas fa-link-slash"></i></button>
@@ -140,7 +141,38 @@ export function setupUI() {
             </div>
         </div>
     `);
+
+    injectPerformanceMonitor();
 } // <--- 之前就是漏掉了这个大括号导致报错！！！
+
+export function injectPerformanceMonitor() {
+    if ($('#bl-perf-monitor').length) return;
+    $('body').append(`
+        <div id="bl-perf-monitor" style="display:none;">
+            <div class="bl-perf-title">Performance Monitor</div>
+            <div>Global: <span id="bl-perf-global-time">0.00</span> ms</div>
+            <div>Hits:   <span id="bl-perf-global-hits">0</span></div>
+            <div>Peak:   <span id="bl-perf-stream-peak">0.00</span> ms</div>
+            <div>Avg:    <span id="bl-perf-stream-avg">0.00</span> ms</div>
+        </div>
+    `);
+}
+
+export function updatePerfMonitorUI() {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const perfStats = runtimeState.perfStats || {};
+    const enabled = settings.enablePerfMonitor === true;
+
+    $('#bl-perf-toggle').toggleClass('is-active', enabled);
+    $('#bl-perf-monitor').css('display', enabled ? 'block' : 'none');
+    if (!enabled) return;
+
+    $('#bl-perf-global-time').text((Number(perfStats.globalTime) || 0).toFixed(2));
+    $('#bl-perf-global-hits').text(Math.max(0, Number(perfStats.globalHits) || 0));
+    $('#bl-perf-stream-peak').text((Number(perfStats.streamMax) || 0).toFixed(2));
+    $('#bl-perf-stream-avg').text((Number(perfStats.streamAvg) || 0).toFixed(2));
+}
 
 export function showDeepCleanOverlay() {
     $('body').append(`
