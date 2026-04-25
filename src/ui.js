@@ -39,6 +39,7 @@ export function setupUI() {
                     <button id="bl-preset-save" title="保存"><i class="fas fa-save"></i></button>
                     <button id="bl-preset-new" title="新建"><i class="fas fa-plus"></i></button>
                     <button id="bl-preset-delete" title="删除存档"><i class="fas fa-trash"></i></button>
+                    <button id="bl-perf-toggle" class="bl-tool-btn" title="性能监控"><i class="fa-solid fa-microchip"></i></button>
                 </div>
             </div>
 
@@ -140,7 +141,38 @@ export function setupUI() {
             </div>
         </div>
     `);
+
+    injectPerformanceMonitor();
 } // <--- 之前就是漏掉了这个大括号导致报错！！！
+
+export function injectPerformanceMonitor() {
+    if ($('#bl-perf-monitor').length) return;
+    $('body').append(`
+        <div id="bl-perf-monitor" style="display:none;">
+            <div class="bl-perf-title">Performance Monitor</div>
+            <div>Global: <span id="bl-perf-global-time">0.00</span> ms</div>
+            <div>Hits:   <span id="bl-perf-global-hits">0</span></div>
+            <div>Peak:   <span id="bl-perf-stream-peak">0.00</span> ms</div>
+            <div>Avg:    <span id="bl-perf-stream-avg">0.00</span> ms</div>
+        </div>
+    `);
+}
+
+export function updatePerfMonitorUI() {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const perfStats = runtimeState.perfStats || {};
+    const enabled = settings.enablePerfMonitor === true;
+
+    $('#bl-perf-toggle').toggleClass('is-active', enabled);
+    $('#bl-perf-monitor').css('display', enabled ? 'block' : 'none');
+    if (!enabled) return;
+
+    $('#bl-perf-global-time').text((Number(perfStats.globalTime) || 0).toFixed(2));
+    $('#bl-perf-global-hits').text(Math.max(0, Number(perfStats.globalHits) || 0));
+    $('#bl-perf-stream-peak').text((Number(perfStats.streamMax) || 0).toFixed(2));
+    $('#bl-perf-stream-avg').text((Number(perfStats.streamAvg) || 0).toFixed(2));
+}
 
 export function showDeepCleanOverlay() {
     $('body').append(`
