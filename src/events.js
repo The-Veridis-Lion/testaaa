@@ -639,6 +639,27 @@ export function bindEvents() {
         renderSubrulesToModal();
     });
 
+    // 备注按钮的点击事件
+    $(document).off('click', '.bl-remark-subrule-btn').on('click', '.bl-remark-subrule-btn', function() {
+        syncSubrulesFromDOM();
+        const index = $(this).data('index');
+        const currentSubrule = runtimeState.currentEditingSubrules[index];
+        const currentRemark = currentSubrule.remark || '';
+        
+        // 使用原生 prompt 获取输入
+        const userInput = prompt('请输入备注内容（留空则删除备注）：', currentRemark);
+        
+        if (userInput !== null) {
+            const trimmedInput = userInput.trim();
+            if (trimmedInput !== '') {
+                currentSubrule.remark = trimmedInput;
+            } else {
+                delete currentSubrule.remark;
+            }
+            renderSubrulesToModal(); // 刷新 UI 渲染备注
+        }
+    });
+
     $(document).off('click', '.bl-save-subrule-btn').on('click', '.bl-save-subrule-btn', function() {
         syncSubrulesFromDOM();
         runtimeState.currentEditingSubrules[$(this).data('index')].isEditing = false;
