@@ -56,20 +56,26 @@
 
 [data-bl-theme="light"] {
     --bg-body: #ffffff; --bg-container: #ffffff; --text-main: #333333; --text-sub: #555555;
-    --text-mute: #888888; --bg-button: #f0f1f3; --border-color: #f0f0f0; --border-dash: #dddddd;
-    --bg-card: #f9fafc; --card-border: #eeeeee; --tag-bg: #c15555; --btn-danger: #d15656;
+    --text-mute: #888888; --bg-button: #f0f1f3; --border-color: #e9ecef; --border-dash: #dee2e6;
+    --bg-card: #ffffff; --card-border: #e9ecef; --tag-bg: #c15555; --btn-danger: #d15656;
     --checkbox-bg: #ffffff; --checkbox-border: #cccccc; --checkbox-checked: #f19070;
     --batch-checkbox-checked: #c15555; --divider-color: #bbbbbb; --icon-color: #555555;
     --btn-secondary-color: #333333; --batch-bar-bg: #e8eaed;
+    --bl-background-popup: #ffffff; --bl-background-secondary: #f4f6f8; --bl-background-tertiary: #e9ecef;
+    --bl-border-color: #dee2e6; --bl-text-primary: #212529; --bl-text-secondary: #495057;
+    --bl-input-bg: #ffffff; --bl-overlay-bg: rgba(0,0,0,0.5);
 }
 
 [data-bl-theme="dark"] {
-    --bg-body: #ffffff; --bg-container: #1e1e1e; --text-main: #e0e0e0; --text-sub: #b0b0b0;
+    --bg-body: #121212; --bg-container: #1e1e1e; --text-main: #e0e0e0; --text-sub: #b0b0b0;
     --text-mute: #777777; --bg-button: #2d2d2d; --border-color: #333333; --border-dash: #444444;
     --bg-card: #252525; --card-border: #333333; --tag-bg: #a34847; --btn-danger: #b34444;
     --checkbox-bg: #2d2d2d; --checkbox-border: #555555; --checkbox-checked: #d17556;
     --batch-checkbox-checked: #a34847; --divider-color: #666666; --icon-color: #b0b0b0;
     --btn-secondary-color: #e0e0e0; --batch-bar-bg: #383838;
+    --bl-background-popup: #1e1e1e; --bl-background-secondary: #2d2d2d; --bl-background-tertiary: #383838;
+    --bl-border-color: #444444; --bl-text-primary: #e0e0e0; --bl-text-secondary: #b0b0b0;
+    --bl-input-bg: #252525; --bl-overlay-bg: rgba(0,0,0,0.7);
 }
 
 /* --- 2. 基础通用组件 --- */
@@ -583,3 +589,45 @@
     gap: 6px !important;
     margin: 0 !important;
 }
+
+/* ==========================================
+   独立规则卡片 (完全重构版)
+========================================== */
+.bl-subrule-card {
+    display: flex !important;
+    flex-direction: column !important;
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 10px !important;
+    padding: 12px 14px !important;
+    margin-bottom: 12px !important; /* ✨ 核心：确保每张卡片之间有明显的隔离间距 */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.04) !important; /* 增加一点微弱的悬浮阴影 */
+}
+
+/* 1. 头部：徽章按钮行 */
+.bl-subrule-card-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 10px !important;
+    border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, transparent) !important;
+}
+
+/* 2. 中间：内容区 */
+.bl-subrule-card-body {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+
+/* 3. 底部：备注区 */
+.bl-subrule-card-remark {
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+    border-top: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, transparent) !important;
+    font-size: 11px !important;
+    color: var(--text-mute) !important;
+}
+
+.bl-subrule-badge-wrap { display: flex !important; align-items: center !important; }
