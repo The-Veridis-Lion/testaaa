@@ -140,7 +140,7 @@ export function setupUI() {
             </div>
         </div>
     `);
-} // <--- 之前就是漏掉了这个大括号导致报错！！！
+} 
 
 export function showDeepCleanOverlay() {
     $('body').append(`
@@ -418,34 +418,23 @@ export function renderSubrulesToModal() {
                 rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则直接删除)";
             }
 
-            // ✨ 套上新的悬浮卡片外壳，并使用虚化遮罩
+            // ✨ 恢复为最原始的结构：直接在列表里展开，不套悬浮卡片
             container.append(`
                 <div class="bl-subrule-row">
-                    <div class="bl-subrule-row-card">
-                        <div class="bl-subrule-row-head">
-                            <div class="bl-subrule-row-title"><i class="fas fa-puzzle-piece"></i> 编辑规则</div>
-                            <div class="bl-subrule-summary-actions">
-                                <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成保存"><i class="fas fa-check"></i></button>
-                                <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
-                            </div>
-                        </div>
-                        <div class="bl-edit-field">
-                            <label class="bl-field-label">匹配模式</label>
-                            <select class="bl-sub-mode bl-input bl-subrule-mode-select">
-                                <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
-                                <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
-                                <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
-                            </select>
-                        </div>
-                        <div class="bl-edit-field">
-                            <label class="bl-field-label">查找内容</label>
-                            <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
-                        </div>
-                        <div class="bl-edit-field">
-                            <label class="bl-field-label">替换为</label>
-                            <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
+                    <div class="bl-subrule-row-head">
+                        <select class="bl-sub-mode bl-input bl-subrule-mode-select">
+                            <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
+                            <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
+                            <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
+                        </select>
+                        <div class="bl-subrule-summary-actions">
+                            <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成保存"><i class="fas fa-check"></i></button>
+                            <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
+                    <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
+                    <div class="bl-subrule-flow-label"><i class="fas fa-arrow-down"></i> 替换为</div>
+                    <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
                 </div>
             `);
         }
