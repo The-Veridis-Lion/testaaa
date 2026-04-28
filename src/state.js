@@ -21,6 +21,7 @@ export const runtimeState = {
     isRegexDirty: true,
     currentEditingIndex: -1,
     currentEditingSubrules: [],
+    currentSubruleEditIndex: -1,
     currentTransferRuleIndex: -1,
     lastCharacterContextKey: "",
     isStreamingGeneration: false,
