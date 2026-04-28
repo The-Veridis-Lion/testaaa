@@ -514,3 +514,53 @@
     padding-right: 5px !important; 
     margin-bottom: 10px !important; 
 }
+
+/* --- 新增：统一的独立卡片样式 --- */
+.bl-card-style {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 12px 14px !important;
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 10px !important;
+    position: relative !important;
+}
+
+/* --- 新增：头部点点虚线分割 (徽章与按钮同行) --- */
+.bl-dashed-divider {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+    border-bottom: 1px dashed var(--border-dash) !important;
+    padding-bottom: 12px !important;
+    margin-bottom: 4px !important;
+}
+
+/* 徽章容器强制水平对齐 */
+.bl-subrule-main {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* --- 修改：底栏两个按钮同行平分 --- */
+.bl-modal-actions {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    flex-shrink: 0 !important;
+    margin-top: 10px !important;
+}
+
+.bl-modal-actions .bl-secondary-btn,
+.bl-modal-actions .bl-primary-btn {
+    flex: 1 !important;
+    padding: 10px !important;
+    font-size: 14px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 6px !important;
+    margin: 0 !important;
+}
