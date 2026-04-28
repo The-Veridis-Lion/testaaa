@@ -368,7 +368,6 @@ export function renderSubrulesToModal() {
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        // 防崩溃读取数组
         const targetsArr = sub.targets || [];
         const replacementsArr = sub.replacements || [];
 
@@ -381,14 +380,15 @@ export function renderSubrulesToModal() {
             let tPreview = targetsArr.join(mode === 'text' ? ', ' : ' | ');
             let rPreview = replacementsArr.join(', ');
             if (!rPreview) rPreview = '【直接删除】';
-            
-            let remarkHTML = sub.remark ? `<div class="bl-subrule-remark">备注：${sub.remark}</div>` : '';
 
-            // ✅ 加上 bl-card-style (整体卡片) 和 bl-dashed-divider (虚线头)
+            // 备注区域包裹在全新的 class 中
+            let remarkHTML = sub.remark ? `<div class="bl-subrule-card-remark">💡 备注：${sub.remark}</div>` : '';
+
+            // ✨ 使用纯净的 bl-subrule-card 三段式结构
             container.append(`
-                <div class="bl-subrule-summary bl-card-style">
-                    <div class="bl-subrule-summary-head bl-dashed-divider">
-                        <div class="bl-subrule-main">${badgeHTML}</div>
+                <div class="bl-subrule-card">
+                    <div class="bl-subrule-card-header">
+                        <div class="bl-subrule-badge-wrap">${badgeHTML}</div>
                         <div class="bl-subrule-summary-actions">
                             <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
                             <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
@@ -397,36 +397,35 @@ export function renderSubrulesToModal() {
                             <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="添加/修改备注"><i class="fas fa-comment-dots"></i></button>
                         </div>
                     </div>
-                    <div class="bl-subrule-summary-body">
+                    <div class="bl-subrule-card-body">
                         <div class="bl-subrule-text">
                             <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
                         </div>
-                        ${remarkHTML}
                     </div>
+                    ${remarkHTML}
                 </div>
             `);
         } else {
             const tStr = targetsArr.join(mode === 'text' ? ', ' : '\n');
             const rStr = replacementsArr.join(mode === 'regex' ? '\n' : ', ');
-            
+
             let tPlaceholder;
             let rPlaceholder;
             if (mode === 'regex') {
-                tPlaceholder = "正则匹配规则 (每行一条)\n例如：/(宛若|如同)(神明|恶魔)/g";
-                rPlaceholder = "替换后词汇 (每行一条)\n支持 $1, $2 捕获组引用";
+                tPlaceholder = "正则匹配规则 (每行一条)";
+                rPlaceholder = "替换后词汇 (每行一条)";
             } else if (mode === 'simple') {
-                tPlaceholder = "简易语法 (每行一条)\n例如：{宛若,如同}{神明,恶魔}{般,一样}?";
+                tPlaceholder = "简易语法 (每行一条) 例如：{宛若,如同}{神明,恶魔}?";
                 rPlaceholder = "替换后词汇 (每行一条，支持随机)";
             } else {
-                tPlaceholder = "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在";
-                rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则直接删除)";
+                tPlaceholder = "被替换词汇 (逗号/空格分隔)";
+                rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则删除)";
             }
 
-            // ✅ 编辑框同样使用 bl-card-style 和 bl-dashed-divider
             container.append(`
-                <div class="bl-subrule-row bl-card-style">
-                    <div class="bl-subrule-row-head bl-dashed-divider">
-                        <select class="bl-sub-mode bl-input bl-subrule-mode-select">
+                <div class="bl-subrule-card">
+                    <div class="bl-subrule-card-header">
+                        <select class="bl-sub-mode bl-input bl-subrule-mode-select" style="margin: 0;">
                             <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合</option>
                             <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本</option>
                             <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式</option>
@@ -436,11 +435,32 @@ export function renderSubrulesToModal() {
                             <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
-                    <div class="bl-subrule-flow-label"><i class="fas fa-arrow-down"></i> 替换为</div>
-                    <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
+                    <div class="bl-subrule-card-body">
+                        <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
+                        <div class="bl-subrule-flow-label" style="text-align: center;"><i class="fas fa-arrow-down"></i> 替换为</div>
+                        <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
+                    </div>
                 </div>
             `);
+        }
+    });
+}
+
+export function syncSubrulesFromDOM() {
+    // ✨ 修改抓取目标为全新的 .bl-subrule-card
+    $('.bl-subrule-card').each(function() {
+        const saveBtn = $(this).find('.bl-save-subrule-btn');
+        if (saveBtn.length === 0) return; // 跳过非编辑状态的卡片
+        
+        const index = saveBtn.data('index');
+        const mode = $(this).find('.bl-sub-mode').val();
+        const tStr = $(this).find('.bl-sub-target').val();
+        const rStr = $(this).find('.bl-sub-rep').val();
+
+        if (index !== undefined && runtimeState.currentEditingSubrules[index]) {
+            runtimeState.currentEditingSubrules[index].mode = mode;
+            runtimeState.currentEditingSubrules[index].targets = parseInputToWords(tStr, mode, { isTarget: true });
+            runtimeState.currentEditingSubrules[index].replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
         }
     });
 }
