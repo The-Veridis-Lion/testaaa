@@ -393,24 +393,25 @@ export function renderSubrulesToModal() {
         return;
     }
 
-    // ✨ 重构：只渲染卡片视图，移除所有行内编辑框的代码
+    // ✨ 严格匹配 style.css 中的独立规则卡片类名 (.bl-subrule-card 等)
     runtimeState.currentEditingSubrules.forEach((sub, i) => {
         const mode = sub.mode || 'text';
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
+        // 内联覆盖 margin-top: 0，确保徽章和右侧按钮绝对水平居中同行
         let badgeHTML = '';
-        if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex">正则</span>';
-        else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple">简易</span>';
-        else badgeHTML = '<span class="bl-badge bl-badge-text">普通</span>';
+        if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex" style="margin-top:0 !important;">正则</span>';
+        else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple" style="margin-top:0 !important;">简易</span>';
+        else badgeHTML = '<span class="bl-badge bl-badge-text" style="margin-top:0 !important;">普通</span>';
 
         let tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
         let rPreview = sub.replacements.join(', ');
         if (!rPreview) rPreview = '【直接删除】';
 
         container.append(`
-            <div class="bl-subrule-summary">
-                <div class="bl-subrule-summary-head">
+            <div class="bl-subrule-card">
+                <div class="bl-subrule-card-header">
                     <div class="bl-subrule-main">
                         ${badgeHTML}
                     </div>
@@ -421,7 +422,7 @@ export function renderSubrulesToModal() {
                         <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-                <div class="bl-subrule-summary-body">
+                <div class="bl-subrule-card-body">
                     <div class="bl-subrule-text">
                         <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
                     </div>
