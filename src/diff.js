@@ -381,16 +381,37 @@ export function getInlineDiff(oldStr, newStr) {
     if (oldStr === newStr) return escapeHtml(oldStr);
     if (!oldStr && !newStr) return "";
 
-    const oldChars = Array.from(oldStr);
-    const newChars = Array.from(newStr);
-    const m = oldChars.length;
-    const n = newChars.length;
+    // --- 剥离公共前缀 ---
+    let start = 0;
+    while (start < oldStr.length && start < newStr.length && oldStr[start] === newStr[start]) {
+        start++;
+    }
 
+    // --- 剥离公共后缀 ---
+    let endOld = oldStr.length - 1;
+    let endNew = newStr.length - 1;
+    while (endOld >= start && endNew >= start && oldStr[endOld] === newStr[endNew]) {
+        endOld--;
+        endNew--;
+    }
+
+    // --- 提取相同部分与差异部分 ---
+    const prefix = escapeHtml(oldStr.substring(0, start));
+    const suffix = escapeHtml(oldStr.substring(endOld + 1));
+    const midOld = Array.from(oldStr.substring(start, endOld + 1));
+    const midNew = Array.from(newStr.substring(start, endNew + 1));
+
+    const m = midOld.length;
+    const n = midNew.length;
+
+    // --- 如果差异部分为空，直接拼接 ---
+    if (m === 0 && n === 0) return prefix + suffix;
+
+    // 仅对中间差异部分执行 O(M*N) 的 DP 计算
     const dp = Array.from({ length: m + 1 }, () => new Int32Array(n + 1));
-
     for (let i = 1; i <= m; i++) {
         for (let j = 1; j <= n; j++) {
-            if (oldChars[i - 1] === newChars[j - 1]) {
+            if (midOld[i - 1] === midNew[j - 1]) {
                 dp[i][j] = dp[i - 1][j - 1] + 1;
             } else {
                 dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
@@ -402,24 +423,23 @@ export function getInlineDiff(oldStr, newStr) {
     let j = n;
     const diff = [];
     while (i > 0 || j > 0) {
-        if (i > 0 && j > 0 && oldChars[i - 1] === newChars[j - 1]) {
-            diff.push(escapeHtml(oldChars[i - 1]));
-            i--;
-            j--;
+        if (i > 0 && j > 0 && midOld[i - 1] === midNew[j - 1]) {
+            diff.push(escapeHtml(midOld[i - 1]));
+            i--; j--;
         } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
-            diff.push(`<ins>${escapeHtml(newChars[j - 1])}</ins>`);
+            diff.push(`<ins>${escapeHtml(midNew[j - 1])}</ins>`);
             j--;
         } else if (i > 0 && (j === 0 || dp[i][j - 1] < dp[i - 1][j])) {
-            diff.push(`<del>${escapeHtml(oldChars[i - 1])}</del>`);
+            diff.push(`<del>${escapeHtml(midOld[i - 1])}</del>`);
             i--;
         }
     }
 
-    return diff.reverse().join('')
+    // 拼接：前缀 + DP高亮部分 + 后缀
+    return prefix + diff.reverse().join('')
         .replace(/<\/ins><ins>/g, '')
-        .replace(/<\/del><del>/g, '');
+        .replace(/<\/del><del>/g, '') + suffix;
 }
-
 /**
  * 从原始消息文本中构建净化结果与可视化差异缓存。
  *
