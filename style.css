@@ -736,19 +736,52 @@
 }
 
 /* ========================================================
-   修复手机端编辑弹窗只显示标题的内容丢失 Bug (Safari Flex 塌陷)
+   严格参照截图的手机端弹窗布局 (终极覆盖版)
    ======================================================== */
 @media screen and (max-width: 600px) {
+    /* 1. 修复弹窗飞出/歪斜：强制满屏居中，清除之前的定位与外边距污染 */
     #bl-rule-edit-modal {
-        align-items: center !important;
-        justify-content: center !important; /* 确保弹窗在屏幕正中央 */
-        padding: 12px !important;
+        position: fixed !important;
+        top: 0 !important; left: 0 !important;
+        width: 100vw !important; height: 100vh !important;
+        align-items: center !important; 
+        justify-content: center !important;
+        padding: 16px !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
     }
-    
+
+    /* 2. 弹窗卡片本体：给死固定高度，绝不使用 auto */
     #bl-rule-edit-modal > .bl-edit-modal-card {
-        /* 放弃高度自适应，直接给定安全的屏幕比例高度，彻底避免内容被压缩消失 */
-        height: 82vh !important; 
+        width: 100% !important;
+        height: 82vh !important; /* 🌟 锁定高度是防止界面消失的关键 */
         max-height: 82vh !important;
-        margin: 0 !important; /* 清除旧版样式强制下压的 margin */
+        margin: 0 !important; /* 抹除导致飞出屏幕的 margin */
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    /* 3. 头部标题、输入框、底栏：绝对禁止被挤压变形 */
+    .bl-edit-modal-title,
+    .bl-edit-field,
+    .bl-edit-modal-card > .bl-field-label,
+    .bl-modal-actions {
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+    }
+
+    /* 4. 滚动列表区：独占中间剩余空间 (手机端塌陷克星: height: 0) */
+    #bl-edit-subrules-container {
+        flex: 1 1 auto !important;
+        height: 0 !important; /* 🌟 打破手机端依靠内部撑高导致崩溃的错误逻辑 */
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        margin: 10px 0 !important;
+    }
+
+    /* 5. 内部卡片：保持自身内容高度，不被压扁 */
+    .bl-subrule-card {
+        flex-shrink: 0 !important;
     }
 }
