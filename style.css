@@ -634,39 +634,39 @@
 
 
 /* =========================================
-   终极修复：弹窗高度锁定与列表滚动 
+   终极修复：彻底解决挤压变形、重叠、无法滚动 
 ========================================= */
 
-/* 1. 强制锁死编辑弹窗的高度，切断无限撑长 */
-.bl-edit-modal-card {
+/* 1. 弹窗外壳：全局绝对居中，四周留出安全边距防遮挡 */
+#bl-rule-edit-modal {
+    align-items: center !important;
+    justify-content: center !important;
+    padding: max(20px, 5vh) 15px !important;
+}
+
+/* 2. 弹窗本体：取消死板的固定高度，改为最大高度约束 */
+#bl-rule-edit-modal .bl-edit-modal-card {
+    margin: 0 !important;
+    height: auto !important;
+    max-height: 85vh !important;
+    max-height: 85dvh !important; /* 完美适配手机动态地址栏 */
     display: flex !important;
     flex-direction: column !important;
-    max-height: 85vh !important;
-    overflow: hidden !important; 
 }
 
-/* 2. 手机端特化：死死锁住 80% 屏幕高度，抹除以前的 height: auto */
-@media screen and (max-width: 600px) {
-    #bl-rule-edit-modal > div {
-        height: 80vh !important; 
-        max-height: 80vh !important;
-    }
+/* 3. ✨ 核心护盾：死死锁住头部、输入框、底部按钮和每一个卡片，绝对不准被挤扁！ */
+.bl-edit-modal-title, 
+.bl-edit-modal-card > .bl-edit-field, 
+.bl-edit-modal-card > .bl-field-label,
+.bl-modal-actions,
+.bl-card-style {
+    flex-shrink: 0 !important;
 }
 
-/* 3. 列表滚动区：必须允许压缩 (min-height:0)，才能触发内部滚动条！ */
-#bl-edit-subrules-container { 
-    flex: 1 1 auto !important; 
-    min-height: 0 !important; /* 🌟 罪魁祸首已被修复！这里必须是 0 */
-    overflow-y: auto !important; 
-    -webkit-overflow-scrolling: touch !important; /* iOS 顺滑滚动 */
-    display: flex !important; 
-    flex-direction: column !important; 
-    gap: 10px !important; 
-    padding-right: 5px !important; 
-    margin-bottom: 0 !important; 
-}
-
-/* 4. 卡片与底栏：绝对不允许被压扁 */
-.bl-card-style, .bl-modal-actions {
-    flex-shrink: 0 !important; 
+/* 4. 中间列表区：唯独允许这里弹性伸缩并出现滚动条 */
+#bl-edit-subrules-container {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important; /* 确保 iOS 滑动顺畅 */
 }
