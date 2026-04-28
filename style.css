@@ -806,8 +806,8 @@
     #bl-rule-edit-modal .bl-edit-modal-card,
     #bl-rule-edit-modal > div {
         width: 95% !important;
-        height: 85vh !important; /* 🌟 杀手锏：直接把高度锁死在屏幕的 85%，绝不允许缩水 */
-        max-height: 85vh !important;
+        height: 70vh !important; /* 🌟 杀手锏：直接把高度锁死在屏幕的 85%，绝不允许缩水 */
+        max-height: 70vh !important;
         margin: 0 !important; /* 🌟 杀手锏：清空所有会影响位置的 margin */
         display: flex !important;
         flex-direction: column !important;
