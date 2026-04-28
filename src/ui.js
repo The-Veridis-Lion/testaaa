@@ -129,6 +129,26 @@ export function setupUI() {
     `);
 
     $('body').append(`
+        <div id="bl-diff-modal" style="display:none;">
+            <div class="bl-diff-modal-card">
+                <div class="bl-diff-modal-header">
+                    <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i> 净化前文透视</h3>
+                    <div class="bl-diff-header-actions">
+                        <button id="bl-diff-pos-toggle" class="bl-icon-btn bl-diff-header-btn" title="将顶部按钮收纳进三点菜单">
+                            <i id="bl-diff-pos-icon" class="fa-solid fa-ellipsis"></i> <span id="bl-diff-pos-text">收纳按钮</span>
+                        </button>
+                        <button id="bl-diff-mode-toggle" class="bl-icon-btn bl-diff-header-btn" title="切换视图模式">
+                            <i id="bl-diff-mode-icon" class="fa-solid fa-file-lines"></i> <span id="bl-diff-mode-text">全文模式</span>
+                        </button>
+                        <button id="bl-diff-modal-close" class="bl-diff-modal-close" aria-label="关闭">&times;</button>
+                    </div>
+                </div>
+                <div id="bl-diff-modal-content" class="bl-diff-modal-content"></div>
+            </div>
+        </div>
+    `);
+
+    $('body').append(`
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
             <div class="bl-modal-card bl-edit-modal-card" style="padding: 20px !important;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dotted var(--border-dash); padding-bottom: 12px;">
@@ -164,7 +184,216 @@ export function setupUI() {
     `);
 } 
 
-// (中间的 showDeepCleanOverlay, applyPresetByName 等函数保持不变，无需修改，直接保留即可)
+export function showDeepCleanOverlay() {
+    $('body').append(`
+        <div id="bl-loading-overlay" class="bl-loading-overlay">
+            <h2 class="bl-loading-title"><i class="fas fa-spinner fa-spin"></i> 正在执行全方位深度清理 (包含角色卡与世界书)...</h2>
+            <p id="bl-loading-status">正在初始化清理任务，请稍候。</p>
+            <div class="bl-progress-track"><div id="bl-progress-fill" class="bl-progress-fill"></div></div>
+            <p id="bl-progress-percent" class="bl-progress-percent">0%</p>
+        </div>
+    `);
+}
+
+export function updateDeepCleanOverlay(progressRatio, statusText) {
+    const ratio = Math.max(0, Math.min(1, Number(progressRatio) || 0));
+    $('#bl-progress-fill').css('width', `${Math.round(ratio * 100)}%`);
+    $('#bl-progress-percent').text(`${Math.round(ratio * 100)}%`);
+    if (statusText) $('#bl-loading-status').text(statusText);
+}
+
+export function showConfirmModal(onConfirm = () => performDeepCleanse()) {
+    const $modal = $('#bl-confirm-modal');
+    const $confirmBtn = $('#bl-modal-confirm');
+    const $cancelBtn = $('#bl-modal-cancel');
+
+    $modal.css('display', 'flex');
+    $confirmBtn.prop('disabled', true).addClass('is-disabled');
+
+    let timeLeft = 3;
+    $confirmBtn.text(`确认清理 (${timeLeft}s)`);
+
+    const timer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+            $confirmBtn.text(`确认清理 (${timeLeft}s)`);
+        } else {
+            clearInterval(timer);
+            $confirmBtn.prop('disabled', false)
+                .removeClass('is-disabled')
+                .text('我已切换，确认清理！');
+        }
+    }, 1000);
+
+    $cancelBtn.off('click').on('click', () => {
+        clearInterval(timer);
+        $modal.hide();
+    });
+
+    $confirmBtn.off('click').on('click', () => {
+        if (!timeLeft) {
+            clearInterval(timer);
+            $modal.hide();
+            onConfirm();
+        }
+    });
+}
+
+export function applyPresetByName(name, options = {}) {
+    const { extension_settings, saveSettingsDebounced } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const presetName = String(name || '');
+    const presetExists = !!(presetName && settings.presets?.[presetName]);
+    settings.activePreset = presetExists ? presetName : "";
+    settings.rules = presetExists ? deepClone(settings.presets[presetName]) : [];
+    runtimeState.isRegexDirty = true;
+    saveSettingsDebounced();
+    logger.info(`切换预设: ${presetName || '(临时规则)'}, 存在=${presetExists}`);
+    if (!options.skipRender) {
+        updateToolbarUI();
+        renderTags();
+    }
+    if (!options.skipCleanse) performGlobalCleanse();
+}
+
+export function cleanupInvalidPresetBindings() {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const presets = settings.presets || {};
+    if (settings.defaultPreset && !presets[settings.defaultPreset]) settings.defaultPreset = "";
+    if (!settings.characterBindings || typeof settings.characterBindings !== 'object') {
+        settings.characterBindings = {};
+        return;
+    }
+    Object.keys(settings.characterBindings).forEach((key) => {
+        const preset = settings.characterBindings[key];
+        if (!preset || !presets[preset]) delete settings.characterBindings[key];
+    });
+}
+
+export function refreshCharacterBindingUI() {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const context = getCurrentCharacterContext();
+    const activePreset = String(settings.activePreset || '');
+    const $defaultBtn = $('#bl-default-toggle');
+    const $bindBtn = $('#bl-character-bind-toggle');
+    const currentBound = context.key ? (settings.characterBindings?.[context.key] || '') : '';
+
+    if ($defaultBtn.length && $bindBtn.length) {
+        const isDefaultActive = !!(activePreset && settings.defaultPreset === activePreset);
+        $defaultBtn.toggleClass('bl-bind-active', isDefaultActive);
+        $defaultBtn.prop('disabled', !activePreset);
+        $defaultBtn.attr('title', activePreset ? (isDefaultActive ? `已设为默认预设：${activePreset}（点击取消）` : `将当前预设设为默认：${activePreset}`) : '请先选择一个预设');
+
+        const isCharacterBound = !!(context.key && activePreset && currentBound === activePreset);
+        $bindBtn.toggleClass('bl-bind-active', isCharacterBound);
+        $bindBtn.prop('disabled', !activePreset || !context.key);
+        $bindBtn.find('i').removeClass('fa-link fa-link-slash').addClass(isCharacterBound ? 'fa-link' : 'fa-link-slash');
+        $bindBtn.attr('title', !activePreset ? '请先选择一个预设' : !context.key ? '未检测到当前角色，无法绑定' : (isCharacterBound ? `已绑定：${context.name} → ${activePreset}（点击解除）` : `绑定当前角色：${context.name} → ${activePreset}`));
+    }
+}
+
+export function applyCharacterPresetBinding(force = false, options = {}) {
+    const { extension_settings } = getAppContext();
+    const context = getCurrentCharacterContext();
+    if (!context.key) {
+        runtimeState.lastCharacterContextKey = "";
+        refreshCharacterBindingUI();
+        return;
+    }
+
+    const characterChanged = context.key !== runtimeState.lastCharacterContextKey;
+    if (!force && !characterChanged) return;
+    runtimeState.lastCharacterContextKey = context.key;
+
+    const presetName = getPresetForCharacter(context.key);
+    if (presetName && presetName !== extension_settings[extensionName].activePreset) {
+        applyPresetByName(presetName, { skipRender: true, skipCleanse: options.skipCleanse === true });
+    }
+    refreshCharacterBindingUI();
+}
+
+export function updateToolbarUI() {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    cleanupInvalidPresetBindings();
+    const select = $('#bl-preset-select');
+    select.empty();
+    select.append('<option value="">-- 临时规则 (未绑定存档) --</option>');
+
+    if (settings.presets) {
+        for (let name in settings.presets) {
+            select.append($('<option>', { value: name, text: name }));
+        }
+    }
+    select.val(settings.activePreset || "");
+    refreshCharacterBindingUI();
+}
+
+export function renderTags() {
+    const { extension_settings } = getAppContext();
+    const rules = extension_settings[extensionName]?.rules || [];
+    const html = rules.map((r, i) => {
+        const name = r.name || `未命名合集 ${i + 1}`;
+        const subRules = r.subRules || [];
+        const maxPreview = 3;
+
+        const subRulesHtml = subRules.slice(0, maxPreview).map((sub) => {
+            const mode = sub.mode || 'text';
+            const tagText = mode === 'regex' ? '正则' : mode === 'simple' ? '简易' : '普通';
+            const tPreview = (sub.targets || []).join(mode === 'text' ? ', ' : ' | ') || '（空）';
+            const rPreview = (sub.replacements || []).join(', ') || '【直接删除】';
+            return `
+                <div class="rule-item">
+                    <span class="tag">${tagText}</span>
+                    <span class="source">${tPreview}</span>
+                    <i class="fas fa-arrow-right arrow"></i>
+                    <span class="target">${rPreview}</span>
+                </div>`;
+        }).join('');
+
+        const moreHtml = subRules.length > maxPreview
+            ? `<div class="more-text">... 以及其他 ${subRules.length - maxPreview} 组映射</div>`
+            : '';
+        const bodyHtml = subRules.length > 0
+            ? `<div class="card-body">${subRulesHtml}${moreHtml}</div>`
+            : '';
+
+        const isEnabled = r.enabled !== false;
+        const checkedAttr = isEnabled ? 'checked' : '';
+        const moveUpDisabled = i === 0 ? 'disabled' : '';
+        const moveDownDisabled = i === rules.length - 1 ? 'disabled' : '';
+        const headerClass = subRules.length > 0 ? 'card-header has-border' : 'card-header';
+
+        return `
+            <div class="card ${!isEnabled ? 'is-disabled' : ''}" data-index="${i}">
+                <div class="${headerClass}">
+                    <div class="header-left">
+                        <label class="batch-checkbox-label">
+                            <input type="checkbox" class="batch-item-checkbox" data-index="${i}">
+                            <span class="custom-checkbox square-2px"></span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="bl-rule-toggle" data-index="${i}" ${checkedAttr}>
+                            <span class="custom-checkbox"></span>
+                            <span class="group-title">${name}</span>
+                        </label>
+                    </div>
+                    <div class="icon-group compact">
+                        <button class="bl-rule-move-up" data-index="${i}" title="上移合集" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
+                        <button class="bl-rule-move-down" data-index="${i}" title="下移合集" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
+                        <button class="bl-rule-transfer" data-index="${i}" title="复制/转移到其他存档"><i class="fas fa-copy"></i></button>
+                        <button class="bl-rule-edit" data-index="${i}" title="编辑合集"><i class="fas fa-pen"></i></button>
+                        <button class="bl-rule-del" data-index="${i}" title="删除合集"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+                ${bodyHtml}
+            </div>`;
+    }).join('');
+
+    $('#bl-tags-container').html(html || '<div class="bl-empty-state">当前无规则，请点击上方按钮新增</div>');
+}
 
 export function renderSubrulesToModal() {
     const container = $('#bl-edit-subrules-container');
@@ -177,7 +406,6 @@ export function renderSubrulesToModal() {
 
     runtimeState.currentEditingSubrules.forEach((sub, i) => {
         const mode = sub.mode || 'text';
-        // 关键点：严格去除空格，判断是否真的有备注
         const remark = sub.remark ? sub.remark.trim() : '';
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
@@ -192,19 +420,18 @@ export function renderSubrulesToModal() {
         let rPreview = sub.replacements.join(', ');
         if (!rPreview) rPreview = '【直接删除】';
 
-        // 没备注的时候直接为空（不渲染），完美收起
         let remarkHTML = '';
         if (remark) {
             remarkHTML = `
-                <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border-dash); font-size: 13px; color: var(--text-mute);">
-                    备注: ${remark}
+                <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5)); font-size: 11px; color: var(--text-mute); font-style: italic;">
+                    <i class="fas fa-info-circle" style="margin-right: 4px;"></i>${remark}
                 </div>
             `;
         }
 
         container.append(`
             <div style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
-                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dashed var(--border-dash);">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5));">
                     <div style="display: flex; align-items: center; margin: 0; padding: 0;">
                         ${badgeHTML}
                     </div>
@@ -212,16 +439,135 @@ export function renderSubrulesToModal() {
                         <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled} style="margin:0;"><i class="fas fa-arrow-up"></i></button>
                         <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled} style="margin:0;"><i class="fas fa-arrow-down"></i></button>
                         <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="独立编辑" style="margin:0;"><i class="fas fa-pen"></i></button>
-                        <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除" style="margin:0;"><i class="fas fa-trash"></i></button>
-                        <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="快捷备注" style="margin:0;"><i class="fas fa-comment-dots"></i></button>
+                        <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除" style="margin:0;"><i class="fas fa-trash"></i></button>
+                        <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="快捷修改备注" style="margin:0;"><i class="fas fa-comment-dots"></i></button>
                     </div>
                 </div>
-                <div style="font-size: 14px !important; color: var(--bl-text-primary); line-height: 1.5; word-break: break-all;">
-                    ${tPreview}
-                    <div style="margin-top: 4px;">→ ${rPreview}</div>
+                <div style="font-size: 13px !important; color: var(--bl-text-primary); line-height: 1.5; word-break: break-all;">
+                    <b style="font-size: 13px !important;">${tPreview}</b> 
+                    <i class="fas fa-arrow-right" style="color: var(--text-mute); font-size: 11px; margin: 0 6px;"></i> 
+                    <span style="font-size: 13px !important;">${rPreview}</span>
                 </div>
                 ${remarkHTML}
             </div>
         `);
     });
+}
+
+export function openSingleRuleModal(index) {
+    runtimeState.currentSubruleEditIndex = index;
+    let mode = 'simple';
+    let tStr = '';
+    let rStr = '';
+    let remark = '';
+
+    if (index >= 0 && runtimeState.currentEditingSubrules[index]) {
+        const sub = runtimeState.currentEditingSubrules[index];
+        mode = sub.mode || 'simple';
+        tStr = (sub.targets || []).join(mode === 'text' ? ', ' : '\n');
+        rStr = (sub.replacements || []).join(mode === 'regex' ? '\n' : ', ');
+        remark = sub.remark || '';
+    }
+
+    $('#bl-modal-sub-mode').val(mode);
+    $('#bl-modal-sub-target').val(tStr);
+    $('#bl-modal-sub-rep').val(rStr);
+    $('#bl-modal-sub-remark').val(remark);
+    
+    $('#bl-modal-sub-mode').trigger('change');
+    $('#bl-subrule-edit-modal').css('display', 'flex').hide().fadeIn(150);
+}
+
+export function openTransferModal(ruleIndexOrIndexes) {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const presets = settings?.presets || {};
+    const currentPreset = settings?.activePreset || "";
+    const targetNames = Object.keys(presets).filter(name => name !== currentPreset);
+    if (targetNames.length === 0) {
+        alert('没有可用的目标存档。请先创建至少一个其他存档。');
+        return;
+    }
+
+    const indexes = Array.isArray(ruleIndexOrIndexes) ? ruleIndexOrIndexes : [ruleIndexOrIndexes];
+    runtimeState.currentTransferRuleIndexes = indexes
+        .map((v) => Number(v))
+        .filter((v) => Number.isInteger(v) && v >= 0);
+    runtimeState.currentTransferRuleIndex = runtimeState.currentTransferRuleIndexes[0] ?? -1;
+    const $select = $('#bl-transfer-target');
+    $select.empty();
+    targetNames.forEach(name => $select.append($('<option>', { value: name, text: name })));
+    $('#bl-rule-transfer-modal').css('display', 'flex');
+}
+
+export function closeTransferModal() {
+    runtimeState.currentTransferRuleIndex = -1;
+    runtimeState.currentTransferRuleIndexes = [];
+    $('#bl-rule-transfer-modal').hide();
+}
+
+export function runRuleTransfer(isMove) {
+    const { extension_settings, saveSettingsDebounced } = getAppContext();
+    const settings = extension_settings[extensionName];
+    const targetPreset = String($('#bl-transfer-target').val() || '');
+    const sourcePreset = String(settings.activePreset || '');
+    const transferIndexes = Array.isArray(runtimeState.currentTransferRuleIndexes) && runtimeState.currentTransferRuleIndexes.length > 0
+        ? runtimeState.currentTransferRuleIndexes
+        : [runtimeState.currentTransferRuleIndex];
+    const validIndexes = transferIndexes
+        .map((v) => Number(v))
+        .filter((v) => Number.isInteger(v) && v >= 0);
+    if (validIndexes.length === 0) return;
+    if (!targetPreset) {
+        alert('请选择目标存档。');
+        return;
+    }
+    if (targetPreset === sourcePreset) {
+        closeTransferModal();
+        return;
+    }
+
+    const sourceRules = settings.rules || [];
+    const uniqueIndexes = [...new Set(validIndexes)].sort((a, b) => a - b).filter((idx) => idx < sourceRules.length);
+    if (uniqueIndexes.length === 0) {
+        closeTransferModal();
+        return;
+    }
+
+    if (!Array.isArray(settings.presets[targetPreset])) settings.presets[targetPreset] = [];
+    const movingRules = uniqueIndexes.map((idx) => sourceRules[idx]).filter(Boolean);
+    movingRules.forEach((rule) => settings.presets[targetPreset].push(JSON.parse(JSON.stringify(rule))));
+    if (isMove) {
+        for (let i = uniqueIndexes.length - 1; i >= 0; i--) {
+            sourceRules.splice(uniqueIndexes[i], 1);
+        }
+        runtimeState.batchSelectedRuleIds = [];
+    }
+
+    runtimeState.isRegexDirty = true;
+    closeTransferModal();
+    saveSettingsDebounced();
+    renderTags();
+}
+
+export function openEditModal(index = -1) {
+    const { extension_settings } = getAppContext();
+    const settings = extension_settings[extensionName];
+    runtimeState.currentEditingIndex = index;
+    const modal = $('#bl-rule-edit-modal');
+
+    if (index === -1) {
+        $('#bl-edit-modal-title').html('<i class="fas fa-folder-plus"></i> 新增规则合集');
+        $('#bl-edit-name').val('');
+        runtimeState.currentEditingSubrules = [{ targets: [], replacements: [], mode: 'simple', isEditing: false }];
+    } else {
+        const rule = settings.rules[index];
+        $('#bl-edit-modal-title').html('<i class="fas fa-pen"></i> 编辑规则合集');
+        $('#bl-edit-name').val(rule.name || '');
+        runtimeState.currentEditingSubrules = JSON.parse(JSON.stringify(rule.subRules || []));
+        runtimeState.currentEditingSubrules.forEach(sub => sub.isEditing = false);
+    }
+
+    renderSubrulesToModal();
+    modal.css('display', 'flex');
 }
