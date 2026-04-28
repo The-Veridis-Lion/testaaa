@@ -633,40 +633,56 @@
 .bl-subrule-badge-wrap { display: flex !important; align-items: center !important; }
 
 
-/* =========================================
-   终极修复：彻底解决挤压变形、重叠、无法滚动 
-========================================= */
+/* ========================================================
+   终极清道夫：强制重置编辑弹窗的 Flex 布局，解决切边问题
+   ======================================================== */
 
-/* 1. 弹窗外壳：全局绝对居中，四周留出安全边距防遮挡 */
+/* 1. 弹窗外壳：全局绝对居中 */
 #bl-rule-edit-modal {
+    display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: max(20px, 5vh) 15px !important;
+    padding: 0 !important;
 }
 
-/* 2. 弹窗本体：取消死板的固定高度，改为最大高度约束 */
+/* 2. 弹窗本体：释放高度，拒绝裁剪 */
 #bl-rule-edit-modal .bl-edit-modal-card {
-    margin: 0 !important;
+    margin: 0 auto !important;
+    width: 90% !important;
+    max-width: 460px !important;
     height: auto !important;
     max-height: 85vh !important;
-    max-height: 85dvh !important; /* 完美适配手机动态地址栏 */
     display: flex !important;
     flex-direction: column !important;
+    padding: 20px 20px 24px 20px !important; /* 底部多给一点安全距离 */
+    box-sizing: border-box !important;
+    /* ✨ 救命核心：绝对不能用 hidden，否则必切底边！ */
+    overflow: visible !important; 
 }
 
-/* 3. ✨ 核心护盾：死死锁住头部、输入框、底部按钮和每一个卡片，绝对不准被挤扁！ */
+/* 3. 头部和底栏：硬核抗压，绝不缩水 */
 .bl-edit-modal-title, 
 .bl-edit-modal-card > .bl-edit-field, 
 .bl-edit-modal-card > .bl-field-label,
-.bl-modal-actions,
-.bl-card-style {
+.bl-modal-actions {
+    flex: 0 0 auto !important;
     flex-shrink: 0 !important;
 }
 
-/* 4. 中间列表区：唯独允许这里弹性伸缩并出现滚动条 */
+/* 4. 中间列表区：收容所有超长内容，在此处内部滚动 */
 #bl-edit-subrules-container {
     flex: 1 1 auto !important;
-    min-height: 0 !important;
+    min-height: 80px !important; 
     overflow-y: auto !important;
-    -webkit-overflow-scrolling: touch !important; /* 确保 iOS 滑动顺畅 */
+    -webkit-overflow-scrolling: touch !important;
+    margin: 10px 0 !important;
+    padding-right: 4px !important;
+}
+
+/* 5. 底部按钮：对齐修复 */
+.bl-modal-actions {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-top: 5px !important; 
 }
