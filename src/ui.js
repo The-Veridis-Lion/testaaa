@@ -76,15 +76,15 @@ export function setupUI() {
                     <label class="bl-field-label">规则组合集名称</label>
                     <input type="text" id="bl-edit-name" class="bl-input" placeholder="例如：程度副词与认知失能净化">
                 </div>
-                <label class="bl-field-label" style="margin-bottom:6px; flex-shrink:0;">映射规则列表</label>
-                <div id="bl-edit-subrules-container"></div>
-                <button id="bl-add-subrule-btn" class="bl-ghost-btn bl-add-subrule-btn"><i class="fas fa-plus"></i> 添加一组新映射</button>
-                <div class="bl-modal-actions">
-                    <button id="bl-edit-cancel" class="bl-secondary-btn">取消</button>
-                    <button id="bl-edit-save" class="bl-primary-btn"><i class="fas fa-check"></i> 保存合集</button>
+                    <label class="bl-field-label" style="margin-bottom:6px; flex-shrink:0;">映射规则列表</label>
+                    <div id="bl-edit-subrules-container"></div>
+                    
+                    <div class="bl-modal-actions">
+                        <button id="bl-add-subrule-btn" class="bl-secondary-btn"><i class="fas fa-plus"></i> 添加新映射</button>
+                        <button id="bl-edit-save" class="bl-primary-btn"><i class="fas fa-check"></i> 保存合集</button>
+                    </div>
                 </div>
             </div>
-        </div>
     `);
 
     $('body').append(`
