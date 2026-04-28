@@ -496,10 +496,15 @@
     }
     #bl-diff-modal { align-items: flex-start !important; justify-content: center !important; }
     #bl-rule-edit-modal { align-items: center !important; justify-content: flex-start !important; }
-    #bl-rule-edit-modal > div, .bl-diff-modal-card {
-        width: 90% !important; max-height: 68vh !important; margin: calc(env(safe-area-inset-top, 0px) + 12vh) 0 0 0 !important; height: auto !important; 
+    #bl-rule-edit-modal > div,
+    .bl-diff-modal-card {
+        width: 90% !important;       
+        max-height: 86vh !important; /* 🌟 关键1：高度限制从 68vh 放大到 86vh，窗口变长 */
+        margin: calc(env(safe-area-inset-top, 0px) + 5vh) 0 0 0 !important; /* 🌟 关键2：顶部下压距离从 12vh 缩减到 5vh，窗口整体向上提 */
+        height: auto !important; 
+        display: flex !important;
+        flex-direction: column !important;
     }
-}
 
 /* 768px 平板及侧边栏微调 */
 @media screen and (max-width: 768px) {
