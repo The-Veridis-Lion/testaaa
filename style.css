@@ -269,90 +269,64 @@
 .bl-primary-btn:hover { background: var(--bl-accent-color-hover) !important; }
 .bl-primary-btn:disabled, .bl-primary-btn.is-disabled { background: var(--bl-background-secondary) !important; color: var(--bl-text-secondary) !important; cursor: not-allowed !important; opacity: 0.7 !important; }
 
-/* --- 替换：映射规则卡片 (展示模式) --- */
-.bl-subrule-summary { 
-    display: flex !important; 
-    flex-direction: column !important; 
-    padding: 12px 14px !important; 
-    background: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important; 
-    border: none !important; 
-    border-radius: 10px !important; 
-}
-.bl-subrule-summary-head { 
-    display: flex !important; 
-    justify-content: space-between !important; 
-    align-items: center !important; 
-    border-bottom: 1px dashed var(--border-dash) !important; /* 虚线分割 */
-    padding-bottom: 10px !important; 
-    margin-bottom: 10px !important; 
-}
-.bl-subrule-summary-actions { 
-    display: flex !important; 
-    gap: 6px !important; 
-    align-items: center !important; 
-}
-/* 操作按钮统一为灰色圆角小方块 */
-.bl-subrule-summary-actions .bl-icon-btn {
-    background-color: color-mix(in srgb, var(--bl-text-primary) 8%, transparent) !important;
-    border: none !important;
-    color: var(--bl-text-primary) !important;
-    border-radius: 6px !important;
-}
-.bl-subrule-summary-actions .bl-icon-btn:hover {
-    background-color: color-mix(in srgb, var(--bl-text-primary) 15%, transparent) !important;
-}
-
-/* --- 修复：映射规则编辑框 (虚化遮罩悬浮模式) --- */
-.bl-subrule-row { 
-    position: fixed !important; 
-    inset: 0 !important; 
-    background: color-mix(in srgb, var(--bl-overlay-bg) 40%, transparent) !important; 
-    backdrop-filter: blur(4px) !important; 
-    -webkit-backdrop-filter: blur(4px) !important; 
-    z-index: 10000001 !important; 
-    display: flex !important; 
-    flex-direction: column !important;     /* 纵向排布 */
-    align-items: center !important;        /* 水平居中 */
-    justify-content: flex-start !important; 
-    overflow-y: auto !important;   
-    overscroll-behavior: contain !important; /* 阻断滑动穿透，不会带动底层页面 */
-    padding: 0 12px !important;
-}
-
-/* --- 修复：编辑框内部的纯白卡片 --- */
-.bl-subrule-row-card {
-    width: 100% !important;
-    max-width: 400px !important;
-    background: var(--bl-background-popup) !important;
-    border-radius: 12px !important;
-    padding: 16px 20px 24px 20px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+/* --- 恢复：列表模式展示卡片 --- */
+.bl-subrule-summary {
     display: flex !important;
     flex-direction: column !important;
-    gap: 12px !important;
+    gap: 8px !important;
+    padding: 10px !important;
+    background: var(--bl-background-secondary) !important;
     border: 1px solid var(--bl-border-color) !important;
-    flex-shrink: 0 !important;             /* ✨ 核心修复 3：拒绝被强行挤压变形 (解决突出去的问题) */
-    /* 配合 justify-content: flex-start，用 margin 撑开安全距离 */
-    margin: max(30px, 10vh) auto 40px auto !important; 
+    border-radius: 10px !important;
 }
-.bl-subrule-row-head { 
-    display: flex !important; 
-    justify-content: space-between !important; 
-    align-items: center !important; 
-    border-bottom: 1px dashed var(--border-dash) !important; 
-    padding-bottom: 12px !important; 
-    margin-bottom: 4px !important; 
-}
-.bl-subrule-row-title {
-    font-size: 15px !important;
-    font-weight: bold !important;
-    color: var(--bl-text-primary) !important;
+.bl-subrule-summary-head {
     display: flex !important;
+    justify-content: space-between !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 8px !important;
+}
+.bl-subrule-summary-actions {
+    display: flex !important;
+    gap: 5px !important;
+    flex-shrink: 0 !important;
+    align-items: center !important;
+}
+.bl-subrule-summary-body {
+    width: 100% !important;
+    min-width: 0 !important;
 }
 
-/* --- 新增：备注文本样式 --- */
+/* --- 恢复：原本最稳定的编辑模式内嵌框 --- */
+.bl-subrule-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    padding: 12px !important;
+    background: color-mix(in srgb, var(--bl-text-primary) 2%, transparent) !important;
+    border: 1px dashed var(--bl-accent-color) !important;
+    border-radius: 8px !important;
+    position: relative !important; /* 恢复相对定位，不再悬浮脱离文档流！ */
+}
+.bl-subrule-row-head {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+.bl-subrule-mode-select {
+    width: auto !important;
+    max-width: 100% !important;
+    padding: 6px 28px 6px 8px !important;
+    font-size: 12px !important;
+}
+.bl-subrule-flow-label {
+    text-align: center !important;
+    font-size: 12px !important;
+    color: var(--bl-text-secondary) !important;
+    line-height: 1 !important;
+}
+
+/* --- 保留：美化的备注文本样式 --- */
 .bl-subrule-remark {
     font-size: 12px !important;
     color: var(--text-mute) !important;
