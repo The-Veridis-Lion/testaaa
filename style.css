@@ -269,25 +269,93 @@
 .bl-primary-btn:hover { background: var(--bl-accent-color-hover) !important; }
 .bl-primary-btn:disabled, .bl-primary-btn.is-disabled { background: var(--bl-background-secondary) !important; color: var(--bl-text-secondary) !important; cursor: not-allowed !important; opacity: 0.7 !important; }
 
-/* 5.1 编辑合集弹窗 */
-.bl-edit-modal-card { padding: 20px 25px !important; border-radius: 12px !important; width: 90% !important; max-width: 460px !important; max-height: 85vh !important; display: flex !important; flex-direction: column !important; }
-.bl-edit-modal-title { margin: 0 0 10px 0 !important; font-size: 16px !important; font-weight: 700 !important; color: var(--bl-text-primary) !important; flex-shrink: 0 !important; }
-.bl-edit-field { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-bottom: 12px !important; flex-shrink: 0 !important; }
-.bl-field-label { font-size: 13px !important; color: var(--bl-text-secondary) !important; }
-#bl-edit-subrules-container { flex: 1 !important; min-height: 0 !important; overflow-y: auto !important; display: flex !important; flex-direction: column !important; gap: 8px !important; padding-right: 5px !important; margin-bottom: 10px !important; }
-.bl-ghost-btn { padding: 10px !important; border-radius: 8px !important; background: var(--bl-background-secondary) !important; border: 1px dashed var(--bl-border-color) !important; color: var(--bl-text-primary) !important; cursor: pointer !important; font-size: 13px !important; font-weight: bold !important; transition: background 0.2s ease, border-color 0.2s ease !important; }
-.bl-ghost-btn:hover { background: var(--bl-background-tertiary) !important; border-color: var(--bl-accent-color) !important; }
-.bl-subrule-summary { display: flex !important; flex-direction: column !important; gap: 8px !important; padding: 10px !important; background: var(--bl-background-secondary) !important; border: 1px solid var(--bl-border-color) !important; border-radius: 10px !important; }
-.bl-subrule-summary-head { display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 8px !important; }
-.bl-subrule-summary-actions { display: flex !important; gap: 5px !important; flex-shrink: 0 !important; align-items: center !important; }
-.bl-subrule-main { flex: 1 !important; min-width: 0 !important; display: grid !important; grid-template-columns: auto minmax(0, 1fr) !important; column-gap: 10px !important; align-items: flex-start !important; }
-.bl-subrule-text { min-width: 0 !important; font-size: 13px !important; color: var(--bl-text-primary) !important; line-height: 1.45 !important; overflow-wrap: anywhere !important; word-break: break-word !important; }
-.bl-subrule-row { display: flex !important; flex-direction: column !important; gap: 8px !important; padding: 12px !important; background: color-mix(in srgb, var(--bl-text-primary) 2%, transparent) !important; border: 1px dashed var(--bl-accent-color) !important; border-radius: 8px !important; position: relative !important; }
-.bl-subrule-row-head { display: flex !important; justify-content: space-between !important; align-items: center !important; gap: 8px !important; }
-.bl-subrule-mode-select { width: auto !important; max-width: 100% !important; padding: 6px 28px 6px 8px !important; font-size: 12px !important; }
-.bl-subrule-flow-label { text-align: center !important; font-size: 12px !important; color: var(--bl-text-secondary) !important; line-height: 1 !important; }
-.bl-inline-arrow { color: var(--bl-text-secondary) !important; font-size: 11px !important; margin: 0 4px !important; }
-.bl-subrule-summary-actions .bl-icon-btn, .bl-subrule-summary-actions .bl-edit-subrule-btn, .bl-subrule-summary-actions .bl-del-subrule-btn, .bl-subrule-summary-actions .bl-save-subrule-btn { min-width: 30px !important; width: 30px !important; min-height: 30px !important; height: 30px !important; padding: 0 !important; box-sizing: border-box !important; }
+/* --- 替换：映射规则卡片 (展示模式) --- */
+.bl-subrule-summary { 
+    display: flex !important; 
+    flex-direction: column !important; 
+    padding: 12px 14px !important; 
+    background: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important; 
+    border: none !important; 
+    border-radius: 10px !important; 
+}
+.bl-subrule-summary-head { 
+    display: flex !important; 
+    justify-content: space-between !important; 
+    align-items: center !important; 
+    border-bottom: 1px dashed var(--border-dash) !important; /* 虚线分割 */
+    padding-bottom: 10px !important; 
+    margin-bottom: 10px !important; 
+}
+.bl-subrule-summary-actions { 
+    display: flex !important; 
+    gap: 6px !important; 
+    align-items: center !important; 
+}
+/* 操作按钮统一为灰色圆角小方块 */
+.bl-subrule-summary-actions .bl-icon-btn {
+    background-color: color-mix(in srgb, var(--bl-text-primary) 8%, transparent) !important;
+    border: none !important;
+    color: var(--bl-text-primary) !important;
+    border-radius: 6px !important;
+}
+.bl-subrule-summary-actions .bl-icon-btn:hover {
+    background-color: color-mix(in srgb, var(--bl-text-primary) 15%, transparent) !important;
+}
+
+/* --- 替换：映射规则编辑框 (虚化遮罩悬浮模式) --- */
+.bl-subrule-row { 
+    position: fixed !important; 
+    inset: 0 !important; 
+    /* 背景加深 + 核心：backdrop-filter 虚化底层页面 */
+    background: color-mix(in srgb, var(--bl-overlay-bg) 40%, transparent) !important; 
+    backdrop-filter: blur(4px) !important; 
+    -webkit-backdrop-filter: blur(4px) !important; 
+    z-index: 10000001 !important; 
+    display: flex !important; 
+    align-items: center !important; 
+    justify-content: center !important; 
+    border: none !important; 
+    border-radius: 0 !important; 
+}
+
+/* --- 新增：编辑框内部的纯白卡片 --- */
+.bl-subrule-row-card {
+    width: 90% !important;
+    max-width: 380px !important;
+    background: var(--bl-background-popup) !important;
+    border-radius: 12px !important;
+    padding: 16px 20px 24px 20px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    border: 1px solid var(--bl-border-color) !important;
+}
+.bl-subrule-row-head { 
+    display: flex !important; 
+    justify-content: space-between !important; 
+    align-items: center !important; 
+    border-bottom: 1px dashed var(--border-dash) !important; 
+    padding-bottom: 12px !important; 
+    margin-bottom: 4px !important; 
+}
+.bl-subrule-row-title {
+    font-size: 15px !important;
+    font-weight: bold !important;
+    color: var(--bl-text-primary) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+/* --- 新增：备注文本样式 --- */
+.bl-subrule-remark {
+    font-size: 12px !important;
+    color: var(--text-mute) !important;
+    margin-top: 8px !important;
+    padding-top: 8px !important;
+    border-top: 1px dashed var(--border-dash) !important;
+}
 
 /* 5.2 深度清理二次确认弹窗 */
 .bl-confirm-card { padding: 26px !important; border-radius: 12px !important; max-width: 450px !important; text-align: center !important; }
