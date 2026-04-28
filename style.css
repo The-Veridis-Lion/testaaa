@@ -1,5 +1,5 @@
 /* ==========================================
-   屏蔽词净化助手 CSS (模块化优化版)
+   屏蔽词净化助手 CSS (模块化与卡片美化版)
 ========================================== */
 
 /* --- 1. 全局变量与主题声明 --- */
@@ -102,7 +102,7 @@
 .bl-badge-text { background: var(--bl-text-secondary) !important; color: var(--bl-background-popup) !important; } 
 .bl-badge-regex { background: var(--bl-accent-color) !important; color: var(--bl-chip-text) !important; }
 .bl-badge-simple { background: color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%) !important; color: var(--bl-chip-text) !important; }
-.bl-badge-compact { font-size: 9px !important; padding: 2px 4px !important; min-width: auto !important; }
+.bl-badge-compact { font-size: 10px !important; padding: 2px 5px !important; min-width: auto !important; margin-right: 6px !important; margin-top: 0 !important; }
 
 /* --- 3. 主界面 (Popup) 布局 --- */
 #bl-purifier-popup {
@@ -219,15 +219,13 @@
 
 /* 列表内控制按钮 */
 .icon-group.compact { gap: 3px; }
-.bl-rule-move-up, .bl-rule-move-down, .bl-move-subrule-up-btn, .bl-move-subrule-down-btn, .bl-rule-transfer, .bl-rule-edit, .bl-rule-del {
+.bl-rule-move-up, .bl-rule-move-down, .bl-rule-transfer, .bl-rule-edit, .bl-rule-del {
     border-radius: 10px !important; min-width: 30px !important; width: 30px !important; min-height: 30px !important;
     height: 30px !important; padding: 0 !important; border: 1px solid var(--bl-border-color) !important;
     background: var(--bl-background-secondary) !important; color: var(--bl-text-primary) !important;
 }
 .bl-rule-move-up:hover, .bl-rule-move-down:hover, .bl-rule-transfer:hover, .bl-rule-edit:hover, .bl-rule-del:hover { background: var(--bl-background-tertiary) !important; }
 .bl-rule-move-up:disabled, .bl-rule-move-down:disabled { opacity: 0.38 !important; cursor: not-allowed !important; }
-.bl-rule-actions, .bl-subrule-summary-actions { gap: 6px !important; align-items: center !important; }
-.bl-rule-actions i, .bl-subrule-summary-actions i { font-size: 12px !important; }
 
 /* 自定义复选框 */
 .checkbox-label { display: flex; align-items: center; gap: 6px; cursor: pointer; line-height: 1; }
@@ -269,70 +267,109 @@
 .bl-primary-btn:hover { background: var(--bl-accent-color-hover) !important; }
 .bl-primary-btn:disabled, .bl-primary-btn.is-disabled { background: var(--bl-background-secondary) !important; color: var(--bl-text-secondary) !important; cursor: not-allowed !important; opacity: 0.7 !important; }
 
-/* --- 恢复：列表模式展示卡片 --- */
-.bl-subrule-summary {
+/* 5.1 编辑合集弹窗 & 精美卡片排版 */
+.bl-edit-modal-card { padding: 20px 25px !important; border-radius: 12px !important; width: 90% !important; max-width: 460px !important; max-height: 85vh !important; display: flex !important; flex-direction: column !important; }
+.bl-edit-modal-title { margin: 0 0 10px 0 !important; font-size: 16px !important; font-weight: 700 !important; color: var(--bl-text-primary) !important; flex-shrink: 0 !important; }
+.bl-edit-field { display: flex !important; flex-direction: column !important; gap: 4px !important; margin-bottom: 12px !important; flex-shrink: 0 !important; }
+.bl-field-label { font-size: 13px !important; color: var(--bl-text-secondary) !important; }
+#bl-edit-subrules-container { flex: 1 !important; min-height: 0 !important; overflow-y: auto !important; display: flex !important; flex-direction: column !important; gap: 8px !important; padding-right: 5px !important; margin-bottom: 10px !important; }
+.bl-ghost-btn { padding: 10px !important; border-radius: 8px !important; background: var(--bl-background-secondary) !important; border: 1px dashed var(--bl-border-color) !important; color: var(--bl-text-primary) !important; cursor: pointer !important; font-size: 13px !important; font-weight: bold !important; transition: background 0.2s ease, border-color 0.2s ease !important; }
+.bl-ghost-btn:hover { background: var(--bl-background-tertiary) !important; border-color: var(--bl-accent-color) !important; }
+
+/* ✨ 映射规则精美卡片样式 (非悬浮，完美嵌入列表) */
+.bl-subrule-card {
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
-    padding: 10px !important;
-    background: var(--bl-background-secondary) !important;
+    background: var(--bl-background-popup) !important;
     border: 1px solid var(--bl-border-color) !important;
-    border-radius: 10px !important;
+    border-radius: 12px !important;
+    margin-bottom: 12px !important;
+    overflow: hidden !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05) !important;
 }
-.bl-subrule-summary-head {
+
+.bl-subrule-card-head {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
-    gap: 8px !important;
+    padding: 10px 14px !important;
+    background: color-mix(in srgb, var(--bl-text-primary) 3%, transparent) !important;
+    border-bottom: 1px dashed var(--border-dash) !important;
 }
+
+.bl-subrule-card-title {
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    font-size: 13px !important;
+    font-weight: bold !important;
+    color: var(--bl-text-primary) !important;
+}
+
 .bl-subrule-summary-actions {
     display: flex !important;
     gap: 5px !important;
     flex-shrink: 0 !important;
     align-items: center !important;
 }
-.bl-subrule-summary-body {
-    width: 100% !important;
-    min-width: 0 !important;
+
+.bl-subrule-summary-actions .bl-icon-btn,
+.bl-subrule-card-head .bl-icon-btn {
+    min-width: 28px !important;
+    width: 28px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    box-sizing: border-box !important;
 }
 
-/* --- 恢复：原本最稳定的编辑模式内嵌框 --- */
-.bl-subrule-row {
+/* 卡片内容区 */
+.bl-subrule-card-body {
+    padding: 12px 14px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
-    padding: 12px !important;
-    background: color-mix(in srgb, var(--bl-text-primary) 2%, transparent) !important;
-    border: 1px dashed var(--bl-accent-color) !important;
-    border-radius: 8px !important;
-    position: relative !important; /* 恢复相对定位，不再悬浮脱离文档流！ */
-}
-.bl-subrule-row-head {
-    display: flex !important;
-    justify-content: space-between !important;
-    align-items: center !important;
-    gap: 8px !important;
-}
-.bl-subrule-mode-select {
-    width: auto !important;
-    max-width: 100% !important;
-    padding: 6px 28px 6px 8px !important;
-    font-size: 12px !important;
-}
-.bl-subrule-flow-label {
-    text-align: center !important;
-    font-size: 12px !important;
-    color: var(--bl-text-secondary) !important;
-    line-height: 1 !important;
+    gap: 10px !important;
 }
 
-/* --- 保留：美化的备注文本样式 --- */
-.bl-subrule-remark {
-    font-size: 12px !important;
+.bl-subrule-field {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.bl-subrule-label {
+    font-size: 11px !important;
     color: var(--text-mute) !important;
-    margin-top: 8px !important;
-    padding-top: 8px !important;
+    font-weight: 600 !important;
+}
+
+.bl-subrule-content {
+    font-size: 13px !important;
+    color: var(--text-main) !important;
+    word-break: break-all !important;
+    line-height: 1.5 !important;
+}
+
+.bl-subrule-mode-select {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    height: 32px !important;
+}
+
+/* 备注行区 (自带点点分割线) */
+.bl-subrule-card-footer {
+    padding: 8px 14px 12px 14px !important;
     border-top: 1px dashed var(--border-dash) !important;
+    background: transparent !important;
+}
+
+.bl-subrule-remark-text {
+    font-size: 12px !important;
+    color: var(--text-sub) !important;
+    font-style: italic !important;
 }
 
 /* 5.2 深度清理二次确认弹窗 */
@@ -398,42 +435,12 @@
     }
     #bl-tags-container { -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain !important; }
 
-   /* 顶部标题与图标组弹性自适应 */
-    .header { 
-        display: flex !important; 
-        flex-wrap: nowrap !important; 
-        width: 100%; 
-        padding-bottom: 4px; 
-        align-items: center; 
-        justify-content: space-between !important; /* ✨ 确保标题在左，按钮组在右，中间留空 */
-    }
-
-    .title { 
-        flex: 0 0 auto !important; 
-        font-size: 14px; 
-        white-space: nowrap; 
-    }
-
-    /* 限制图标容器的活动范围，最多只允许它占整个屏幕的 55% (约后1/2) */
-    .icon-group { 
-        flex: 0 1 55% !important; 
-        display: flex !important; 
-        justify-content: flex-end !important; /* 强制所有按钮靠右对齐 */
-        gap: 3px !important; 
-        min-width: 0 !important; 
-    }
-
-    /* 取消按钮的“弹簧拉伸”属性，把它们变成固定的小方块 */
-    #bl-purifier-popup .header .icon-group button, 
-    #bl-purifier-popup .header .icon-group.compact button {
-        flex: 0 1 30px !important; /* 拒绝无限放大，基准宽度锁定 30px */
-        width: 30px !important;
-        max-width: 30px !important;
-        height: 30px !important; 
-        min-width: 24px !important; /* 在极其极限窄的屏幕下才允许轻微压扁一点点 */
-        padding: 0 !important; 
-        margin: 0 !important; 
-        font-size: 14px !important;
+    /* 顶部标题与图标组弹性自适应 */
+    .header { display: flex !important; flex-wrap: nowrap !important; width: 100%; padding-bottom: 4px; align-items: center; justify-content: space-between !important; }
+    .title { flex: 0 0 auto !important; font-size: 14px; white-space: nowrap; }
+    .icon-group { flex: 0 1 55% !important; display: flex !important; justify-content: flex-end !important; gap: 3px !important; min-width: 0 !important; }
+    #bl-purifier-popup .header .icon-group button, #bl-purifier-popup .header .icon-group.compact button {
+        flex: 0 1 30px !important; width: 30px !important; max-width: 30px !important; height: 30px !important; min-height: 30px !important; min-width: 24px !important; padding: 0 !important; margin: 0 !important; font-size: 14px !important;
     }
 
     /* 第二行工具栏：下拉框3/5权重，图标按钮隐身居中 */
@@ -462,14 +469,10 @@
     .bl-deep-clean-btn { padding: 11px 12px !important; font-size: 14px !important; gap: 8px !important; }
     .bl-add-rule-btn { padding: 11px 12px !important; font-size: 14px !important; }
     .bl-icon-btn { min-height: 36px !important; }
-    .bl-badge { font-size: 11px !important; padding: 3px 6px !important; min-width: 40px !important; margin-right: 8px !important; margin-top: 2px !important;}
     
     /* 弹窗与文本框缩放 */
     .bl-input, .bl-textarea { font-size: 14px !important; padding: 10px 12px !important;}
     .bl-edit-modal-title { font-size: 15px !important; }
-    .bl-rule-name { font-size: 15px !important; }
-    .bl-subrule-summary-head { align-items: flex-start !important; }
-    .bl-subrule-row-head { align-items: flex-start !important; flex-direction: column !important; }
     .bl-subrule-mode-select { width: 100% !important; }
 
     /* 转移规则弹窗 */
