@@ -465,19 +465,6 @@ export function syncSubrulesFromDOM() {
     });
 }
 
-export function syncSubrulesFromDOM() {
-    $('.bl-subrule-row').each(function() {
-        const index = $(this).find('.bl-save-subrule-btn').data('index');
-        const mode = $(this).find('.bl-sub-mode').val();
-        const tStr = $(this).find('.bl-sub-target').val();
-        const rStr = $(this).find('.bl-sub-rep').val();
-
-        runtimeState.currentEditingSubrules[index].mode = mode;
-        runtimeState.currentEditingSubrules[index].targets = parseInputToWords(tStr, mode, { isTarget: true });
-        runtimeState.currentEditingSubrules[index].replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
-    });
-}
-
 export function openTransferModal(ruleIndexOrIndexes) {
     const { extension_settings } = getAppContext();
     const settings = extension_settings[extensionName];
