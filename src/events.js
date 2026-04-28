@@ -247,24 +247,23 @@ export function initRealtimeInterceptor() {
                             node.nodeValue = nextValue;
                             logger.debug(`MutationObserver 文本替换 ${node.nodeType === 3 ? '文本' : '注释'}节点`);
                         }
-                    } else if (node.nodeType === 1) {
-                        if (!isStreaming) {
-                            const messageNodes = [];
-                            collectMessageNodes(node, messageNodes);
-                            for (const mesNode of messageNodes) {
-                                captureNonStreamingRawMessage(mesNode);
-                            }
-                            purifyDOM(node);
-                        } else {
-                            const messageNodes = [];
-                            collectMessageNodes(node, messageNodes);
-                            messageNodes.forEach((mesNode) => {
-                                const index = primePendingComparisonForNode(mesNode, { skipPersist: true });
-                                if (index >= 0) touchedMessageIndices.add(index);
-                            });
+                } else if (node.nodeType === 1) {
+                    const messageNodes = [];
+                    collectMessageNodes(node, messageNodes);
+                    
+                    if (!isStreaming) {
+                        for (const mesNode of messageNodes) {
+                            captureNonStreamingRawMessage(mesNode);
                         }
+                    } else {
+                        messageNodes.forEach((mesNode) => {
+                            const index = primePendingComparisonForNode(mesNode, { skipPersist: true });
+                            if (index >= 0) touchedMessageIndices.add(index);
+                        });
                     }
+                    purifyDOM(node); 
                 }
+            }
                 if (m.type === 'characterData') {
                     if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
                     const original = m.target.nodeValue;
