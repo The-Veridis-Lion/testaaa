@@ -532,11 +532,7 @@ export function performGlobalCleanse() {
     syncTrackedIndicesToLatestAssistantMessages();
 
     if (chatChanged) {
-        try {
-            if (typeof saveChat === 'function') saveChat();
-        } catch (e) {
-            logger.error(`存盘失败`, e);
-        }
+        queueIncrementalChatSave(); // 使用排队保存
     }
     purifyDOM(document.getElementById('chat'));
     injectDiffButtons();
