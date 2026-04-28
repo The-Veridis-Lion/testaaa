@@ -377,30 +377,34 @@ export function renderSubrulesToModal() {
             let tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
             let rPreview = sub.replacements.join(', ');
             if (!rPreview) rPreview = '【直接删除】';
+            
+            // ✨ 处理备注显示
+            let remarkHTML = sub.remark ? `<div class="bl-subrule-remark">备注：${sub.remark}</div>` : '';
 
             container.append(`
                 <div class="bl-subrule-summary">
                     <div class="bl-subrule-summary-head">
-                        <div class="bl-subrule-main">
-                            ${badgeHTML}
-                        </div>
+                        <div class="bl-subrule-main">${badgeHTML}</div>
                         <div class="bl-subrule-summary-actions">
                             <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
                             <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
-                            <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="展开编辑"><i class="fas fa-pen"></i></button>
-                            <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
+                            <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="编辑"><i class="fas fa-pen"></i></button>
+                            <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
+                            <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="添加/修改备注"><i class="fas fa-comment-dots"></i></button>
                         </div>
                     </div>
                     <div class="bl-subrule-summary-body">
                         <div class="bl-subrule-text">
                             <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
                         </div>
+                        ${remarkHTML}
                     </div>
                 </div>
             `);
         } else {
             const tStr = sub.targets.join(mode === 'text' ? ', ' : '\n');
             const rStr = sub.replacements.join(mode === 'regex' ? '\n' : ', ');
+            
             let tPlaceholder;
             let rPlaceholder;
             if (mode === 'regex') {
@@ -414,24 +418,34 @@ export function renderSubrulesToModal() {
                 rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则直接删除)";
             }
 
+            // ✨ 套上新的悬浮卡片外壳，并使用虚化遮罩
             container.append(`
                 <div class="bl-subrule-row">
-                    <div class="bl-subrule-row-head">
-                        <select class="bl-sub-mode bl-input bl-subrule-mode-select">
-                            <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
-                            <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
-                            <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
-                        </select>
-                        <div class="bl-subrule-summary-actions">
-                            <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
-                            <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
-                            <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成并折叠"><i class="fas fa-check"></i></button>
-                            <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
+                    <div class="bl-subrule-row-card">
+                        <div class="bl-subrule-row-head">
+                            <div class="bl-subrule-row-title"><i class="fas fa-puzzle-piece"></i> 编辑规则</div>
+                            <div class="bl-subrule-summary-actions">
+                                <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成保存"><i class="fas fa-check"></i></button>
+                                <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                        <div class="bl-edit-field">
+                            <label class="bl-field-label">匹配模式</label>
+                            <select class="bl-sub-mode bl-input bl-subrule-mode-select">
+                                <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
+                                <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
+                                <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
+                            </select>
+                        </div>
+                        <div class="bl-edit-field">
+                            <label class="bl-field-label">查找内容</label>
+                            <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
+                        </div>
+                        <div class="bl-edit-field">
+                            <label class="bl-field-label">替换为</label>
+                            <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
                         </div>
                     </div>
-                    <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
-                    <div class="bl-subrule-flow-label"><i class="fas fa-arrow-down"></i> 随机替换为 <i class="fas fa-arrow-down"></i></div>
-                    <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
                 </div>
             `);
         }
