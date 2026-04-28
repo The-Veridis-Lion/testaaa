@@ -791,32 +791,37 @@
     }
 }
 
-   /* ========================================================
-   终极暴力覆盖：强制接管手机端编辑弹窗的高度与位置
+/* ========================================================
+   强制弹窗靠屏幕上方 + 修复列表消失 (终极优先级版本)
    ======================================================== */
 @media screen and (max-width: 600px) {
     
-    /* 1. 外层遮罩层：放弃 margin 偏移，直接强制屏幕正中央对齐 */
-    #bl-rule-edit-modal {
-        align-items: center !important;
-        justify-content: center !important; /* 🌟 强制垂直居中，不再偏上或偏下 */
+    /* 1. 外层容器：强行顶部对齐 */
+    #bl-rule-edit-modal,
+    #bl-diff-modal {
+        align-items: center !important; 
+        justify-content: flex-start !important; /* 🌟 关键：从原来的 center 改回 flex-start，让内容从最上面开始排 */
     }
     
-    /* 2. 弹窗卡片本体：放弃 auto，强行锁定绝对高度 */
-    #bl-rule-edit-modal .bl-edit-modal-card,
-    #bl-rule-edit-modal > div {
+    /* 2. 弹窗本体：极小顶部边距 + 锁死高度 */
+    #bl-rule-edit-modal > div,
+    .bl-diff-modal-card {
         width: 95% !important;
-        height: 70vh !important; /* 🌟 杀手锏：直接把高度锁死在屏幕的 85%，绝不允许缩水 */
-        max-height: 70vh !important;
-        margin: 0 !important; /* 🌟 杀手锏：清空所有会影响位置的 margin */
+        
+        /* 🌟 关键：这里的 2vh 就是距离顶部的空隙。如果你觉得还不够上，改成 1vh 甚至 0 */
+        margin: calc(env(safe-area-inset-top, 0px) + 2vh) 0 0 0 !important; 
+        
+        /* 🌟 杀手锏：彻底锁死高度，不许因为 flex 塌陷而消失 */
+        height: 85vh !important; 
+        max-height: 85vh !important;
         display: flex !important;
         flex-direction: column !important;
     }
 
-    /* 3. 内部滚动列表：确保完美填满中间剩余区域 */
+    /* 3. 中间滚动区：强迫手机浏览器重新计算高度 */
     #bl-edit-subrules-container {
         flex: 1 1 auto !important;
-        height: 0 !important; /* 打破 iOS Safari 的弹性盒子塌陷魔咒 */
+        height: 0 !important; 
         min-height: 0 !important;
         overflow-y: auto !important;
     }
