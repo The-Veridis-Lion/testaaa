@@ -734,3 +734,21 @@
     padding-top: 8px !important;
     border-top: 1px dashed var(--divider-color) !important;
 }
+
+/* ========================================================
+   修复手机端编辑弹窗只显示标题的内容丢失 Bug (Safari Flex 塌陷)
+   ======================================================== */
+@media screen and (max-width: 600px) {
+    #bl-rule-edit-modal {
+        align-items: center !important;
+        justify-content: center !important; /* 确保弹窗在屏幕正中央 */
+        padding: 12px !important;
+    }
+    
+    #bl-rule-edit-modal > .bl-edit-modal-card {
+        /* 放弃高度自适应，直接给定安全的屏幕比例高度，彻底避免内容被压缩消失 */
+        height: 82vh !important; 
+        max-height: 82vh !important;
+        margin: 0 !important; /* 清除旧版样式强制下压的 margin */
+    }
+}
