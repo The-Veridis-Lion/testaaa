@@ -508,7 +508,7 @@ export function bindEvents() {
     });
 
     // ==========================================
-    // 独立编辑弹窗事件 (✨包含备注的快捷修改与保存)
+    // 独立编辑弹窗事件 (包含备注的快捷修改与保存)
     // ==========================================
     
     $(document).off('click', '.bl-remark-subrule-btn').on('click', '.bl-remark-subrule-btn', function(e) {
@@ -574,8 +574,10 @@ export function bindEvents() {
     $(document).off('click', '#bl-modal-sub-cancel').on('click', '#bl-modal-sub-cancel', () => $('#bl-subrule-edit-modal').fadeOut(150));
 
     // ==========================================
+    // ✨ 修复：编辑合集弹窗上的叉号按钮 (已改为绑定 #bl-edit-cancel-x)
+    // ==========================================
 
-    $(document).off('click', '#bl-edit-cancel').on('click', '#bl-edit-cancel', () => $('#bl-rule-edit-modal').hide());
+    $(document).off('click', '#bl-edit-cancel-x').on('click', '#bl-edit-cancel-x', () => $('#bl-rule-edit-modal').hide());
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
     $(document).off('click', '#bl-transfer-copy').on('click', '#bl-transfer-copy', () => runRuleTransfer(false));
     $(document).off('click', '#bl-transfer-move').on('click', '#bl-transfer-move', () => runRuleTransfer(true));
