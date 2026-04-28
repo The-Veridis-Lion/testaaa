@@ -368,7 +368,7 @@ export function renderSubrulesToModal() {
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        // ✅ 核心修复：防止旧数据没有 targets/replacements 导致的 .join() 崩溃
+        // 防崩溃读取数组
         const targetsArr = sub.targets || [];
         const replacementsArr = sub.replacements || [];
 
@@ -384,9 +384,10 @@ export function renderSubrulesToModal() {
             
             let remarkHTML = sub.remark ? `<div class="bl-subrule-remark">备注：${sub.remark}</div>` : '';
 
+            // ✅ 加上 bl-card-style (整体卡片) 和 bl-dashed-divider (虚线头)
             container.append(`
-                <div class="bl-subrule-summary">
-                    <div class="bl-subrule-summary-head">
+                <div class="bl-subrule-summary bl-card-style">
+                    <div class="bl-subrule-summary-head bl-dashed-divider">
                         <div class="bl-subrule-main">${badgeHTML}</div>
                         <div class="bl-subrule-summary-actions">
                             <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
@@ -412,22 +413,23 @@ export function renderSubrulesToModal() {
             let rPlaceholder;
             if (mode === 'regex') {
                 tPlaceholder = "正则匹配规则 (每行一条)\n例如：/(宛若|如同)(神明|恶魔)/g";
-                rPlaceholder = "替换后词汇 (每行一条，允许含逗号，可留空)\n支持 $1, $2 捕获组引用";
+                rPlaceholder = "替换后词汇 (每行一条)\n支持 $1, $2 捕获组引用";
             } else if (mode === 'simple') {
-                tPlaceholder = "简易语法 (每行一条)\n语法：用 {词1,词2} 组合，用 * 通配模糊，用 ? 标记可有可无\n例如：{宛若,如同}{神明,恶魔}{般,一样}?";
-                rPlaceholder = "替换后词汇 (每行一条，支持随机，可留空删除)";
+                tPlaceholder = "简易语法 (每行一条)\n例如：{宛若,如同}{神明,恶魔}{般,一样}?";
+                rPlaceholder = "替换后词汇 (每行一条，支持随机)";
             } else {
                 tPlaceholder = "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在";
                 rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则直接删除)";
             }
 
+            // ✅ 编辑框同样使用 bl-card-style 和 bl-dashed-divider
             container.append(`
-                <div class="bl-subrule-row">
-                    <div class="bl-subrule-row-head">
+                <div class="bl-subrule-row bl-card-style">
+                    <div class="bl-subrule-row-head bl-dashed-divider">
                         <select class="bl-sub-mode bl-input bl-subrule-mode-select">
-                            <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
-                            <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
-                            <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
+                            <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合</option>
+                            <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本</option>
+                            <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式</option>
                         </select>
                         <div class="bl-subrule-summary-actions">
                             <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成保存"><i class="fas fa-check"></i></button>
