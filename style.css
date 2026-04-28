@@ -302,26 +302,27 @@
     background-color: color-mix(in srgb, var(--bl-text-primary) 15%, transparent) !important;
 }
 
-/* --- 替换：映射规则编辑框 (虚化遮罩悬浮模式) --- */
+/* --- 修复：映射规则编辑框 (虚化遮罩悬浮模式) --- */
 .bl-subrule-row { 
     position: fixed !important; 
     inset: 0 !important; 
-    /* 背景加深 + 核心：backdrop-filter 虚化底层页面 */
     background: color-mix(in srgb, var(--bl-overlay-bg) 40%, transparent) !important; 
     backdrop-filter: blur(4px) !important; 
     -webkit-backdrop-filter: blur(4px) !important; 
     z-index: 10000001 !important; 
     display: flex !important; 
-    align-items: center !important; 
-    justify-content: center !important; 
-    border: none !important; 
-    border-radius: 0 !important; 
+    flex-direction: column !important;     /* 纵向排布 */
+    align-items: center !important;        /* 水平居中 */
+    justify-content: flex-start !important; 
+    overflow-y: auto !important;   
+    overscroll-behavior: contain !important; /* 阻断滑动穿透，不会带动底层页面 */
+    padding: 0 12px !important;
 }
 
-/* --- 新增：编辑框内部的纯白卡片 --- */
+/* --- 修复：编辑框内部的纯白卡片 --- */
 .bl-subrule-row-card {
-    width: 90% !important;
-    max-width: 380px !important;
+    width: 100% !important;
+    max-width: 400px !important;
     background: var(--bl-background-popup) !important;
     border-radius: 12px !important;
     padding: 16px 20px 24px 20px !important;
@@ -330,6 +331,9 @@
     flex-direction: column !important;
     gap: 12px !important;
     border: 1px solid var(--bl-border-color) !important;
+    flex-shrink: 0 !important;             /* ✨ 核心修复 3：拒绝被强行挤压变形 (解决突出去的问题) */
+    /* 配合 justify-content: flex-start，用 margin 撑开安全距离 */
+    margin: max(30px, 10vh) auto 40px auto !important; 
 }
 .bl-subrule-row-head { 
     display: flex !important; 
