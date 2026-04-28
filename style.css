@@ -634,61 +634,101 @@
 
 
 /* ========================================================
-   终极修复：绝对纯净的 Flex 排版（请替换掉刚才最后加的所有代码）
+   核心修复：编辑弹窗重构（彻底解决重叠、压扁、常驻显示问题）
    ======================================================== */
 
-/* 1. 弹窗外壳：修复永远显示的弱智 Bug (绝对不加 display !important) */
-#bl-rule-edit-modal {
-    align-items: center !important; 
+/* 1. 弹窗遮罩外壳：去除 display:flex !important，交给 JS 控制显示隐藏 */
+.bl-modal-shell {
+    position: fixed !important;
+    inset: 0 !important;
+    background: var(--bl-overlay-bg) !important;
+    backdrop-filter: blur(4px) !important;
+    z-index: 10000000 !important;
+    /* ✨ 关键：恢复默认隐藏，对齐方式改为水平/垂直双中心 */
+    display: none; 
+    align-items: center !important;
     justify-content: center !important;
-    padding: 10px !important; 
+    padding: 20px !important;
 }
 
-/* 2. 弹窗本体：完美锁定最大高度，切断无限撑长 */
+/* 2. 编辑弹窗本体：强制锁定比例 */
 .bl-edit-modal-card {
-    width: 90% !important;
+    width: 95% !important;
     max-width: 480px !important;
-    max-height: 85vh !important; /* 限制屏幕高度占比 */
+    max-height: 85vh !important; /* 限制最高占屏幕 85% */
+    background: var(--bl-background-popup) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 12px !important;
+    padding: 20px !important;
+    box-shadow: var(--bl-panel-shadow) !important;
+    /* ✨ 关键：弹性纵向排布，隐藏外溢 */
     display: flex !important;
     flex-direction: column !important;
-    padding: 20px !important;
-    overflow: hidden !important; /* 锁定边界，内部自己滚动 */
+    overflow: hidden !important;
 }
 
-/* 3. 终极护盾：保护头部、输入框、添加按钮、底栏，绝不压缩被切！ */
+/* 3. 防止标题、输入框、底栏被挤扁 */
 .bl-edit-modal-title, 
 .bl-edit-field, 
 .bl-field-label, 
 .bl-modal-actions,
 #bl-add-subrule-btn {
-    flex-shrink: 0 !important;
+    flex-shrink: 0 !important; /* 绝不缩水 */
 }
 
-/* 4. 中间滚动区：这是唯一允许弹性压缩并出现滚动条的地方 */
+/* 4. 中间列表滚动区：这是唯一允许压缩并产生滚动条的地方 */
 #bl-edit-subrules-container {
-    flex: 1 1 auto !important; 
-    min-height: 0 !important; /* 🌟 救命关键：允许被压缩才能触发滚动条 */
+    flex: 1 1 auto !important;
+    min-height: 0 !important; /* 🌟 核心修复：允许被压缩是触发滚动的先决条件 */
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    margin: 10px 0 !important;
+    padding-right: 4px !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 10px !important;
-    margin: 10px 0 !important;
-    padding: 2px !important; 
+    gap: 12px !important;
 }
 
-/* 5. 内部每一张卡片：自己有滚动条了，卡片本身坚决不压缩！ */
-.bl-card-style, 
-.bl-subrule-row, 
-.bl-subrule-summary {
-    flex-shrink: 0 !important;
-    height: auto !important; 
+/* 5. 映射规则卡片：保持卡片独立，防止内容被压扁 */
+.bl-card-style {
+    flex-shrink: 0 !important; /* 🌟 关键：防止卡片被压扁成一条线 */
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 10px !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
 }
 
-/* 6. 底部按钮排版同行平分 */
-.bl-modal-actions {
+/* 6. 徽章/模式选择与按钮同行，并带点状虚线分割 */
+.bl-dashed-divider {
     display: flex !important;
     justify-content: space-between !important;
-    gap: 12px !important;
+    align-items: center !important;
+    border-bottom: 1px dashed var(--divider-color) !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 4px !important;
+    flex-shrink: 0 !important;
+}
+
+/* 7. 底部按钮同行平分 */
+.bl-modal-actions {
+    display: flex !important;
+    gap: 10px !important;
     margin-top: 5px !important;
+}
+.bl-modal-actions button {
+    flex: 1 !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
+}
+
+/* 8. 备注文字样式 */
+.bl-subrule-remark {
+    font-size: 12px !important;
+    color: var(--text-mute) !important;
+    margin-top: 4px !important;
+    padding-top: 8px !important;
+    border-top: 1px dashed var(--divider-color) !important;
 }
