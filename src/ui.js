@@ -393,40 +393,49 @@ export function renderSubrulesToModal() {
         return;
     }
 
-    // ✨ 严格匹配 style.css 中的独立规则卡片类名 (.bl-subrule-card 等)
+    // ✨ 终极内联样式版：无视所有 CSS 文件的冲突，直接在 HTML 层面强行锁定排版
     runtimeState.currentEditingSubrules.forEach((sub, i) => {
         const mode = sub.mode || 'text';
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        // 内联覆盖 margin-top: 0，确保徽章和右侧按钮绝对水平居中同行
+        // 1. 强制锁定徽章样式，自带 margin:0 杜绝被旧代码顶高
+        const badgeBaseStyle = "display:inline-flex; align-items:center; justify-content:center; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:800; color:#fff; min-width:40px; margin:0; line-height:1; flex-shrink:0;";
         let badgeHTML = '';
-        if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex" style="margin-top:0 !important;">正则</span>';
-        else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple" style="margin-top:0 !important;">简易</span>';
-        else badgeHTML = '<span class="bl-badge bl-badge-text" style="margin-top:0 !important;">普通</span>';
+        if (mode === 'regex') {
+            badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-accent-color);">正则</span>`;
+        } else if (mode === 'simple') {
+            badgeHTML = `<span style="${badgeBaseStyle} background:color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%);">简易</span>`;
+        } else {
+            badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-text-secondary); color:var(--bl-background-popup);">普通</span>`;
+        }
 
         let tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
         let rPreview = sub.replacements.join(', ');
         if (!rPreview) rPreview = '【直接删除】';
 
+        // 2. 将卡片、虚线、同行居中和字号直接写死在 DOM 元素上
         container.append(`
-            <div class="bl-subrule-card">
-                <div class="bl-subrule-card-header">
-                    <div class="bl-subrule-main">
+            <div style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5));">
+                    <div style="display: flex; align-items: center; margin: 0; padding: 0;">
                         ${badgeHTML}
                     </div>
-                    <div class="bl-subrule-summary-actions">
-                        <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
-                        <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
-                        <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="独立编辑"><i class="fas fa-pen"></i></button>
-                        <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
+                    <div style="display: flex; gap: 5px; align-items: center; margin: 0; padding: 0;">
+                        <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled} style="margin:0;"><i class="fas fa-arrow-up"></i></button>
+                        <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled} style="margin:0;"><i class="fas fa-arrow-down"></i></button>
+                        <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="独立编辑" style="margin:0;"><i class="fas fa-pen"></i></button>
+                        <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除" style="margin:0;"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-                <div class="bl-subrule-card-body">
-                    <div class="bl-subrule-text">
-                        <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
-                    </div>
+
+                <div style="font-size: 13px !important; color: var(--bl-text-primary); line-height: 1.5; word-break: break-all;">
+                    <b style="font-size: 13px !important;">${tPreview}</b> 
+                    <i class="fas fa-arrow-right" style="color: var(--text-mute); font-size: 11px; margin: 0 6px;"></i> 
+                    <span style="font-size: 13px !important;">${rPreview}</span>
                 </div>
+
             </div>
         `);
     });
