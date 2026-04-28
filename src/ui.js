@@ -6,7 +6,7 @@ import { performDeepCleanse } from './cleanse.js';
 
 export function setupUI() {
     logger.debug('[setupUI] 开始初始化 UI');
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -68,6 +68,7 @@ export function setupUI() {
             </div>
         </div>`);
 
+    // 这个就是之前被误删的“合集主编辑弹窗”，我原封不动找回来了
     $('body').append(`
         <div id="bl-rule-edit-modal" class="bl-modal-shell">
             <div class="bl-modal-card bl-edit-modal-card">
@@ -141,11 +142,11 @@ export function setupUI() {
         </div>
     `);
 
-    // ✨ 新增：独立子规则编辑弹窗
+    // ✨ 独立子规则编辑弹窗 (完美附带备注输入框)
     $('body').append(`
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
             <div class="bl-modal-card bl-edit-modal-card" style="padding: 20px !important;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px dotted var(--border-dash); padding-bottom: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dotted var(--border-dash); padding-bottom: 12px;">
                     <div style="position: relative; flex: 1; margin-right: 15px;">
                         <select id="bl-modal-sub-mode" class="bl-input" style="margin: 0; width: 100%; font-size: 16px !important; font-weight: bold; background-color: transparent !important; border: none !important; padding: 0 !important; color: var(--text-main) !important; appearance: none; -webkit-appearance: none;">
                             <option value="simple">🧩 简易组合 (推荐! 支持{}与*号)</option>
@@ -157,14 +158,19 @@ export function setupUI() {
                     <button id="bl-modal-sub-save" class="bl-icon-btn" style="background: transparent !important; border: none !important; color: var(--text-main) !important; font-size: 24px !important; padding: 0 5px !important; min-width: auto !important; height: auto !important;" title="完成保存"><i class="fas fa-check"></i></button>
                 </div>
                 
-                <div class="bl-subrule-field" style="margin-bottom: 15px;">
-                    <label class="bl-field-label" style="margin-bottom: 8px; font-weight: 600;">查找内容</label>
-                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 10px !important; font-size: 15px !important;"></textarea>
+                <div class="bl-subrule-field" style="margin-bottom: 12px;">
+                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">备注说明 (可选)</label>
+                    <input type="text" id="bl-modal-sub-remark" class="bl-input" placeholder="例如：处理特定角色的口头禅" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;">
                 </div>
                 
-                <div class="bl-subrule-field" style="margin-bottom: 20px;">
-                    <label class="bl-field-label" style="margin-bottom: 8px; font-weight: 600;">替换为</label>
-                    <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 10px !important; font-size: 15px !important;"></textarea>
+                <div class="bl-subrule-field" style="margin-bottom: 12px;">
+                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">查找内容</label>
+                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
+                </div>
+                
+                <div class="bl-subrule-field" style="margin-bottom: 15px;">
+                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">替换为</label>
+                    <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
                 </div>
                 
                 <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bg-button) !important;">取消修改</button>
@@ -393,31 +399,34 @@ export function renderSubrulesToModal() {
         return;
     }
 
-    // ✨ 终极内联样式版：无视所有 CSS 文件的冲突，直接在 HTML 层面强行锁定排版
+    // ✨ 强力内联样式版，免疫任何外部 CSS 污染
     runtimeState.currentEditingSubrules.forEach((sub, i) => {
         const mode = sub.mode || 'text';
+        const remark = sub.remark ? sub.remark.trim() : '';
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        // 1. 强制锁定徽章样式，自带 margin:0 杜绝被旧代码顶高
         const badgeBaseStyle = "display:inline-flex; align-items:center; justify-content:center; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:800; color:#fff; min-width:40px; margin:0; line-height:1; flex-shrink:0;";
         let badgeHTML = '';
-        if (mode === 'regex') {
-            badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-accent-color);">正则</span>`;
-        } else if (mode === 'simple') {
-            badgeHTML = `<span style="${badgeBaseStyle} background:color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%);">简易</span>`;
-        } else {
-            badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-text-secondary); color:var(--bl-background-popup);">普通</span>`;
-        }
+        if (mode === 'regex') badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-accent-color);">正则</span>`;
+        else if (mode === 'simple') badgeHTML = `<span style="${badgeBaseStyle} background:color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%);">简易</span>`;
+        else badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-text-secondary); color:var(--bl-background-popup);">普通</span>`;
 
         let tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
         let rPreview = sub.replacements.join(', ');
         if (!rPreview) rPreview = '【直接删除】';
 
-        // 2. 将卡片、虚线、同行居中和字号直接写死在 DOM 元素上
+        let remarkHTML = '';
+        if (remark) {
+            remarkHTML = `
+                <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5)); font-size: 11px; color: var(--text-mute); font-style: italic;">
+                    <i class="fas fa-info-circle" style="margin-right: 4px;"></i>${remark}
+                </div>
+            `;
+        }
+
         container.append(`
             <div style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
-                
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5));">
                     <div style="display: flex; align-items: center; margin: 0; padding: 0;">
                         ${badgeHTML}
@@ -429,40 +438,38 @@ export function renderSubrulesToModal() {
                         <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除" style="margin:0;"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-
                 <div style="font-size: 13px !important; color: var(--bl-text-primary); line-height: 1.5; word-break: break-all;">
                     <b style="font-size: 13px !important;">${tPreview}</b> 
                     <i class="fas fa-arrow-right" style="color: var(--text-mute); font-size: 11px; margin: 0 6px;"></i> 
                     <span style="font-size: 13px !important;">${rPreview}</span>
                 </div>
-
+                ${remarkHTML}
             </div>
         `);
     });
 }
 
-// ✨ 新增：负责打开独立编辑子规则的弹窗
 export function openSingleRuleModal(index) {
     runtimeState.currentSubruleEditIndex = index;
     let mode = 'simple';
     let tStr = '';
     let rStr = '';
+    let remark = '';
 
-    // 如果 index >= 0，说明是编辑已有规则；否则是新增规则
     if (index >= 0 && runtimeState.currentEditingSubrules[index]) {
         const sub = runtimeState.currentEditingSubrules[index];
         mode = sub.mode || 'simple';
         tStr = (sub.targets || []).join(mode === 'text' ? ', ' : '\n');
         rStr = (sub.replacements || []).join(mode === 'regex' ? '\n' : ', ');
+        remark = sub.remark || '';
     }
 
     $('#bl-modal-sub-mode').val(mode);
     $('#bl-modal-sub-target').val(tStr);
     $('#bl-modal-sub-rep').val(rStr);
+    $('#bl-modal-sub-remark').val(remark);
     
-    // 触发占位符更新
     $('#bl-modal-sub-mode').trigger('change');
-
     $('#bl-subrule-edit-modal').css('display', 'flex').hide().fadeIn(150);
 }
 
@@ -547,7 +554,7 @@ export function openEditModal(index = -1) {
     if (index === -1) {
         $('#bl-edit-modal-title').html('<i class="fas fa-folder-plus"></i> 新增规则合集');
         $('#bl-edit-name').val('');
-        runtimeState.currentEditingSubrules = [{ targets: [], replacements: [], mode: 'simple', isEditing: true }];
+        runtimeState.currentEditingSubrules = [{ targets: [], replacements: [], mode: 'simple', isEditing: false }];
     } else {
         const rule = settings.rules[index];
         $('#bl-edit-modal-title').html('<i class="fas fa-pen"></i> 编辑规则合集');
