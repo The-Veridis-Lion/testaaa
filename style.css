@@ -634,55 +634,61 @@
 
 
 /* ========================================================
-   终极清道夫：强制重置编辑弹窗的 Flex 布局，解决切边问题
+   终极修复：绝对纯净的 Flex 排版（请替换掉刚才最后加的所有代码）
    ======================================================== */
 
-/* 1. 弹窗外壳：全局绝对居中 */
+/* 1. 弹窗外壳：修复永远显示的弱智 Bug (绝对不加 display !important) */
 #bl-rule-edit-modal {
-    display: flex !important;
-    align-items: center !important;
+    align-items: center !important; 
     justify-content: center !important;
-    padding: 0 !important;
+    padding: 10px !important; 
 }
 
-/* 2. 弹窗本体：释放高度，拒绝裁剪 */
-#bl-rule-edit-modal .bl-edit-modal-card {
-    margin: 0 auto !important;
+/* 2. 弹窗本体：完美锁定最大高度，切断无限撑长 */
+.bl-edit-modal-card {
     width: 90% !important;
-    max-width: 460px !important;
-    height: auto !important;
-    max-height: 85vh !important;
+    max-width: 480px !important;
+    max-height: 85vh !important; /* 限制屏幕高度占比 */
     display: flex !important;
     flex-direction: column !important;
-    padding: 20px 20px 24px 20px !important; /* 底部多给一点安全距离 */
-    box-sizing: border-box !important;
-    /* ✨ 救命核心：绝对不能用 hidden，否则必切底边！ */
-    overflow: visible !important; 
+    padding: 20px !important;
+    overflow: hidden !important; /* 锁定边界，内部自己滚动 */
 }
 
-/* 3. 头部和底栏：硬核抗压，绝不缩水 */
+/* 3. 终极护盾：保护头部、输入框、添加按钮、底栏，绝不压缩被切！ */
 .bl-edit-modal-title, 
-.bl-edit-modal-card > .bl-edit-field, 
-.bl-edit-modal-card > .bl-field-label,
-.bl-modal-actions {
-    flex: 0 0 auto !important;
+.bl-edit-field, 
+.bl-field-label, 
+.bl-modal-actions,
+#bl-add-subrule-btn {
     flex-shrink: 0 !important;
 }
 
-/* 4. 中间列表区：收容所有超长内容，在此处内部滚动 */
+/* 4. 中间滚动区：这是唯一允许弹性压缩并出现滚动条的地方 */
 #bl-edit-subrules-container {
-    flex: 1 1 auto !important;
-    min-height: 80px !important; 
+    flex: 1 1 auto !important; 
+    min-height: 0 !important; /* 🌟 救命关键：允许被压缩才能触发滚动条 */
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
     margin: 10px 0 !important;
-    padding-right: 4px !important;
+    padding: 2px !important; 
 }
 
-/* 5. 底部按钮：对齐修复 */
+/* 5. 内部每一张卡片：自己有滚动条了，卡片本身坚决不压缩！ */
+.bl-card-style, 
+.bl-subrule-row, 
+.bl-subrule-summary {
+    flex-shrink: 0 !important;
+    height: auto !important; 
+}
+
+/* 6. 底部按钮排版同行平分 */
 .bl-modal-actions {
     display: flex !important;
     justify-content: space-between !important;
     gap: 12px !important;
-    margin-top: 5px !important; 
+    margin-top: 5px !important;
 }
