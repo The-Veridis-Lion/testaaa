@@ -357,8 +357,8 @@ export function renderSubrulesToModal() {
     const container = $('#bl-edit-subrules-container');
     container.empty();
 
-    if (runtimeState.currentEditingSubrules.length === 0) {
-        container.html('<div class="bl-empty-state">当前合集没有映射规则，点击下方按钮添加。</div>');
+    if (!runtimeState.currentEditingSubrules || runtimeState.currentEditingSubrules.length === 0) {
+        container.html('<div style="text-align:center; color:var(--bl-text-secondary); font-size:12px; padding:10px;">当前合集没有映射规则，请点击下方按钮添加。</div>');
         return;
     }
 
@@ -368,92 +368,81 @@ export function renderSubrulesToModal() {
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        // 徽章逻辑
-        let badgeHTML = '';
-        if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex bl-badge-compact">正则</span>';
-        else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple bl-badge-compact">简易</span>';
-        else badgeHTML = '<span class="bl-badge bl-badge-text bl-badge-compact">普通</span>';
-
-        // ✨ 备注行逻辑：仅在有备注时生成 footer 节点
-        const remarkFooter = sub.remark ? `
-            <div class="bl-subrule-card-footer">
-                <div class="bl-subrule-remark-text">备注：${sub.remark}</div>
-            </div>` : '';
+        // ✅ 核心修复：防止旧数据没有 targets/replacements 导致的 .join() 崩溃
+        const targetsArr = sub.targets || [];
+        const replacementsArr = sub.replacements || [];
 
         if (!isEditing) {
-            // --- 展示模式 ---
-            const tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
-            const rPreview = sub.replacements.join(', ') || '【直接删除】';
-            const modeText = mode === 'regex' ? '正则表达式' : mode === 'simple' ? '简易组合' : '普通文本';
+            let badgeHTML = '';
+            if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex">正则</span>';
+            else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple">简易</span>';
+            else badgeHTML = '<span class="bl-badge bl-badge-text">普通</span>';
+
+            let tPreview = targetsArr.join(mode === 'text' ? ', ' : ' | ');
+            let rPreview = replacementsArr.join(', ');
+            if (!rPreview) rPreview = '【直接删除】';
+            
+            let remarkHTML = sub.remark ? `<div class="bl-subrule-remark">备注：${sub.remark}</div>` : '';
 
             container.append(`
-                <div class="bl-subrule-card">
-                    <div class="bl-subrule-card-head">
-                        <div class="bl-subrule-card-title">${badgeHTML} 映射规则详情</div>
+                <div class="bl-subrule-summary">
+                    <div class="bl-subrule-summary-head">
+                        <div class="bl-subrule-main">${badgeHTML}</div>
                         <div class="bl-subrule-summary-actions">
+                            <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
+                            <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
                             <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="编辑"><i class="fas fa-pen"></i></button>
-                            <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="备注"><i class="fas fa-comment-dots"></i></button>
                             <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
+                            <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="添加/修改备注"><i class="fas fa-comment-dots"></i></button>
                         </div>
                     </div>
-                    <div class="bl-subrule-card-body">
-                        <div class="bl-subrule-field">
-                            <div class="bl-subrule-label">匹配模式</div>
-                            <div class="bl-subrule-content">${modeText}</div>
+                    <div class="bl-subrule-summary-body">
+                        <div class="bl-subrule-text">
+                            <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
                         </div>
-                        <div class="bl-subrule-field">
-                            <div class="bl-subrule-label">查找内容</div>
-                            <div class="bl-subrule-content"><b>${tPreview}</b></div>
-                        </div>
-                        <div class="bl-subrule-field">
-                            <div class="bl-subrule-label">替换为</div>
-                            <div class="bl-subrule-content">${rPreview}</div>
-                        </div>
+                        ${remarkHTML}
                     </div>
-                    ${remarkFooter}
                 </div>
             `);
         } else {
-            // --- 编辑模式 ---
-            const tStr = sub.targets.join(mode === 'text' ? ', ' : '\n');
-            const rStr = sub.replacements.join(mode === 'regex' ? '\n' : ', ');
+            const tStr = targetsArr.join(mode === 'text' ? ', ' : '\n');
+            const rStr = replacementsArr.join(mode === 'regex' ? '\n' : ', ');
             
-            // 占位符逻辑保持不变...
-            let tPlaceholder = mode === 'regex' ? "正则规则..." : "查找词汇...";
-            let rPlaceholder = "替换词汇...";
+            let tPlaceholder;
+            let rPlaceholder;
+            if (mode === 'regex') {
+                tPlaceholder = "正则匹配规则 (每行一条)\n例如：/(宛若|如同)(神明|恶魔)/g";
+                rPlaceholder = "替换后词汇 (每行一条，允许含逗号，可留空)\n支持 $1, $2 捕获组引用";
+            } else if (mode === 'simple') {
+                tPlaceholder = "简易语法 (每行一条)\n语法：用 {词1,词2} 组合，用 * 通配模糊，用 ? 标记可有可无\n例如：{宛若,如同}{神明,恶魔}{般,一样}?";
+                rPlaceholder = "替换后词汇 (每行一条，支持随机，可留空删除)";
+            } else {
+                tPlaceholder = "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在";
+                rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则直接删除)";
+            }
 
             container.append(`
-                <div class="bl-subrule-card">
-                    <div class="bl-subrule-card-head">
-                        <div class="bl-subrule-card-title">${badgeHTML} 编辑规则属性</div>
+                <div class="bl-subrule-row">
+                    <div class="bl-subrule-row-head">
+                        <select class="bl-sub-mode bl-input bl-subrule-mode-select">
+                            <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合 (推荐! 支持{}与*号)</option>
+                            <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本 (长词优先替换)</option>
+                            <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式 (专业模式)</option>
+                        </select>
                         <div class="bl-subrule-summary-actions">
-                            <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="保存"><i class="fas fa-check"></i></button>
-                            <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
+                            <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成保存"><i class="fas fa-check"></i></button>
+                            <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
-                    <div class="bl-subrule-card-body bl-subrule-row"> <div class="bl-subrule-field">
-                            <label class="bl-subrule-label">匹配模式</label>
-                            <select class="bl-sub-mode bl-input bl-subrule-mode-select" style="padding:4px 8px; height:32px; font-size:12px;">
-                                <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合</option>
-                                <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本</option>
-                                <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式</option>
-                            </select>
-                        </div>
-                        <div class="bl-subrule-field">
-                            <label class="bl-subrule-label">查找内容</label>
-                            <textarea class="bl-sub-target bl-textarea" rows="2" style="font-size:13px;" placeholder="${tPlaceholder}">${tStr}</textarea>
-                        </div>
-                        <div class="bl-subrule-field">
-                            <label class="bl-subrule-label">替换为</label>
-                            <textarea class="bl-sub-rep bl-textarea" rows="2" style="font-size:13px;" placeholder="${rPlaceholder}">${rStr}</textarea>
-                        </div>
-                    </div>
-                    ${remarkFooter}
+                    <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
+                    <div class="bl-subrule-flow-label"><i class="fas fa-arrow-down"></i> 替换为</div>
+                    <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
                 </div>
             `);
         }
     });
 }
+
 export function syncSubrulesFromDOM() {
     $('.bl-subrule-row').each(function() {
         const index = $(this).find('.bl-save-subrule-btn').data('index');
