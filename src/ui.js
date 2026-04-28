@@ -388,112 +388,72 @@ export function renderSubrulesToModal() {
     const container = $('#bl-edit-subrules-container');
     container.empty();
 
-    if (!runtimeState.currentEditingSubrules || runtimeState.currentEditingSubrules.length === 0) {
-        container.html('<div style="text-align:center; color:var(--bl-text-secondary); font-size:12px; padding:10px;">当前合集没有映射规则，请点击下方按钮添加。</div>');
+    if (runtimeState.currentEditingSubrules.length === 0) {
+        container.html('<div style="text-align:center; color:var(--bl-text-secondary); font-size:12px; padding:20px;">当前合集没有映射规则，请点击下方按钮添加。</div>');
         return;
     }
 
+    // ✨ 重构：只渲染卡片视图，移除所有行内编辑框的代码
     runtimeState.currentEditingSubrules.forEach((sub, i) => {
         const mode = sub.mode || 'text';
-        const isEditing = sub.isEditing !== false;
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        const targetsArr = sub.targets || [];
-        const replacementsArr = sub.replacements || [];
+        let badgeHTML = '';
+        if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex">正则</span>';
+        else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple">简易</span>';
+        else badgeHTML = '<span class="bl-badge bl-badge-text">普通</span>';
 
-        if (!isEditing) {
-            let badgeHTML = '';
-            if (mode === 'regex') badgeHTML = '<span class="bl-badge bl-badge-regex">正则</span>';
-            else if (mode === 'simple') badgeHTML = '<span class="bl-badge bl-badge-simple">简易</span>';
-            else badgeHTML = '<span class="bl-badge bl-badge-text">普通</span>';
+        let tPreview = sub.targets.join(mode === 'text' ? ', ' : ' | ');
+        let rPreview = sub.replacements.join(', ');
+        if (!rPreview) rPreview = '【直接删除】';
 
-            let tPreview = targetsArr.join(mode === 'text' ? ', ' : ' | ');
-            let rPreview = replacementsArr.join(', ');
-            if (!rPreview) rPreview = '【直接删除】';
-
-            // 备注区域包裹在全新的 class 中
-            let remarkHTML = sub.remark ? `<div class="bl-subrule-card-remark">💡 备注：${sub.remark}</div>` : '';
-
-            // ✨ 使用纯净的 bl-subrule-card 三段式结构
-            container.append(`
-                <div class="bl-subrule-card">
-                    <div class="bl-subrule-card-header">
-                        <div class="bl-subrule-badge-wrap">${badgeHTML}</div>
-                        <div class="bl-subrule-summary-actions">
-                            <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
-                            <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
-                            <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="编辑"><i class="fas fa-pen"></i></button>
-                            <button class="bl-del-subrule-btn bl-icon-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
-                            <button class="bl-remark-subrule-btn bl-icon-btn" data-index="${i}" title="添加/修改备注"><i class="fas fa-comment-dots"></i></button>
-                        </div>
+        container.append(`
+            <div class="bl-subrule-summary">
+                <div class="bl-subrule-summary-head">
+                    <div class="bl-subrule-main">
+                        ${badgeHTML}
                     </div>
-                    <div class="bl-subrule-card-body">
-                        <div class="bl-subrule-text">
-                            <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
-                        </div>
-                    </div>
-                    ${remarkHTML}
-                </div>
-            `);
-        } else {
-            const tStr = targetsArr.join(mode === 'text' ? ', ' : '\n');
-            const rStr = replacementsArr.join(mode === 'regex' ? '\n' : ', ');
-
-            let tPlaceholder;
-            let rPlaceholder;
-            if (mode === 'regex') {
-                tPlaceholder = "正则匹配规则 (每行一条)";
-                rPlaceholder = "替换后词汇 (每行一条)";
-            } else if (mode === 'simple') {
-                tPlaceholder = "简易语法 (每行一条) 例如：{宛若,如同}{神明,恶魔}?";
-                rPlaceholder = "替换后词汇 (每行一条，支持随机)";
-            } else {
-                tPlaceholder = "被替换词汇 (逗号/空格分隔)";
-                rPlaceholder = "替换后词汇 (逗号/空格分隔，留空则删除)";
-            }
-
-            container.append(`
-                <div class="bl-subrule-card">
-                    <div class="bl-subrule-card-header">
-                        <select class="bl-sub-mode bl-input bl-subrule-mode-select" style="margin: 0;">
-                            <option value="simple" ${mode === 'simple' ? 'selected' : ''}>🧩 简易组合</option>
-                            <option value="text" ${mode === 'text' ? 'selected' : ''}>📝 普通文本</option>
-                            <option value="regex" ${mode === 'regex' ? 'selected' : ''}>⚙️ 正则表达式</option>
-                        </select>
-                        <div class="bl-subrule-summary-actions">
-                            <button class="bl-save-subrule-btn bl-icon-btn bl-accent-btn" data-index="${i}" title="完成保存"><i class="fas fa-check"></i></button>
-                            <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除此组"><i class="fas fa-trash"></i></button>
-                        </div>
-                    </div>
-                    <div class="bl-subrule-card-body">
-                        <textarea class="bl-sub-target bl-textarea" rows="2" placeholder="${tPlaceholder}">${tStr}</textarea>
-                        <div class="bl-subrule-flow-label" style="text-align: center;"><i class="fas fa-arrow-down"></i> 替换为</div>
-                        <textarea class="bl-sub-rep bl-textarea" rows="2" placeholder="${rPlaceholder}">${rStr}</textarea>
+                    <div class="bl-subrule-summary-actions">
+                        <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
+                        <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
+                        <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="独立编辑"><i class="fas fa-pen"></i></button>
+                        <button class="bl-del-subrule-btn bl-icon-btn bl-danger-btn" data-index="${i}" title="删除"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-            `);
-        }
+                <div class="bl-subrule-summary-body">
+                    <div class="bl-subrule-text">
+                        <b>${tPreview}</b> <i class="fas fa-arrow-right bl-inline-arrow"></i> <span>${rPreview}</span>
+                    </div>
+                </div>
+            </div>
+        `);
     });
 }
 
-export function syncSubrulesFromDOM() {
-    // ✨ 修改抓取目标为全新的 .bl-subrule-card
-    $('.bl-subrule-card').each(function() {
-        const saveBtn = $(this).find('.bl-save-subrule-btn');
-        if (saveBtn.length === 0) return; // 跳过非编辑状态的卡片
-        
-        const index = saveBtn.data('index');
-        const mode = $(this).find('.bl-sub-mode').val();
-        const tStr = $(this).find('.bl-sub-target').val();
-        const rStr = $(this).find('.bl-sub-rep').val();
+// ✨ 新增：负责打开独立编辑子规则的弹窗
+export function openSingleRuleModal(index) {
+    runtimeState.currentSubruleEditIndex = index;
+    let mode = 'simple';
+    let tStr = '';
+    let rStr = '';
 
-        if (index !== undefined && runtimeState.currentEditingSubrules[index]) {
-            runtimeState.currentEditingSubrules[index].mode = mode;
-            runtimeState.currentEditingSubrules[index].targets = parseInputToWords(tStr, mode, { isTarget: true });
-            runtimeState.currentEditingSubrules[index].replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
-        }
-    });
+    // 如果 index >= 0，说明是编辑已有规则；否则是新增规则
+    if (index >= 0 && runtimeState.currentEditingSubrules[index]) {
+        const sub = runtimeState.currentEditingSubrules[index];
+        mode = sub.mode || 'simple';
+        tStr = (sub.targets || []).join(mode === 'text' ? ', ' : '\n');
+        rStr = (sub.replacements || []).join(mode === 'regex' ? '\n' : ', ');
+    }
+
+    $('#bl-modal-sub-mode').val(mode);
+    $('#bl-modal-sub-target').val(tStr);
+    $('#bl-modal-sub-rep').val(rStr);
+    
+    // 触发占位符更新
+    $('#bl-modal-sub-mode').trigger('change');
+
+    $('#bl-subrule-edit-modal').css('display', 'flex').hide().fadeIn(150);
 }
 
 export function openTransferModal(ruleIndexOrIndexes) {
