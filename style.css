@@ -352,12 +352,42 @@
     }
     #bl-tags-container { -webkit-overflow-scrolling: touch !important; overscroll-behavior: contain !important; }
 
-    /* 顶部标题与图标组弹性自适应 */
-    .header { display: flex !important; flex-wrap: nowrap !important; width: 100%; padding-bottom: 4px; align-items: center; }
-    .title { flex: 0 0 auto !important; font-size: 14px; white-space: nowrap; }
-    .icon-group { flex: 1 1 0 !important; display: flex !important; justify-content: flex-end !important; gap: 2px !important; min-width: 0 !important; }
-    #bl-purifier-popup .header .icon-group button, #bl-purifier-popup .header .icon-group.compact button {
-        flex: 1 1 0 !important; min-width: 22px !important; max-width: 36px !important; height: 32px !important; min-height: 32px !important; padding: 0 !important; margin: 0 !important; font-size: 14px !important;
+   /* 顶部标题与图标组弹性自适应 */
+    .header { 
+        display: flex !important; 
+        flex-wrap: nowrap !important; 
+        width: 100%; 
+        padding-bottom: 4px; 
+        align-items: center; 
+        justify-content: space-between !important; /* ✨ 确保标题在左，按钮组在右，中间留空 */
+    }
+
+    .title { 
+        flex: 0 0 auto !important; 
+        font-size: 14px; 
+        white-space: nowrap; 
+    }
+
+    /* 限制图标容器的活动范围，最多只允许它占整个屏幕的 55% (约后1/2) */
+    .icon-group { 
+        flex: 0 1 55% !important; 
+        display: flex !important; 
+        justify-content: flex-end !important; /* 强制所有按钮靠右对齐 */
+        gap: 3px !important; 
+        min-width: 0 !important; 
+    }
+
+    /* 取消按钮的“弹簧拉伸”属性，把它们变成固定的小方块 */
+    #bl-purifier-popup .header .icon-group button, 
+    #bl-purifier-popup .header .icon-group.compact button {
+        flex: 0 1 30px !important; /* 拒绝无限放大，基准宽度锁定 30px */
+        width: 30px !important;
+        max-width: 30px !important;
+        height: 30px !important; 
+        min-width: 24px !important; /* 在极其极限窄的屏幕下才允许轻微压扁一点点 */
+        padding: 0 !important; 
+        margin: 0 !important; 
+        font-size: 14px !important;
     }
 
     /* 第二行工具栏：下拉框3/5权重，图标按钮隐身居中 */
