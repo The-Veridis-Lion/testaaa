@@ -515,27 +515,46 @@
     margin-bottom: 10px !important; 
 }
 
-/* --- 新增：统一的独立卡片样式 --- */
-.bl-card-style {
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    padding: 12px 14px !important;
-    background: var(--bl-background-secondary) !important;
-    border: 1px solid var(--bl-border-color) !important;
-    border-radius: 10px !important;
-    position: relative !important;
-}
-
-/* --- 新增：头部点点虚线分割 (徽章与按钮同行) --- */
+/* --- 修复：头部点点虚线分割 (徽章与按钮同行) --- */
 .bl-dashed-divider {
     display: flex !important;
     justify-content: space-between !important;
     align-items: center !important;
     gap: 8px !important;
-    border-bottom: 1px dashed var(--border-dash) !important;
-    padding-bottom: 12px !important;
-    margin-bottom: 4px !important;
+    /* ✨ 换成真正的点点虚线 (dotted)，并加深颜色确保在所有主题下绝对清晰 */
+    border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, transparent) !important;
+    padding-bottom: 10px !important;
+    margin-bottom: 6px !important;
+}
+
+/* --- 缩小卡片正文字号 --- */
+.bl-subrule-text {
+    min-width: 0 !important;
+    font-size: 12px !important; /* ✨ 正文字体缩小 */
+    color: var(--bl-text-primary) !important;
+    line-height: 1.4 !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+}
+
+/* 确保加粗的词汇也能跟着变小 */
+.bl-subrule-text b {
+    font-size: 12px !important;
+}
+
+/* --- 缩小备注并统一虚线样式 --- */
+.bl-subrule-remark {
+    font-size: 11px !important; /* ✨ 备注字体变得更小，突出主次 */
+    color: var(--text-mute) !important;
+    margin-top: 6px !important;
+    padding-top: 8px !important;
+    /* ✨ 备注上方的分割线也换成清晰的点点虚线 */
+    border-top: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, transparent) !important;
+}
+
+/* 顺便让编辑模式下输入的字也稍微紧凑一点 */
+.bl-sub-target, .bl-sub-rep {
+    font-size: 13px !important;
 }
 
 /* 徽章容器强制水平对齐 */
