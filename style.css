@@ -631,3 +631,42 @@
 }
 
 .bl-subrule-badge-wrap { display: flex !important; align-items: center !important; }
+
+
+/* =========================================
+   终极修复：弹窗高度锁定与列表滚动 
+========================================= */
+
+/* 1. 强制锁死编辑弹窗的高度，切断无限撑长 */
+.bl-edit-modal-card {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: 85vh !important;
+    overflow: hidden !important; 
+}
+
+/* 2. 手机端特化：死死锁住 80% 屏幕高度，抹除以前的 height: auto */
+@media screen and (max-width: 600px) {
+    #bl-rule-edit-modal > div {
+        height: 80vh !important; 
+        max-height: 80vh !important;
+    }
+}
+
+/* 3. 列表滚动区：必须允许压缩 (min-height:0)，才能触发内部滚动条！ */
+#bl-edit-subrules-container { 
+    flex: 1 1 auto !important; 
+    min-height: 0 !important; /* 🌟 罪魁祸首已被修复！这里必须是 0 */
+    overflow-y: auto !important; 
+    -webkit-overflow-scrolling: touch !important; /* iOS 顺滑滚动 */
+    display: flex !important; 
+    flex-direction: column !important; 
+    gap: 10px !important; 
+    padding-right: 5px !important; 
+    margin-bottom: 0 !important; 
+}
+
+/* 4. 卡片与底栏：绝对不允许被压扁 */
+.bl-card-style, .bl-modal-actions {
+    flex-shrink: 0 !important; 
+}
