@@ -503,3 +503,14 @@
         width: 16px !important; height: 16px !important; font-size: 16px !important; line-height: 1 !important;
     }
 }
+
+#bl-edit-subrules-container { 
+    flex: 1 !important; 
+    min-height: 200px !important; 
+    overflow-y: auto !important; 
+    display: flex !important; 
+    flex-direction: column !important; 
+    gap: 8px !important; 
+    padding-right: 5px !important; 
+    margin-bottom: 10px !important; 
+}
