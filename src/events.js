@@ -508,9 +508,21 @@ export function bindEvents() {
     });
 
     // ==========================================
-    // 独立编辑弹窗事件 (✨包含备注的存取)
+    // 独立编辑弹窗事件 (✨包含备注的快捷修改与保存)
     // ==========================================
     
+    $(document).off('click', '.bl-remark-subrule-btn').on('click', '.bl-remark-subrule-btn', function(e) {
+        e.preventDefault();
+        const index = $(this).data('index');
+        const sub = runtimeState.currentEditingSubrules[index];
+        const newRemark = prompt("📝 快捷修改规则备注：\n(若不需要备注，请直接清空并点击确定)", sub.remark || '');
+        
+        if (newRemark !== null) {
+            sub.remark = newRemark.trim();
+            renderSubrulesToModal(); 
+        }
+    });
+
     $(document).off('change', '#bl-modal-sub-mode').on('change', '#bl-modal-sub-mode', function() {
         const mode = $(this).val();
         const $t = $('#bl-modal-sub-target');
@@ -532,7 +544,6 @@ export function bindEvents() {
         const mode = $('#bl-modal-sub-mode').val();
         const tStr = $('#bl-modal-sub-target').val();
         const rStr = $('#bl-modal-sub-rep').val();
-        // ✨ 读取用户输入的备注
         const remarkStr = $('#bl-modal-sub-remark').val().trim();
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
@@ -543,7 +554,6 @@ export function bindEvents() {
             return;
         }
 
-        // ✨ 将 remark 存入映射对象中
         const subRule = { targets, replacements, mode, remark: remarkStr };
 
         if (runtimeState.currentSubruleEditIndex === -1) {
