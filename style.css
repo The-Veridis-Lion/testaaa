@@ -792,11 +792,10 @@
 }
 
 /* ========================================================
-   移动端统一：绝对定位法 (已修复常驻遮挡全屏的严重 Bug)
+   移动端统一：绝对定位法 (修复底部遮挡、修复巨型按钮)
    ======================================================== */
 @media screen and (max-width: 600px) {
-    /* 1. 外层遮罩层：全屏固定
-       ⚠️ 已经去掉了害人的 display: block !important，恢复正常的隐藏/显示逻辑 */
+    /* 1. 外层遮罩层：全屏固定 */
     #bl-rule-edit-modal,
     #bl-diff-modal,
     #bl-subrule-edit-modal {
@@ -807,47 +806,59 @@
         padding: 0 !important;
         margin: 0 !important;
         box-sizing: border-box !important;
+        z-index: 10000005 !important;
     }
 
-    /* 2. 弹窗卡片本体：绝对定位，四条边死死钉在屏幕的指定百分比位置 */
+    /* 2. 弹窗卡片本体：整体上提，自适应高度防截断 */
     #bl-rule-edit-modal > .bl-edit-modal-card,
     #bl-subrule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
         position: absolute !important;
-        /* 四边距离屏幕边缘的比例，直接锁死 */
-        top: 6% !important;
-        bottom: 6% !important;
-        left: 4% !important;
-        right: 4% !important;
+        /* ✨ 整体往上提，距离顶部 4% */
+        top: 4% !important;
+        left: 3% !important;
+        right: 3% !important;
+        width: 94% !important;
         
-        /* 强制宽高，由外边距决定，绝不允许被内部文本撑开飞出 */
-        width: 92% !important;  
-        height: 88% !important; 
-        max-width: none !important;
-        max-height: none !important;
+        /* ✨ 核心修复：去掉 bottom 和死板的 height，改用 max-height */
+        /* 让弹窗根据内容自己撑开，但最多只占屏幕的 82%，给底部导航栏留足空间绝对不超！ */
+        height: auto !important;
+        max-height: 82vh !important; 
         
-        margin: auto !important;
+        margin: 0 auto !important;
         display: flex !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
     }
 
-    /* 3. 头部、底栏、输入框等刚性元素：绝对禁止被挤扁 */
+    /* 3. 刚性元素：绝对禁止被挤扁 */
     .bl-edit-modal-title,
     .bl-edit-field,
     .bl-edit-modal-card > .bl-field-label,
-    .bl-modal-actions,
     .bl-diff-modal-header,
     .bl-subrule-field {
         flex-shrink: 0 !important;
         flex-grow: 0 !important;
     }
 
-    /* 4. 内部滚动区域：在锁死的框架内乖乖滚动 */
+    /* 4. ✨ 修复底部巨型按钮：禁止按钮竖向拉伸变异，恢复人类尺寸 */
+    .bl-modal-actions {
+        flex-shrink: 0 !important;
+        margin-top: 12px !important;
+    }
+    #bl-modal-sub-cancel {
+        flex: 0 0 auto !important; /* 🚫 彻底干掉导致竖向拉伸变巨无霸的元凶 */
+        min-height: 42px !important;
+        height: 42px !important;
+        margin-top: 15px !important;
+        padding: 10px !important;
+    }
+
+    /* 5. 内部滚动区域：在安全范围内滑动 */
     #bl-edit-subrules-container,
     .bl-diff-modal-content {
         flex: 1 1 auto !important;
-        height: 0 !important; /* 彻底打破内部撑高逻辑 */
+        height: 0 !important; 
         min-height: 0 !important;
         max-height: none !important;
         overflow-y: auto !important;
