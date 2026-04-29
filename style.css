@@ -792,52 +792,66 @@
 }
 
 /* ========================================================
-   移动端统一适配：编辑弹窗 & 对比透视弹窗 (防飞出、防变形锁死)
+   移动端统一：绝对定位法 (四边固定百分比，绝对防飞出、防塌陷)
    ======================================================== */
 @media screen and (max-width: 600px) {
-    /* 1. 外层遮罩容器：全部改为强行顶部对齐，防止被内部撑开飞出屏幕 */
+    /* 1. 外层遮罩层：全屏固定，取消 flex 布局以防移动端计算错误 */
     #bl-rule-edit-modal,
-    #bl-diff-modal {
+    #bl-diff-modal,
+    #bl-subrule-edit-modal {
         position: fixed !important;
         inset: 0 !important;
-        align-items: center !important; 
-        justify-content: flex-start !important; /* 关键：从最上方开始往下排布 */
-        padding: 16px !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        display: block !important; /* 关键：取消 flex，让内层绝对定位接管 */
+        padding: 0 !important;
         margin: 0 !important;
         box-sizing: border-box !important;
     }
 
-    /* 2. 弹窗卡片本体：设置顶部安全距离，并彻底锁死最大高度 */
+    /* 2. 弹窗卡片本体：绝对定位，四条边死死钉在屏幕的指定百分比位置 */
     #bl-rule-edit-modal > .bl-edit-modal-card,
+    #bl-subrule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
-        width: 100% !important;
-        /* 设定距离屏幕顶部的空隙，可根据喜好微调 2vh 的数值 */
-        margin: calc(env(safe-area-inset-top, 0px) + 2vh) 0 0 0 !important; 
-        height: 85vh !important; 
-        max-height: 85vh !important; /* 绝不允许超出屏幕 85% */
+        position: absolute !important;
+        /* 四边距离屏幕边缘的比例 */
+        top: 6% !important;
+        bottom: 6% !important;
+        left: 4% !important;
+        right: 4% !important;
+        
+        /* 强制宽高，绝不允许被内容撑开 */
+        width: 92% !important;  /* 100% - 左4% - 右4% */
+        height: 88% !important; /* 100% - 上6% - 下6% */
+        max-width: none !important;
+        max-height: none !important;
+        
+        margin: auto !important;
         display: flex !important;
         flex-direction: column !important;
+        box-sizing: border-box !important;
     }
 
-    /* 3. 固定的头部、底栏、输入框：绝对禁止在空间不足时被挤扁 */
+    /* 3. 头部、底栏、输入框等刚性元素：绝对禁止被挤扁 */
     .bl-edit-modal-title,
     .bl-edit-field,
     .bl-edit-modal-card > .bl-field-label,
     .bl-modal-actions,
-    .bl-diff-modal-header {
+    .bl-diff-modal-header,
+    .bl-subrule-field {
         flex-shrink: 0 !important;
         flex-grow: 0 !important;
     }
 
-    /* 4. 内部滚动内容区：独占剩余空间，强迫手机端触发内部滚动 */
+    /* 4. 内部滚动区域：在锁死的框架内乖乖滚动 */
     #bl-edit-subrules-container,
     .bl-diff-modal-content {
         flex: 1 1 auto !important;
-        height: 0 !important; /* 🌟 杀手锏：打破依靠内部撑高的逻辑，让容器自己算高度 */
+        height: 0 !important; /* 打破内部撑高逻辑 */
         min-height: 0 !important;
-        max-height: none !important; /* 解除原本的限高限制，交给外部 Flex 控制 */
+        max-height: none !important;
         overflow-y: auto !important;
-        -webkit-overflow-scrolling: touch !important; /* 增加 iOS 惯性滚动 */
+        -webkit-overflow-scrolling: touch !important;
         margin: 10px 0 !important;
     }
 }
