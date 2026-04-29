@@ -191,13 +191,12 @@ export function initRealtimeInterceptor() {
     };
 
     const chatObserver = new MutationObserver((mutations) => {
-        if (isPurifying) return;
-        const isStreaming = runtimeState.isStreamingGeneration;
-        if (!isStreaming) {
-            buildProcessors();
-            if (runtimeState.activeProcessors.length === 0) return;
-        }
-
+    if (isPurifying) return;
+    const isStreaming = runtimeState.isStreamingGeneration;
+    
+    buildProcessors();
+    if (runtimeState.activeProcessors.length === 0) return;
+        
         const touchedMessageIndices = new Set();
         isPurifying = true;
         try {
