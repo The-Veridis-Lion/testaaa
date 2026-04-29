@@ -792,10 +792,10 @@
 }
 
 /* ========================================================
-   移动端统一：绝对定位法 (修复底部遮挡、修复巨型按钮)
+   移动端统一：最稳妥的 Flex 居中布局 (彻底抛弃绝对定位与历史补丁)
    ======================================================== */
 @media screen and (max-width: 600px) {
-    /* 1. 外层遮罩层：全屏固定 */
+    /* 1. 外层遮罩：全屏固定，弹性居中，预留安全距离 */
     #bl-rule-edit-modal,
     #bl-diff-modal,
     #bl-subrule-edit-modal {
@@ -803,63 +803,60 @@
         inset: 0 !important;
         width: 100vw !important;
         height: 100vh !important;
-        padding: 0 !important;
+        height: 100dvh !important; /* 优先使用动态视口，防底部地址栏遮挡 */
+        display: flex !important; /* 恢复弹性布局 */
+        align-items: center !important; /* 垂直居中 */
+        justify-content: center !important; /* 水平居中 */
+        padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
         margin: 0 !important;
         box-sizing: border-box !important;
         z-index: 10000005 !important;
     }
 
-    /* 2. 弹窗卡片本体：整体上提，自适应高度防截断 */
+    /* 2. 弹窗卡片：取消绝对定位，高度自适应但绝对不超屏 */
     #bl-rule-edit-modal > .bl-edit-modal-card,
     #bl-subrule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
-        position: absolute !important;
-        /* ✨ 整体往上提，距离顶部 4% */
-        top: 4% !important;
-        left: 3% !important;
-        right: 3% !important;
-        width: 94% !important;
-        
-        /* ✨ 核心修复：去掉 bottom 和死板的 height，改用 max-height */
-        /* 让弹窗根据内容自己撑开，但最多只占屏幕的 82%，给底部导航栏留足空间绝对不超！ */
+        position: relative !important;
+        top: auto !important; bottom: auto !important; left: auto !important; right: auto !important;
+        width: 100% !important;
         height: auto !important;
-        max-height: 82vh !important; 
-        
-        margin: 0 auto !important;
+        max-height: 85vh !important; /* 弹窗最高只占屏幕的 85% */
+        margin: 0 !important;
         display: flex !important;
         flex-direction: column !important;
         box-sizing: border-box !important;
     }
 
-    /* 3. 刚性元素：绝对禁止被挤扁 */
+    /* 3. 刚性元素：标题、输入框、底栏按钮绝对禁止被挤压 */
     .bl-edit-modal-title,
     .bl-edit-field,
     .bl-edit-modal-card > .bl-field-label,
     .bl-diff-modal-header,
-    .bl-subrule-field {
+    .bl-subrule-field,
+    .bl-modal-actions {
         flex-shrink: 0 !important;
         flex-grow: 0 !important;
     }
 
-    /* 4. ✨ 修复底部巨型按钮：禁止按钮竖向拉伸变异，恢复人类尺寸 */
+    /* 4. 底部按钮：锁定常规高度，绝不异变拉伸 */
     .bl-modal-actions {
-        flex-shrink: 0 !important;
         margin-top: 12px !important;
     }
-    #bl-modal-sub-cancel {
-        flex: 0 0 auto !important; /* 🚫 彻底干掉导致竖向拉伸变巨无霸的元凶 */
-        min-height: 42px !important;
-        height: 42px !important;
-        margin-top: 15px !important;
-        padding: 10px !important;
+    #bl-modal-sub-cancel, 
+    .bl-secondary-btn, 
+    .bl-primary-btn {
+        height: auto !important;
+        min-height: 40px !important;
+        max-height: 48px !important; /* 强制锁死最大高度 */
     }
 
-    /* 5. 内部滚动区域：在安全范围内滑动 */
+    /* 5. 内部滚动区域：修复被压扁的问题，自动生成滚动条 */
     #bl-edit-subrules-container,
     .bl-diff-modal-content {
         flex: 1 1 auto !important;
-        height: 0 !important; 
-        min-height: 0 !important;
+        height: auto !important; 
+        min-height: 120px !important; /* ⚠️ 核心修复：哪怕没数据，也要撑开至少120px的基础高度，绝不压扁 */
         max-height: none !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
