@@ -287,7 +287,7 @@ export function bindEvents() {
     const applyThemeMode = (mode) => {
         const normalized = ['auto', 'light', 'dark'].includes(mode) ? mode : 'auto';
         settings.themeMode = normalized;
-        $('#bl-purifier-popup').attr('data-bl-theme', normalized);
+        $('#bl-purifier-popup, .bl-modal-shell, #bl-rule-transfer-modal, #bl-diff-modal').attr('data-bl-theme', normalized);
     };
 
     applyThemeMode(settings.themeMode || 'auto');
