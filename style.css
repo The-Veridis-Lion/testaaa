@@ -792,10 +792,11 @@
 }
 
 /* ========================================================
-   移动端统一：最稳妥的 Flex 居中布局 (彻底抛弃绝对定位与历史补丁)
+   移动端统一：标准 Flex 居中布局 (已彻底删除会导致强行遮挡的 display 属性)
    ======================================================== */
 @media screen and (max-width: 600px) {
-    /* 1. 外层遮罩：全屏固定，弹性居中，预留安全距离 */
+    /* 1. 外层遮罩：全屏固定，弹性居中
+       🚫 绝对不能加 display 属性！必须让 JS 自动控制隐藏和显示！ */
     #bl-rule-edit-modal,
     #bl-diff-modal,
     #bl-subrule-edit-modal {
@@ -803,17 +804,16 @@
         inset: 0 !important;
         width: 100vw !important;
         height: 100vh !important;
-        height: 100dvh !important; /* 优先使用动态视口，防底部地址栏遮挡 */
-        display: flex !important; /* 恢复弹性布局 */
-        align-items: center !important; /* 垂直居中 */
-        justify-content: center !important; /* 水平居中 */
+        height: 100dvh !important; 
+        align-items: center !important; 
+        justify-content: center !important; 
         padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)) !important;
         margin: 0 !important;
         box-sizing: border-box !important;
         z-index: 10000005 !important;
     }
 
-    /* 2. 弹窗卡片：取消绝对定位，高度自适应但绝对不超屏 */
+    /* 2. 弹窗卡片本体：高度自适应但绝对不超屏 */
     #bl-rule-edit-modal > .bl-edit-modal-card,
     #bl-subrule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
@@ -821,9 +821,9 @@
         top: auto !important; bottom: auto !important; left: auto !important; right: auto !important;
         width: 100% !important;
         height: auto !important;
-        max-height: 85vh !important; /* 弹窗最高只占屏幕的 85% */
+        max-height: 85vh !important; 
         margin: 0 !important;
-        display: flex !important;
+        display: flex !important; /* 卡片内部自己的排版，不影响外层隐藏 */
         flex-direction: column !important;
         box-sizing: border-box !important;
     }
@@ -839,7 +839,7 @@
         flex-grow: 0 !important;
     }
 
-    /* 4. 底部按钮：锁定常规高度，绝不异变拉伸 */
+    /* 4. 底部按钮：锁定常规高度，绝不异变拉伸成巨无霸 */
     .bl-modal-actions {
         margin-top: 12px !important;
     }
@@ -848,7 +848,7 @@
     .bl-primary-btn {
         height: auto !important;
         min-height: 40px !important;
-        max-height: 48px !important; /* 强制锁死最大高度 */
+        max-height: 48px !important; 
     }
 
     /* 5. 内部滚动区域：修复被压扁的问题，自动生成滚动条 */
@@ -856,7 +856,7 @@
     .bl-diff-modal-content {
         flex: 1 1 auto !important;
         height: auto !important; 
-        min-height: 120px !important; /* ⚠️ 核心修复：哪怕没数据，也要撑开至少120px的基础高度，绝不压扁 */
+        min-height: 120px !important; /* 哪怕没数据也撑开基础高度，绝不压扁 */
         max-height: none !important;
         overflow-y: auto !important;
         -webkit-overflow-scrolling: touch !important;
