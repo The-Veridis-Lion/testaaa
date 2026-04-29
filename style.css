@@ -792,37 +792,52 @@
 }
 
 /* ========================================================
-   强制弹窗靠屏幕上方 + 修复列表消失 (终极优先级版本)
+   移动端统一适配：编辑弹窗 & 对比透视弹窗 (防飞出、防变形锁死)
    ======================================================== */
 @media screen and (max-width: 600px) {
-    
-    /* 1. 外层容器：强行顶部对齐 */
+    /* 1. 外层遮罩容器：全部改为强行顶部对齐，防止被内部撑开飞出屏幕 */
     #bl-rule-edit-modal,
     #bl-diff-modal {
+        position: fixed !important;
+        inset: 0 !important;
         align-items: center !important; 
-        justify-content: flex-start !important; /* 🌟 关键：从原来的 center 改回 flex-start，让内容从最上面开始排 */
+        justify-content: flex-start !important; /* 关键：从最上方开始往下排布 */
+        padding: 16px !important;
+        margin: 0 !important;
+        box-sizing: border-box !important;
     }
-    
-    /* 2. 弹窗本体：极小顶部边距 + 锁死高度 */
-    #bl-rule-edit-modal > div,
+
+    /* 2. 弹窗卡片本体：设置顶部安全距离，并彻底锁死最大高度 */
+    #bl-rule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
-        width: 95% !important;
-        
-        /* 🌟 关键：这里的 2vh 就是距离顶部的空隙。如果你觉得还不够上，改成 1vh 甚至 0 */
+        width: 100% !important;
+        /* 设定距离屏幕顶部的空隙，可根据喜好微调 2vh 的数值 */
         margin: calc(env(safe-area-inset-top, 0px) + 2vh) 0 0 0 !important; 
-        
-        /* 🌟 杀手锏：彻底锁死高度，不许因为 flex 塌陷而消失 */
         height: 85vh !important; 
-        max-height: 85vh !important;
+        max-height: 85vh !important; /* 绝不允许超出屏幕 85% */
         display: flex !important;
         flex-direction: column !important;
     }
 
-    /* 3. 中间滚动区：强迫手机浏览器重新计算高度 */
-    #bl-edit-subrules-container {
+    /* 3. 固定的头部、底栏、输入框：绝对禁止在空间不足时被挤扁 */
+    .bl-edit-modal-title,
+    .bl-edit-field,
+    .bl-edit-modal-card > .bl-field-label,
+    .bl-modal-actions,
+    .bl-diff-modal-header {
+        flex-shrink: 0 !important;
+        flex-grow: 0 !important;
+    }
+
+    /* 4. 内部滚动内容区：独占剩余空间，强迫手机端触发内部滚动 */
+    #bl-edit-subrules-container,
+    .bl-diff-modal-content {
         flex: 1 1 auto !important;
-        height: 0 !important; 
+        height: 0 !important; /* 🌟 杀手锏：打破依靠内部撑高的逻辑，让容器自己算高度 */
         min-height: 0 !important;
+        max-height: none !important; /* 解除原本的限高限制，交给外部 Flex 控制 */
         overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important; /* 增加 iOS 惯性滚动 */
+        margin: 10px 0 !important;
     }
 }
