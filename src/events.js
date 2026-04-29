@@ -209,10 +209,10 @@ export function initRealtimeInterceptor() {
                         const original = node.nodeValue;
                         const nextValue = isStreaming ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
                         if (original !== nextValue) node.nodeValue = nextValue;
-                    } else if (node.nodeType === 1) {
-                        if (!isStreaming) purifyDOM(node);
-                        const messageNodes = [];
-                        collectMessageNodes(node, messageNodes);
+                        } else if (node.nodeType === 1) {
+                            purifyDOM(node);
+                            const messageNodes = [];
+                            collectMessageNodes(node, messageNodes);
                         messageNodes.forEach((mesNode) => {
                             const index = primePendingComparisonForNode(mesNode, { skipPersist: isStreaming });
                             if (index >= 0) touchedMessageIndices.add(index);
