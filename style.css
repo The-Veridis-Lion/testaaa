@@ -989,8 +989,16 @@
 @media screen and (max-width: 600px) {
     /* --- 移动端 UI 重构适配 --- */
     /* 放宽占比，防止手机端图标挤压无法点击 */
-    .card-header .icon-group.compact { flex: 0 0 50% !important; }
-    #bl-purifier-popup .toolbar .icon-group { flex: 0 0 45% !important; }
+    .card-header .icon-group.compact {
+        flex: 0 1 auto !important;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
+    #bl-purifier-popup .toolbar .icon-group {
+        flex: 0 1 auto !important;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+    }
     
     /* 抹除旧的移动端死板高宽 */
     #bl-purifier-popup .toolbar .icon-group button,
@@ -1004,6 +1012,12 @@
         font-size: 15px !important;
         padding: 4px !important;
     }
+    .bl-subrule-btn-group { gap: 4px !important; }
+    #bl-confirm-modal .bl-confirm-card {
+        width: 90% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+    }
 }
 
 
@@ -1013,8 +1027,8 @@
     flex: 1 !important; /* 占据剩余全部空间 */
     justify-content: flex-end !important; /* 整体靠右 */
     align-items: center !important;
+    flex-wrap: wrap !important;
     gap: 10px !important; /* 强制按钮之间保持均匀间距 */
-    padding-right: 6px !important; /* 距离边缘留出 6px 的安全距离 */
     margin: 0 !important;
 }
 
@@ -1024,9 +1038,8 @@
     width: 100% !important;
     max-width: 100% !important;
     box-sizing: border-box !important; /* 确保 padding 和 gap 不会撑破 100% 宽度 */
-    flex-wrap: nowrap !important; /* 绝不换行 */
+    flex-wrap: wrap !important;
     gap: 12px !important; /* 按钮间距 */
-    overflow: hidden !important; /* 强制拦截任何溢出，杜绝滑动条 */
     padding: 0 2px !important; /* 微调边缘 */
 }
 
@@ -1037,8 +1050,14 @@
 .bl-modal-actions .bl-primary-btn {
     flex: 1 1 0 !important; /* 核心：强制等分剩余空间 */
     min-width: 0 !important; /* 核心：打破文字撑开最小宽度的限制 */
-    white-space: nowrap !important;
+    white-space: normal !important;
     text-overflow: ellipsis !important; /* 文字过长显示省略号，而不是挤出屏幕 */
-    overflow: hidden !important;
     margin: 0 !important;
+}
+
+@media screen and (max-width: 600px) {
+    .bl-modal-actions button,
+    .bl-transfer-actions button {
+        flex: 1 1 100% !important;
+    }
 }
