@@ -414,7 +414,7 @@ export function renderSubrulesToModal() {
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === runtimeState.currentEditingSubrules.length - 1 ? 'disabled' : '';
 
-        const badgeBaseStyle = "display:inline-flex; align-items:center; justify-content:center; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:800; color:#fff; min-width:40px; margin:0; line-height:1; flex-shrink:0;";
+        const badgeBaseStyle = "display:inline-flex; align-items:center; justify-content:center; padding:4px 10px; border-radius:6px; font-size:13px; font-weight:800; color:#fff; min-width:45px; margin:0; line-height:1; flex-shrink:0;";
         let badgeHTML = '';
         if (mode === 'regex') badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-accent-color);">正则</span>`;
         else if (mode === 'simple') badgeHTML = `<span style="${badgeBaseStyle} background:color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%);">简易</span>`;
@@ -439,7 +439,7 @@ export function renderSubrulesToModal() {
                     <div style="display: flex; align-items: center; margin: 0; padding: 0;">
                         ${badgeHTML}
                     </div>
-                    <div style="display: flex; gap: 5px; align-items: center; margin: 0; padding: 0;">
+                    <div class="bl-subrule-btn-group" style="display: flex; justify-content: space-between; align-items: center; flex: 0 0 35%; margin: 0; padding: 0;">
                         <button class="bl-move-subrule-up-btn bl-icon-btn" data-index="${i}" title="上移" ${moveUpDisabled} style="margin:0;"><i class="fas fa-arrow-up"></i></button>
                         <button class="bl-move-subrule-down-btn bl-icon-btn" data-index="${i}" title="下移" ${moveDownDisabled} style="margin:0;"><i class="fas fa-arrow-down"></i></button>
                         <button class="bl-edit-subrule-btn bl-icon-btn" data-index="${i}" title="独立编辑" style="margin:0;"><i class="fas fa-pen"></i></button>

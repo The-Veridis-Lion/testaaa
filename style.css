@@ -874,3 +874,108 @@
         margin: 10px 0 !important;
     }
 }
+
+
+/* --- UI 重构：去除按钮框线、统一字号、按比例等距分布 (PC端) --- */
+
+/* 1. 卡片标题行 */
+.card-header { flex-wrap: nowrap !important; }
+.header-left { flex: 1; min-width: 0; }
+.group-title { font-size: 15px !important; } /* 文字放大与图标匹配 */
+
+.card-header .icon-group.compact {
+    flex: 0 0 30% !important; /* 限制在后30% */
+    display: flex !important;
+    justify-content: space-between !important; /* 均匀分布 */
+    align-items: center !important;
+    gap: 0 !important;
+}
+
+.bl-rule-move-up, .bl-rule-move-down, .bl-rule-transfer, .bl-rule-edit, .bl-rule-del {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 15px !important;
+    color: var(--icon-color) !important;
+    min-width: auto !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 2px !important;
+    transition: transform 0.2s, color 0.2s !important;
+}
+.bl-rule-move-up:hover, .bl-rule-move-down:hover, .bl-rule-transfer:hover, .bl-rule-edit:hover, .bl-rule-del:hover {
+    background: transparent !important;
+    color: var(--bl-accent-color) !important;
+    transform: scale(1.15);
+}
+
+/* 2. 工具栏 (下拉框右侧) */
+.toolbar {
+    display: flex !important;
+    align-items: center !important;
+    gap: 15px !important;
+}
+.select-box { flex: 1; }
+#bl-purifier-popup .toolbar .icon-group {
+    flex: 0 0 30% !important; /* 限制在后30% */
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 0 !important;
+}
+#bl-purifier-popup .toolbar .icon-group button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 16px !important;
+    min-width: auto !important;
+    width: auto !important;
+    height: auto !important;
+    color: var(--icon-color) !important;
+    transition: transform 0.2s, color 0.2s !important;
+}
+#bl-purifier-popup .toolbar .icon-group button:hover {
+    background: transparent !important;
+    color: var(--bl-accent-color) !important;
+    transform: scale(1.15);
+}
+
+/* 3. 子规则编辑面板按钮组 */
+.bl-subrule-btn-group button {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-size: 15px !important;
+    color: var(--icon-color) !important;
+    min-width: auto !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 2px !important;
+    transition: transform 0.2s, color 0.2s !important;
+}
+.bl-subrule-btn-group button.bl-danger-btn { color: var(--btn-danger) !important; }
+.bl-subrule-btn-group button:hover {
+    background: transparent !important;
+    transform: scale(1.15);
+}
+
+
+@media screen and (max-width: 600px) {
+    /* --- 移动端 UI 重构适配 --- */
+    /* 放宽占比，防止手机端图标挤压无法点击 */
+    .card-header .icon-group.compact { flex: 0 0 50% !important; }
+    #bl-purifier-popup .toolbar .icon-group { flex: 0 0 45% !important; }
+    .bl-subrule-btn-group { flex: 0 0 52% !important; }
+    
+    /* 抹除旧的移动端死板高宽 */
+    #bl-purifier-popup .toolbar .icon-group button,
+    #bl-purifier-popup .header .icon-group button,
+    .card-header .icon-group.compact button,
+    .bl-subrule-btn-group button {
+        width: auto !important;
+        height: auto !important;
+        min-width: auto !important;
+        min-height: auto !important;
+        font-size: 15px !important;
+        padding: 4px !important;
+    }
+}
