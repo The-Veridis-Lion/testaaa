@@ -792,10 +792,11 @@
 }
 
 /* ========================================================
-   移动端统一：绝对定位法 (四边固定百分比，绝对防飞出、防塌陷)
+   移动端统一：绝对定位法 (已修复常驻遮挡全屏的严重 Bug)
    ======================================================== */
 @media screen and (max-width: 600px) {
-    /* 1. 外层遮罩层：全屏固定，取消 flex 布局以防移动端计算错误 */
+    /* 1. 外层遮罩层：全屏固定
+       ⚠️ 已经去掉了害人的 display: block !important，恢复正常的隐藏/显示逻辑 */
     #bl-rule-edit-modal,
     #bl-diff-modal,
     #bl-subrule-edit-modal {
@@ -803,7 +804,6 @@
         inset: 0 !important;
         width: 100vw !important;
         height: 100vh !important;
-        display: block !important; /* 关键：取消 flex，让内层绝对定位接管 */
         padding: 0 !important;
         margin: 0 !important;
         box-sizing: border-box !important;
@@ -814,15 +814,15 @@
     #bl-subrule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
         position: absolute !important;
-        /* 四边距离屏幕边缘的比例 */
+        /* 四边距离屏幕边缘的比例，直接锁死 */
         top: 6% !important;
         bottom: 6% !important;
         left: 4% !important;
         right: 4% !important;
         
-        /* 强制宽高，绝不允许被内容撑开 */
-        width: 92% !important;  /* 100% - 左4% - 右4% */
-        height: 88% !important; /* 100% - 上6% - 下6% */
+        /* 强制宽高，由外边距决定，绝不允许被内部文本撑开飞出 */
+        width: 92% !important;  
+        height: 88% !important; 
         max-width: none !important;
         max-height: none !important;
         
@@ -847,7 +847,7 @@
     #bl-edit-subrules-container,
     .bl-diff-modal-content {
         flex: 1 1 auto !important;
-        height: 0 !important; /* 打破内部撑高逻辑 */
+        height: 0 !important; /* 彻底打破内部撑高逻辑 */
         min-height: 0 !important;
         max-height: none !important;
         overflow-y: auto !important;
