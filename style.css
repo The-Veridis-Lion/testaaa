@@ -93,10 +93,10 @@
 .bl-icon-btn {
     padding: 0 10px !important; min-height: 30px !important; min-width: 30px !important;
     font-size: 13px !important; line-height: 1 !important; border-radius: 8px !important;
-    background: var(--bl-background-secondary) !important; border: 1px solid var(--bl-border-color) !important;
+    background: transparent !important; border: none !important; box-shadow: none !important;
     cursor: pointer !important; color: var(--bl-text-primary) !important;
 }
-.bl-icon-btn:hover { background: var(--bl-background-tertiary) !important; }
+.bl-icon-btn:hover { background: transparent !important; transform: scale(1.15); color: var(--bl-accent-color) !important; }
 
 /* 徽章 */
 .bl-badge {
@@ -130,7 +130,7 @@
 
 .icon-group { display: flex; align-items: center; gap: 2px; }
 .icon-group button {
-    background-color: var(--bg-button); border: none; border-radius: 6px; color: var(--icon-color);
+    background: transparent !important; border: none !important; box-shadow: none !important; border-radius: 6px; color: var(--icon-color);
     min-width: 24px; min-height: 24px; padding: 3px; display: flex; align-items: center; justify-content: center;
     cursor: pointer; font-size: 14px; box-sizing: border-box;
 }
@@ -141,7 +141,8 @@
     background: transparent !important; border: none !important; box-shadow: none !important;
 }
 #bl-purifier-popup .header .icon-group { gap: var(--bl-control-gap) !important; }
-#bl-purifier-popup .header .icon-group button:hover { background: rgba(80, 72, 64, 0.08) !important; }
+.icon-group button:hover { background: transparent !important; transform: scale(1.15); color: var(--bl-accent-color) !important; }
+#bl-purifier-popup .header .icon-group button:hover { background: transparent !important; transform: scale(1.15); color: var(--bl-accent-color) !important; }
 
 /* 绑定状态按钮 */
 .bl-bind-toggle { color: var(--icon-color) !important; }
@@ -235,10 +236,10 @@
 .icon-group.compact { gap: 3px; }
 .bl-rule-move-up, .bl-rule-move-down, .bl-rule-transfer, .bl-rule-edit, .bl-rule-del {
     border-radius: 10px !important; min-width: 30px !important; width: 30px !important; min-height: 30px !important;
-    height: 30px !important; padding: 0 !important; border: 1px solid var(--bl-border-color) !important;
-    background: var(--bl-background-secondary) !important; color: var(--bl-text-primary) !important;
+    height: 30px !important; padding: 0 !important; border: none !important; box-shadow: none !important;
+    background: transparent !important; color: var(--bl-text-primary) !important;
 }
-.bl-rule-move-up:hover, .bl-rule-move-down:hover, .bl-rule-transfer:hover, .bl-rule-edit:hover, .bl-rule-del:hover { background: var(--bl-background-tertiary) !important; }
+.bl-rule-move-up:hover, .bl-rule-move-down:hover, .bl-rule-transfer:hover, .bl-rule-edit:hover, .bl-rule-del:hover { background: transparent !important; transform: scale(1.15); color: var(--bl-accent-color) !important; }
 .bl-rule-move-up:disabled, .bl-rule-move-down:disabled { opacity: 0.38 !important; cursor: not-allowed !important; }
 
 /* 自定义复选框 */
