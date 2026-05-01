@@ -137,6 +137,86 @@ function showDeleteConfirm(options = {}) {
     });
 }
 
+function scheduleRevealAfterRender(resolveTarget) {
+    window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+            const payload = typeof resolveTarget === 'function' ? resolveTarget() : null;
+            const container = payload?.container;
+            const target = payload?.target;
+            if (!container?.length || !target?.length) return;
+            revealAndPulse(target, container);
+        });
+    });
+}
+
+function setSubruleRegexError(message = '') {
+    const $error = $('#bl-modal-sub-error');
+    const nextMessage = String(message || '').trim();
+    if (!$error.length) return Boolean(nextMessage);
+    if (!nextMessage) {
+        $error.stop(true, true).hide().text('');
+        return false;
+    }
+    $error.text(nextMessage).show();
+    return true;
+}
+
+function parseRegexDraft(rawTarget) {
+    let pattern = rawTarget;
+    let flags = 'gmu';
+    if (rawTarget.startsWith('/')) {
+        const lastSlash = rawTarget.lastIndexOf('/');
+        if (lastSlash > 0) {
+            pattern = rawTarget.substring(1, lastSlash);
+            flags = rawTarget.substring(lastSlash + 1);
+            if (!flags.includes('g')) flags += 'g';
+        }
+    }
+    return { pattern, flags };
+}
+
+function translateRegexErrorMessage(error) {
+    const rawMessage = String(error?.message || error || '').trim();
+    const normalized = rawMessage.replace(/^Invalid regular expression(?::\s*\/.*\/[a-z]*)?:\s*/i, '').trim();
+
+    if (/Invalid flags supplied/i.test(rawMessage)) return '正则语法错误：修饰符无效或重复。';
+    if (normalized.includes('Unterminated group')) return '正则语法错误：存在未闭合的括号。';
+    if (normalized.includes('Unterminated character class')) return '正则语法错误：存在未闭合的字符集方括号。';
+    if (normalized.includes("Unmatched ')'")) return '正则语法错误：存在多余的右括号。';
+    if (normalized.includes('Nothing to repeat')) return '正则语法错误：量词前缺少可重复的内容。';
+    if (normalized.includes('Invalid escape')) return '正则语法错误：转义序列无效。';
+    if (normalized.includes('Invalid group')) return '正则语法错误：分组写法无效。';
+    if (normalized.includes('Range out of order in character class')) return '正则语法错误：字符集范围顺序不正确。';
+    if (normalized.includes('Lone quantifier brackets')) return '正则语法错误：量词大括号写法无效。';
+    if (normalized.includes('Duplicate capture group name')) return '正则语法错误：命名捕获组名称重复。';
+
+    return `正则语法错误：${normalized || '请检查括号、方括号和转义写法。'}`;
+}
+
+function getRegexDraftErrorMessage(rawValue) {
+    const lines = String(rawValue || '').split('\n').map((line) => line.trim()).filter(Boolean);
+    if (lines.length === 0) return '';
+
+    for (let index = 0; index < lines.length; index++) {
+        try {
+            const { pattern, flags } = parseRegexDraft(lines[index]);
+            new RegExp(pattern, flags);
+        } catch (error) {
+            const translated = translateRegexErrorMessage(error);
+            return lines.length > 1 ? `第 ${index + 1} 行${translated}` : translated;
+        }
+    }
+
+    return '';
+}
+
+function validateSubruleRegexInput() {
+    if ($('#bl-modal-sub-mode').val() !== 'regex') {
+        return setSubruleRegexError('');
+    }
+    return setSubruleRegexError(getRegexDraftErrorMessage($('#bl-modal-sub-target').val()));
+}
+
 function renderTagsPreserveBatchSelection() {
     renderTags();
     const { extension_settings } = getAppContext();
@@ -615,7 +695,10 @@ export function bindEvents() {
             $t.attr('placeholder', "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在");
             $r.attr('placeholder', "替换后词汇 (逗号/空格分隔，留空直接删除)");
         }
+        validateSubruleRegexInput();
     });
+
+    $(document).off('input', '#bl-modal-sub-target').on('input', '#bl-modal-sub-target', () => validateSubruleRegexInput());
 
     $(document).off('click', '#bl-modal-sub-save').on('click', '#bl-modal-sub-save', function() {
         const mode = $('#bl-modal-sub-mode').val();
@@ -623,6 +706,11 @@ export function bindEvents() {
         const rStr = $('#bl-modal-sub-rep').val();
         const remarkStr = $('#bl-modal-sub-remark').val().trim();
         const isNewSubrule = runtimeState.currentSubruleEditIndex === -1;
+
+        if (mode === 'regex' && validateSubruleRegexInput()) {
+            $('#bl-modal-sub-target').trigger('focus');
+            return;
+        }
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
         const replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
@@ -642,12 +730,15 @@ export function bindEvents() {
 
         $('#bl-subrule-edit-modal').stop(true, true).fadeOut(150, () => {
             renderSubrulesToModal();
+            showFeedbackToast('保存成功');
 
             if (isNewSubrule) {
-                const container = $('#bl-edit-subrules-container');
-                const newIndex = runtimeState.currentEditingSubrules.length - 1;
-                const target = container.find(`.bl-subrule-card[data-subrule-index="${newIndex}"]`);
-                if (target.length) revealAndPulse(target, container);
+                scheduleRevealAfterRender(() => {
+                    const container = $('#bl-edit-subrules-container');
+                    const newIndex = runtimeState.currentEditingSubrules.length - 1;
+                    const target = container.find(`.bl-subrule-card[data-subrule-index="${newIndex}"]`);
+                    return { container, target };
+                });
             }
         });
     });
@@ -705,15 +796,15 @@ export function bindEvents() {
         performGlobalCleanse();
         const diagnostics = filterDiagnosticsByRuleIndex(targetRuleIndex);
         $('#bl-rule-edit-modal').stop(true, true).fadeOut(120, () => {
-            window.requestAnimationFrame(() => {
-                showSaveResultFeedback(diagnostics);
+            showSaveResultFeedback(diagnostics);
 
-                if (isNewRuleGroup) {
+            if (isNewRuleGroup) {
+                scheduleRevealAfterRender(() => {
                     const container = $('#bl-tags-container');
                     const target = container.find(`.card[data-index="${targetRuleIndex}"]`);
-                    if (target.length) revealAndPulse(target, container);
-                }
-            });
+                    return { container, target };
+                });
+            }
         });
     });
 

@@ -10,21 +10,20 @@ function safeHtml(str) {
 
 const SUBRULE_MODE_META = {
     simple: {
-        title: '🧩 简易组合',
-        desc: '推荐，支持 {} 与 *',
+        title: '简易组合',
+        desc: '推荐！支持 {} 与 * 号',
     },
     text: {
-        title: '📝 普通文本',
-        desc: '长词优先替换',
+        title: '普通文本',
+        desc: '按普通词条匹配，适合长词优先替换',
     },
     regex: {
-        title: '⚙️ 正则表达式',
-        desc: '专业模式',
+        title: '正则表达式',
+        desc: '专业模式，支持完整正则语法',
     },
 };
 
 let feedbackToastTimer = null;
-let feedbackToastFadeTimer = null;
 let actionConfirmHandler = null;
 
 function getSubruleModeMeta(mode) {
@@ -33,26 +32,22 @@ function getSubruleModeMeta(mode) {
 
 export function updateSubruleModeDisplay(mode) {
     const meta = getSubruleModeMeta(mode);
-    $('#bl-modal-sub-mode-title').text(meta.title);
     $('#bl-modal-sub-mode-desc').text(meta.desc);
 }
 
 export function showFeedbackToast(message, options = {}) {
     const duration = Number(options.duration) > 0 ? Number(options.duration) : 2000;
+    const fadeDuration = Number(options.fadeDuration) > 0 ? Number(options.fadeDuration) : 220;
     const $toast = $('#bl-feedback-toast');
     if (!$toast.length) return;
 
     clearTimeout(feedbackToastTimer);
-    clearTimeout(feedbackToastFadeTimer);
 
     $('#bl-feedback-toast-text').text(String(message || '操作成功'));
-    $toast.stop(true, true).removeClass('is-hiding').css('display', 'flex').hide().fadeIn(120);
+    $toast.stop(true, true).css('display', 'flex').hide().fadeIn(120);
 
     feedbackToastTimer = setTimeout(() => {
-        $toast.addClass('is-hiding');
-        feedbackToastFadeTimer = setTimeout(() => {
-            $toast.stop(true, true).fadeOut(220, () => $toast.removeClass('is-hiding'));
-        }, 0);
+        $toast.stop(true, true).fadeOut(fadeDuration);
     }, duration);
 }
 
@@ -152,7 +147,9 @@ export function revealAndPulse(target, container) {
 
             const containerRect = scrollContainer.getBoundingClientRect();
             const elementRect = element.getBoundingClientRect();
-            const nextScrollTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top) - Math.max(12, (scrollContainer.clientHeight - element.clientHeight) / 2);
+            const elementTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top);
+            const centeredOffset = (scrollContainer.clientHeight - elementRect.height) / 2;
+            const nextScrollTop = elementTop - centeredOffset;
             const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
             const clampedScrollTop = Math.max(0, Math.min(nextScrollTop, maxScrollTop));
 
@@ -321,8 +318,8 @@ export function setupUI() {
     `);
 
     $('body').append(`
-        <div id="bl-feedback-toast" style="display:none;">
-            <i class="fa-solid fa-circle-exclamation"></i>
+        <div id="bl-feedback-toast" role="status" aria-live="polite" style="display:none;">
+            <i class="fa-solid fa-circle-check"></i>
             <span id="bl-feedback-toast-text">操作成功</span>
         </div>
     `);
@@ -349,21 +346,21 @@ export function setupUI() {
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
             <div class="bl-modal-card bl-edit-modal-card bl-subrule-modal-card">
                 <div class="bl-subrule-modal-header">
-                    <div class="bl-mode-select-shell bl-subrule-mode-select-shell">
-                        <div id="bl-modal-sub-mode-display" class="bl-mode-select-display">
-                            <div class="bl-mode-select-title-row">
-                                <div id="bl-modal-sub-mode-title" class="bl-mode-select-title">🧩 简易组合</div>
-                                <i class="fas fa-chevron-down bl-mode-select-chevron"></i>
-                            </div>
-                            <div id="bl-modal-sub-mode-desc" class="bl-mode-select-desc">推荐，支持 {} 与 *</div>
+                    <div class="bl-subrule-mode-panel">
+                        <label for="bl-modal-sub-mode" class="bl-field-label bl-subrule-mode-label">匹配模式</label>
+                        <div class="bl-mode-select-shell bl-subrule-mode-select-shell">
+                            <select id="bl-modal-sub-mode" class="bl-input bl-mode-select-native">
+                                <option value="simple">简易组合</option>
+                                <option value="text">普通文本</option>
+                                <option value="regex">正则表达式</option>
+                            </select>
                         </div>
-                        <select id="bl-modal-sub-mode" class="bl-input bl-mode-select-native">
-                            <option value="simple">🧩 简易组合 (推荐! 支持{}与*号)</option>
-                            <option value="text">📝 普通文本 (长词优先替换)</option>
-                            <option value="regex">⚙️ 正则表达式 (专业模式)</option>
-                        </select>
+                        <div id="bl-modal-sub-mode-desc" class="bl-mode-select-desc">推荐！支持 {} 与 * 号</div>
                     </div>
-                    <button id="bl-modal-sub-save" class="bl-icon-btn bl-subrule-save-btn" title="完成保存"><i class="fas fa-check"></i></button>
+                    <button id="bl-modal-sub-save" class="bl-primary-btn bl-subrule-save-btn" title="完成保存">
+                        <i class="fas fa-check"></i>
+                        <span>完成保存</span>
+                    </button>
                 </div>
                 <div class="bl-subrule-modal-divider"></div>
 
@@ -376,6 +373,7 @@ export function setupUI() {
                     <div class="bl-subrule-field">
                         <label class="bl-field-label">查找内容</label>
                         <textarea id="bl-modal-sub-target" class="bl-textarea bl-subrule-modal-input" rows="4"></textarea>
+                        <div id="bl-modal-sub-error" class="bl-error-text" style="display:none;" aria-live="polite"></div>
                     </div>
 
                     <div class="bl-subrule-field">
@@ -679,6 +677,7 @@ export function openSingleRuleModal(index) {
     $('#bl-modal-sub-target').val(tStr);
     $('#bl-modal-sub-rep').val(rStr);
     $('#bl-modal-sub-remark').val(remark);
+    $('#bl-modal-sub-error').stop(true, true).hide().text('');
     
     $('#bl-modal-sub-mode').trigger('change');
     $('#bl-subrule-edit-modal').css('display', 'flex').hide().fadeIn(150);
