@@ -583,6 +583,7 @@
         display: flex !important;
         flex-direction: column !important;
     }
+}
 
 /* 768px 平板及侧边栏微调 */
 @media screen and (max-width: 768px) {
@@ -1066,56 +1067,70 @@
     }
 }
 
-/* 修改：自动淡出小弹窗 (屏幕居中版) */
+/* ==========================================
+   独立全局组件：Toast 弹窗 (全端兼容居中版)
+========================================== */
 .bl-toast {
     position: fixed !important;
-    top: 50% !important;  /* 强行垂直居中 */
-    left: 50% !important; /* 强行水平居中 */
-    transform: translate(-50%, calc(-50% + 20px)) !important; /* 初始偏下一点，用于上浮动画 */
-    opacity: 0;
-    max-width: min(80vw, 420px) !important;
-    padding: 12px 18px !important;
+    top: 50vh !important; /* 使用 vh 视口单位，精准避开苹果刘海屏和底部工具栏 */
+    left: 50vw !important;
+    /* 采用 scale 缩放+透明度，兼容所有老版 iOS 的安全动画起点 */
+    transform: translate(-50%, -40%) scale(0.95) !important; 
+    opacity: 0 !important;
+    width: max-content !important;
+    max-width: 85vw !important;
+    padding: 12px 20px !important;
     border-radius: 12px !important;
-    background: rgba(0, 0, 0, 0.75) !important;
+    background: rgba(0, 0, 0, 0.85) !important;
     color: #ffffff !important;
     font-size: 14px !important;
-    font-weight: 500 !important;
-    line-height: 1.45 !important;
+    font-weight: 600 !important;
+    line-height: 1.5 !important;
     text-align: center !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35) !important;
+    z-index: 2147483647 !important; /* 强制最高系统层级，穿透一切遮挡 */
     pointer-events: none !important;
-    z-index: 10000050 !important;
-    transition: opacity 0.3s ease, transform 0.3s ease !important;
+    transition: opacity 0.3s ease-out, transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
 .bl-toast.show {
     opacity: 1 !important;
-    transform: translate(-50%, -50%) !important; /* 完美停在正中央 */
+    transform: translate(-50%, -50%) scale(1) !important; /* 完美停在屏幕正中心 */
 }
 
-.bl-field-error {
-    display: none;
-    margin-top: 6px;
-    color: var(--bl-danger-color);
-    font-size: 12px;
-    line-height: 1.4;
-}
-
-.bl-field-error.is-visible {
-    display: block;
-}
-
-#bl-modal-sub-target.bl-invalid {
-    outline: 1px solid var(--bl-danger-color) !important;
-    box-shadow: 0 0 0 1px var(--bl-danger-soft) !important;
-}
-
-@keyframes blHighlightFlash {
-    0%, 100% { filter: brightness(1); }
-    50% { filter: brightness(0.1); }
+/* ==========================================
+   终极手机端适配：修复下拉框被吃掉 (兼容 iOS/Android)
+========================================== */
+@media screen and (max-width: 600px) {
+    #bl-purifier-popup .toolbar {
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        width: 100% !important;
+        gap: 8px !important;
+        box-sizing: border-box !important;
+    }
+    
+    #bl-preset-select {
+        flex: 1 1 0% !important; 
+        width: 100% !important; 
+        /* 🌟 核心修复：苹果 Safari 非常流氓，必须给 select 一个绝对的 max-width，
+           (100vw屏幕宽度 - 160px右侧图标组所需空间)，否则它会无视 flex 强行挤掉右边的按钮 */
+        max-width: calc(100vw - 160px) !important; 
+        min-width: 0 !important;
+        padding-right: 26px !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+    }
+    
+    #bl-purifier-popup .toolbar .icon-group {
+        flex: 0 0 auto !important;
+        width: auto !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 2px !important;
+    }
 }
