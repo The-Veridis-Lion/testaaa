@@ -1048,22 +1048,32 @@
     }
 
    #bl-purifier-popup .toolbar {
+        display: flex !important;
         flex-wrap: nowrap !important;
+        width: 100% !important;
         gap: 8px !important;
+        box-sizing: border-box !important;
     }
+    
     .select-box, #bl-preset-select {
-        flex: 1 1 0 !important; /* 让它尽情弹性伸缩 */
-        width: 0 !important; /* 🌟 关键：打断原生宽度，强迫它被外部容器管束 */
-        min-width: 0 !important; 
+        flex: 1 1 0% !important; 
+        width: 100% !important; /* 🌟 修复1：绝对不能用 width: 0，否则 iOS 会切断文字 */
+        /* 🌟 修复2：iOS Safari 的终极克星，强制最大宽度为屏幕宽度减去右侧按钮的宽度 */
+        max-width: calc(100vw - 160px) !important; 
+        min-width: 0 !important;
         padding-right: 26px !important;
         text-overflow: ellipsis !important;
         white-space: nowrap !important;
         overflow: hidden !important;
+        display: block !important;
     }
+    
     #bl-purifier-popup .toolbar .icon-group {
-        flex: 0 0 auto !important; /* 右侧图标组保持自身大小，不再强行占据比例 */
+        flex: 0 0 auto !important;
+        width: auto !important;
         display: flex !important;
         flex-wrap: nowrap !important;
+        gap: 2px !important;
     }
 }
 
