@@ -1490,3 +1490,11 @@
 }
 #bl-feedback-toast.bl-toast-show { opacity: 1 !important; transform: translateX(-50%) translateY(10px) !important; }
 #bl-feedback-toast.bl-toast-hide { opacity: 0 !important; transform: translateX(-50%) translateY(0) !important; }
+
+.bl-reveal-flash {
+    animation: bl-flash-pulse 1s ease-out 1 !important;
+}
+@keyframes bl-flash-pulse {
+    0% { background-color: var(--bl-danger-soft); transform: scale(1.02); box-shadow: 0 0 15px var(--bl-accent-color); }
+    100% { background-color: var(--bl-background-secondary); transform: scale(1); box-shadow: none; }
+}
