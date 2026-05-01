@@ -38,14 +38,18 @@ export function updateSubruleModeDisplay(mode) {
 export function showFeedbackToast(message, options = {}) {
     const $toast = $('#bl-feedback-toast');
     if (!$toast.length) return;
-
     clearTimeout(feedbackToastTimer);
-
+    
     $('#bl-feedback-toast-text').text(String(message || '操作成功'));
-    $toast.stop(true, true).css({ display: 'flex', opacity: 0 }).animate({ opacity: 1 }, 150);
-
+    // 放弃有 Bug 的 jQuery animate，使用纯 CSS 控制
+    $toast.css('display', 'flex');
+    // 强制重绘
+    void $toast[0].offsetWidth; 
+    $toast.removeClass('bl-toast-hide').addClass('bl-toast-show');
+    
     feedbackToastTimer = setTimeout(() => {
-        $toast.animate({ opacity: 0 }, 200, function() { $(this).hide(); });
+        $toast.removeClass('bl-toast-show').addClass('bl-toast-hide');
+        setTimeout(() => $toast.css('display', 'none'), 300);
     }, 2000);
 }
 
