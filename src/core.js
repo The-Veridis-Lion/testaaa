@@ -6,8 +6,8 @@ import { buildDiffSnippetsFromText, computeMessageSignature, ensureMessageDiffBu
 import { getMessageDomNode, purifyDOM } from './dom.js';
 
 /**
- * 根据当前规则构建净化处理器（文本/正则/简易语法）。
- * @returns {Array} 可复用的处理器数组。
+ * 按当前规则构建净化处理器。
+ * @returns {Array} 处理器数组。
  */
 export function buildProcessors() {
     if (!runtimeState.isRegexDirty) return runtimeState.activeProcessors;
@@ -50,11 +50,10 @@ export function buildProcessors() {
                     if (t) {
                         try {
                             let escaped = t.replace(/[.+^$()[\]\\]/g, '\\$&');
-                            // 解析简易语法中的 {A,B} 备选分组。
+                            // 展开 {A,B} 备选分组，并将 * 转为受限通配片段。
                             escaped = escaped.replace(/\{([^}]+)\}/g, (match, group) => {
                                 return '(?:' + group.split(',').map(s => s.trim()).join('|') + ')';
                             });
-                            // 解析简易语法中的 * 通配符为受限匹配片段。
                             escaped = escaped.replace(/\*/g, buildSimpleWildcardPattern());
 
                             let testRegex = new RegExp(escaped, 'gmu');
@@ -156,7 +155,7 @@ export function applyVisualMask(originalText) {
 }
 
 /**
- * 排队执行增量聊天保存，合并短时间内的重复请求。
+ * 排队执行增量聊天保存。
  * @returns {void}
  */
 export function queueIncrementalChatSave() {

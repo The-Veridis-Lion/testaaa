@@ -3,7 +3,6 @@ import { applyReplacements, applyVisualMask, buildProcessors } from './core.js';
 
 /**
  * 判断节点是否属于受保护区域。
- * 保护节点白名单用于避免误杀系统级 UI（插件弹窗、设置面板、提示词编辑区、数据库扩展字段等）。
  * @param {Element} node 待检查节点。
  * @returns {boolean} true 表示应跳过净化。
  */
@@ -39,7 +38,7 @@ function isRevertedMessageDomNode(node) {
 }
 
 /**
- * 对指定 DOM 子树执行净化替换（文本节点、注释节点、输入框）。
+ * 对指定 DOM 子树执行净化替换。
  * @param {Node} rootNode 待净化根节点。
  * @returns {void}
  */
@@ -57,8 +56,6 @@ let node;
         if (parent && (isProtectedNode(parent) || isRevertedMessageDomNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
 
         const original = node.nodeValue || '';
-        
-        // --- 直接跳过纯空白节点 ---
         if (original.trim() === '') continue;
 
         const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });

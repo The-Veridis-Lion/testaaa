@@ -353,7 +353,7 @@ export function bindEvents() {
             if (confirm(`预设 "${extension_settings[extensionName].activePreset}" 有未保存的改动，是否保存？\n点击【确定】保存，点击【取消】直接关闭放弃改动。`)) {
                 $('#bl-preset-save').click();
             } else {
-                // 如果用户选择不保存，则将界面状态回滚到已保存状态，避免脏数据残留
+                // 放弃保存时回滚到已保存状态，避免脏数据残留。
                 applyPresetByName(extension_settings[extensionName].activePreset, { skipRender: true });
             }
         }
@@ -608,10 +608,6 @@ export function bindEvents() {
         }
     });
 
-    // ==========================================
-    // 独立子映射管理
-    // ==========================================
-    
     $(document).off('click', '#bl-add-subrule-btn').on('click', '#bl-add-subrule-btn', () => openSingleRuleModal(-1));
 
     $(document).off('click', '.bl-move-subrule-up-btn').on('click', '.bl-move-subrule-up-btn', function() {
@@ -641,10 +637,6 @@ export function bindEvents() {
         openSingleRuleModal($(this).data('index'));
     });
 
-    // ==========================================
-    // 独立编辑弹窗事件 (包含备注的快捷修改与保存)
-    // ==========================================
-    
     $(document).off('click', '.bl-remark-subrule-btn').on('click', '.bl-remark-subrule-btn', function(e) {
         e.preventDefault();
         const index = $(this).data('index');
@@ -713,10 +705,6 @@ export function bindEvents() {
         clearRegexTargetValidationState();
         $('#bl-subrule-edit-modal').fadeOut(150);
     });
-
-    // ==========================================
-    // ✨ 修复：编辑合集弹窗上的叉号按钮 (已改为绑定 #bl-edit-cancel-x)
-    // ==========================================
 
     $(document).off('click', '#bl-edit-cancel-x').on('click', '#bl-edit-cancel-x', () => $('#bl-rule-edit-modal').hide());
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
