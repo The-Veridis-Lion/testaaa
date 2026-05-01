@@ -293,7 +293,11 @@ export function bindEvents() {
     const applyRegexTargetValidationError = (error) => {
         const message = formatRegexTargetError(error);
         $('#bl-modal-sub-target').addClass('bl-invalid').attr('aria-invalid', 'true');
-        $('#bl-modal-sub-target-error').addClass('is-visible').text(message);
+        
+        // ✨ 将原本单纯的 text(message) 改为带图标的 html，并对报错内容进行转义防注入
+        const safeMsg = String(message).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        $('#bl-modal-sub-target-error').addClass('is-visible').html(`<i class="fas fa-circle-exclamation"></i> ${safeMsg}`);
+        
         return message;
     };
     const subruleModeUIMap = {
