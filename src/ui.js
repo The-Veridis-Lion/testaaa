@@ -10,9 +10,8 @@ function safeHtml(str) {
 
 export function showToast(message) {
     $('.bl-toast').remove();
-    // 增加 fa-circle-exclamation 圆形感叹号图标
-    const $toast = $('<div class="bl-toast" role="status" aria-live="polite"><i class="fa-solid fa-circle-exclamation" style="margin-right: 6px; font-size: 14px;"></i><span class="bl-toast-text"></span></div>');
-    // 安全地注入文本，防止 HTML 注入
+    // 替换为 100% 兼容的 fas fa-exclamation-circle 图标
+    const $toast = $('<div class="bl-toast" role="status" aria-live="polite"><i class="fas fa-exclamation-circle" style="margin-right: 6px; font-size: 15px;"></i><span class="bl-toast-text"></span></div>');
     $toast.find('.bl-toast-text').text(String(message || ''));
     $('body').append($toast);
     setTimeout(() => $toast.addClass('show'), 10);
