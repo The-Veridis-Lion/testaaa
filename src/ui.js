@@ -336,48 +336,40 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
-            <div class="bl-modal-card bl-edit-modal-card bl-subrule-modal-card">
-                <div class="bl-subrule-modal-header">
-                    <div class="bl-subrule-mode-panel">
-                        <label for="bl-modal-sub-mode" class="bl-field-label bl-subrule-mode-label">匹配模式</label>
-                        <div class="bl-mode-select-shell bl-subrule-mode-select-shell">
-                            <select id="bl-modal-sub-mode" class="bl-input bl-mode-select-native">
-                                <option value="simple">简易组合</option>
-                                <option value="text">普通文本</option>
-                                <option value="regex">正则表达式</option>
-                            </select>
-                        </div>
-                        <div id="bl-modal-sub-mode-desc" class="bl-mode-select-desc">推荐！支持 {} 与 * 号</div>
+            <div class="bl-modal-card" style="width: 90%; max-width: 400px; padding: 20px; border-radius: 12px; display: flex; flex-direction: column;">
+                
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed var(--border-dash); padding-bottom: 12px; margin-bottom: 12px;">
+                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                        <select id="bl-modal-sub-mode" style="border:none; font-size:16px; font-weight:bold; background:transparent; color:var(--text-main); padding:0; outline:none; cursor:pointer;">
+                            <option value="simple">🧩 简易组合</option>
+                            <option value="text">📝 普通文本</option>
+                            <option value="regex">⚙️ 正则表达式</option>
+                        </select>
+                        <div id="bl-modal-sub-mode-desc" style="font-size:12px; color:var(--text-sub); border: 1px solid var(--border-color); padding:2px 6px; border-radius:4px; width:fit-content;">推荐！支持{}与*号</div>
                     </div>
-                    <button id="bl-modal-sub-save" class="bl-primary-btn bl-subrule-save-btn" title="\u5b8c\u6210\u4fdd\u5b58">
-                        <i class="fas fa-check"></i> \u5b8c\u6210\u4fdd\u5b58
-                    </button>
+                    <button id="bl-modal-sub-save" style="background:var(--bl-background-secondary); border:none; border-radius:8px; font-size:18px; cursor:pointer; color:var(--text-main); padding:6px 12px; transition: 0.2s;"><i class="fas fa-check"></i></button>
                 </div>
-                <div class="bl-subrule-modal-divider"></div>
-
-                <div class="bl-subrule-modal-body">
+                
+                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
                     <div class="bl-subrule-field">
-                        <label class="bl-field-label">备注说明 (可选)</label>
-                        <input type="text" id="bl-modal-sub-remark" class="bl-input bl-subrule-modal-input" placeholder="例如：处理特定角色的口头禅">
+                        <label style="font-size:12px; color:var(--text-mute); margin-bottom:4px; display:block;">备注说明 (可选)</label>
+                        <input type="text" id="bl-modal-sub-remark" class="bl-input" placeholder="例如：处理特定角色的口头禅" style="background:var(--bl-background-secondary) !important; border:none !important;">
                     </div>
-
                     <div class="bl-subrule-field">
-                        <label class="bl-field-label">查找内容</label>
-                        <textarea id="bl-modal-sub-target" class="bl-textarea bl-subrule-modal-input" rows="4"></textarea>
-                        <div id="bl-modal-sub-error" class="bl-error-text" style="display:none; color:#ff4757; font-size:12px; margin-top:4px;" aria-live="polite"></div>
+                        <label style="font-size:12px; color:var(--text-mute); margin-bottom:4px; display:block;">查找内容</label>
+                        <textarea id="bl-modal-sub-target" class="bl-textarea" rows="3" style="background:var(--bl-background-secondary) !important; border:none !important; resize:none;"></textarea>
+                        <div id="bl-modal-sub-error" class="bl-error-text" style="display:none; color:#ff4757; font-size:12px; margin-top:4px;"></div>
                     </div>
-
                     <div class="bl-subrule-field">
-                        <label class="bl-field-label">替换为</label>
-                        <textarea id="bl-modal-sub-rep" class="bl-textarea bl-subrule-modal-input" rows="4"></textarea>
+                        <label style="font-size:12px; color:var(--text-mute); margin-bottom:4px; display:block;">替换为</label>
+                        <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="3" placeholder="替换后词汇 (每行一条，支持随机，可留空)" style="background:var(--bl-background-secondary) !important; border:none !important; resize:none;"></textarea>
                     </div>
                 </div>
-
-                <button id="bl-modal-sub-cancel" class="bl-secondary-btn bl-subrule-modal-cancel">取消修改</button>
+                
+                <button id="bl-modal-sub-cancel" style="width:100%; background:var(--bl-background-tertiary); color:var(--text-main); border:none; padding:12px; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer;">取消修改</button>
             </div>
         </div>
     `);
-} 
 
 export function showDeepCleanOverlay() {
     $('body').append(`
