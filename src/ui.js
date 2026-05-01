@@ -44,10 +44,10 @@ export function showFeedbackToast(message, options = {}) {
     clearTimeout(feedbackToastTimer);
 
     $('#bl-feedback-toast-text').text(String(message || '操作成功'));
-    $toast.stop(true, true).css('display', 'flex').hide().fadeIn(120);
+    $toast.stop(true, true).css({ display: 'flex', opacity: 0 }).fadeTo(150, 1);
 
     feedbackToastTimer = setTimeout(() => {
-        $toast.stop(true, true).fadeOut(fadeDuration);
+        $toast.stop(true, true).fadeTo(fadeDuration, 0, () => $toast.hide());
     }, duration);
 }
 
@@ -319,7 +319,7 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-feedback-toast" role="status" aria-live="polite" style="display:none;">
-            <i class="fa-solid fa-circle-check"></i>
+            <i class="fas fa-exclamation-circle"></i>
             <span id="bl-feedback-toast-text">操作成功</span>
         </div>
     `);
@@ -357,9 +357,8 @@ export function setupUI() {
                         </div>
                         <div id="bl-modal-sub-mode-desc" class="bl-mode-select-desc">推荐！支持 {} 与 * 号</div>
                     </div>
-                    <button id="bl-modal-sub-save" class="bl-primary-btn bl-subrule-save-btn" title="完成保存">
-                        <i class="fas fa-check"></i>
-                        <span>完成保存</span>
+                    <button id="bl-modal-sub-save" class="bl-primary-btn bl-subrule-save-btn" title="\u5b8c\u6210\u4fdd\u5b58">
+                        <i class="fas fa-check"></i> \u5b8c\u6210\u4fdd\u5b58
                     </button>
                 </div>
                 <div class="bl-subrule-modal-divider"></div>
@@ -373,7 +372,7 @@ export function setupUI() {
                     <div class="bl-subrule-field">
                         <label class="bl-field-label">查找内容</label>
                         <textarea id="bl-modal-sub-target" class="bl-textarea bl-subrule-modal-input" rows="4"></textarea>
-                        <div id="bl-modal-sub-error" class="bl-error-text" style="display:none;" aria-live="polite"></div>
+                        <div id="bl-modal-sub-error" class="bl-error-text" style="display:none; color:#ff4757; font-size:12px; margin-top:4px;" aria-live="polite"></div>
                     </div>
 
                     <div class="bl-subrule-field">

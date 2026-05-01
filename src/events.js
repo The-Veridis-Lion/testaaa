@@ -728,19 +728,20 @@ export function bindEvents() {
             runtimeState.currentEditingSubrules[runtimeState.currentSubruleEditIndex] = subRule;
         }
 
-        $('#bl-subrule-edit-modal').stop(true, true).fadeOut(150, () => {
-            renderSubrulesToModal();
-            showFeedbackToast('保存成功');
+        $('#bl-subrule-edit-modal').stop(true, true).fadeOut(150);
+        renderSubrulesToModal();
+        showFeedbackToast('保存成功');
 
-            if (isNewSubrule) {
+        if (isNewSubrule) {
+            setTimeout(() => {
                 scheduleRevealAfterRender(() => {
                     const container = $('#bl-edit-subrules-container');
                     const newIndex = runtimeState.currentEditingSubrules.length - 1;
                     const target = container.find(`.bl-subrule-card[data-subrule-index="${newIndex}"]`);
                     return { container, target };
                 });
-            }
-        });
+            }, 150);
+        }
     });
 
     $(document).off('click', '#bl-modal-sub-cancel').on('click', '#bl-modal-sub-cancel', () => $('#bl-subrule-edit-modal').stop(true, true).fadeOut(150));
@@ -795,17 +796,18 @@ export function bindEvents() {
         renderTagsPreserveBatchSelection();
         performGlobalCleanse();
         const diagnostics = filterDiagnosticsByRuleIndex(targetRuleIndex);
-        $('#bl-rule-edit-modal').stop(true, true).fadeOut(120, () => {
-            showSaveResultFeedback(diagnostics);
+        $('#bl-rule-edit-modal').stop(true, true).fadeOut(120);
+        showSaveResultFeedback(diagnostics);
 
-            if (isNewRuleGroup) {
+        if (isNewRuleGroup) {
+            setTimeout(() => {
                 scheduleRevealAfterRender(() => {
                     const container = $('#bl-tags-container');
                     const target = container.find(`.card[data-index="${targetRuleIndex}"]`);
                     return { container, target };
                 });
-            }
-        });
+            }, 150);
+        }
     });
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
