@@ -14,6 +14,7 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
+    showToast // 🌟 新增导入 Toast
 } from './ui.js';
 import {
     buildProcessors,
@@ -493,6 +494,7 @@ export function bindEvents() {
             runtimeState.isRegexDirty = true;
             saveSettingsDebounced();
             renderTagsPreserveBatchSelection();
+            showToast("合集删除成功"); // 🌟 提示合集删除成功
         }
     });
 
@@ -516,9 +518,12 @@ export function bindEvents() {
         renderSubrulesToModal();
     });
 
+    // 🌟 词条(子规则)删除交互确认与提示
     $(document).off('click', '.bl-del-subrule-btn').on('click', '.bl-del-subrule-btn', function() {
+        if (!confirm('确定要删除该映射规则吗？')) return; // 新增拦截
         runtimeState.currentEditingSubrules.splice($(this).data('index'), 1);
         renderSubrulesToModal();
+        showToast("词条删除成功"); // 提示词条删除成功
     });
 
     $(document).off('click', '.bl-edit-subrule-btn').on('click', '.bl-edit-subrule-btn', function() {
@@ -541,28 +546,44 @@ export function bindEvents() {
         }
     });
 
+    // 🌟 徽章动态联动更新
     $(document).off('change', '#bl-modal-sub-mode').on('change', '#bl-modal-sub-mode', function() {
         const mode = $(this).val();
         const $t = $('#bl-modal-sub-target');
         const $r = $('#bl-modal-sub-rep');
+        const $badge = $('#bl-modal-sub-mode-badge'); // 获取徽章
         
         if (mode === 'regex') {
             $t.attr('placeholder', "正则匹配规则 (每行一条)\n例如：/(宛若|如同)(神明|恶魔)/g");
             $r.attr('placeholder', "替换后词汇 (每行一条，允许含逗号，可留空)\n支持 $1, $2 捕获组引用");
+            $badge.text("专业模式，支持捕获组引用");
         } else if (mode === 'simple') {
             $t.attr('placeholder', "简易语法 (每行一条)\n例如：{宛若,如同}{神明,恶魔}?");
             $r.attr('placeholder', "替换后词汇 (每行一条，支持随机，可留空)");
+            $badge.text("推荐! 支持{}备选与*号通配");
         } else {
             $t.attr('placeholder', "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在");
             $r.attr('placeholder', "替换后词汇 (逗号/空格分隔，留空直接删除)");
+            $badge.text("长词优先匹配替换");
         }
     });
 
+    // 🌟 正则自查拦截保存
     $(document).off('click', '#bl-modal-sub-save').on('click', '#bl-modal-sub-save', function() {
         const mode = $('#bl-modal-sub-mode').val();
         const tStr = $('#bl-modal-sub-target').val();
         const rStr = $('#bl-modal-sub-rep').val();
         const remarkStr = $('#bl-modal-sub-remark').val().trim();
+        
+        // 正则语法拦截
+        if (mode === 'regex') {
+            try {
+                new RegExp(tStr, 'gmu');
+            } catch (e) {
+                alert("正则表达式语法错误，请检查！\n\n错误详情：" + e.message);
+                return;
+            }
+        }
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
         const replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
@@ -591,10 +612,6 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-modal-sub-cancel').on('click', '#bl-modal-sub-cancel', () => $('#bl-subrule-edit-modal').fadeOut(150));
 
-    // ==========================================
-    // ✨ 修复：编辑合集弹窗上的叉号按钮 (已改为绑定 #bl-edit-cancel-x)
-    // ==========================================
-
     $(document).off('click', '#bl-edit-cancel-x').on('click', '#bl-edit-cancel-x', () => $('#bl-rule-edit-modal').hide());
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
     $(document).off('click', '#bl-transfer-copy').on('click', '#bl-transfer-copy', () => runRuleTransfer(false));
@@ -603,6 +620,7 @@ export function bindEvents() {
         if (e.target && e.target.id === 'bl-rule-transfer-modal') closeTransferModal();
     });
 
+    // 🌟 合集保存、滚动、高亮、淡出提示
     $(document).off('click', '#bl-edit-save').on('click', '#bl-edit-save', () => {
         const nameVal = $('#bl-edit-name').val().trim();
         const validSubrules = runtimeState.currentEditingSubrules.filter(sub => sub.targets && sub.targets.length > 0);
@@ -613,7 +631,9 @@ export function bindEvents() {
         }
 
         let isEnabled = true;
-        if (runtimeState.currentEditingIndex !== -1) {
+        const isNewGroup = runtimeState.currentEditingIndex === -1; // 标记是否新增
+        
+        if (!isNewGroup) {
             isEnabled = extension_settings[extensionName].rules[runtimeState.currentEditingIndex].enabled !== false;
         }
 
@@ -623,7 +643,7 @@ export function bindEvents() {
             enabled: isEnabled
         };
 
-        if (runtimeState.currentEditingIndex === -1) extension_settings[extensionName].rules.push(newRule);
+        if (isNewGroup) extension_settings[extensionName].rules.push(newRule);
         else extension_settings[extensionName].rules[runtimeState.currentEditingIndex] = newRule;
 
         runtimeState.isRegexDirty = true;
@@ -631,6 +651,24 @@ export function bindEvents() {
         renderTags();
         performGlobalCleanse();
         $('#bl-rule-edit-modal').hide();
+        showToast("合集保存成功"); // 提示合集保存成功
+        
+        // 新增滚动与闪烁动画
+        if (isNewGroup) {
+            setTimeout(() => {
+                const newCard = $('#bl-tags-container .card').last()[0];
+                if (newCard) {
+                    const rect = newCard.getBoundingClientRect();
+                    const containerRect = $('#bl-tags-container')[0].getBoundingClientRect();
+                    // 判断是否在可视区内
+                    if (rect.top < containerRect.top || rect.bottom > containerRect.bottom) {
+                        newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    $(newCard).addClass('bl-flash-highlight');
+                    setTimeout(() => $(newCard).removeClass('bl-flash-highlight'), 1600);
+                }
+            }, 50);
+        }
     });
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
@@ -699,6 +737,7 @@ export function bindEvents() {
         updateToolbarUI();
     });
 
+    // 🌟 存档删除与 Toast
     $(document).off('click', '#bl-preset-delete').on('click', '#bl-preset-delete', function() {
         const settings = extension_settings[extensionName];
         const name = settings.activePreset;
@@ -716,6 +755,7 @@ export function bindEvents() {
             renderTags();
             updateToolbarUI();
             performGlobalCleanse();
+            showToast("存档删除成功"); // 提示存档删除成功
         }
     });
 
@@ -730,15 +770,16 @@ export function bindEvents() {
         runtimeState.isRegexDirty = true;
         saveSettingsDebounced();
         updateToolbarUI();
-        renderTags(); // 必须重新渲染以清空列表
+        renderTags(); 
     });
 
+    // 🌟 存档保存与 Toast
     $(document).off('click', '#bl-preset-save').on('click', '#bl-preset-save', function() {
         const settings = extension_settings[extensionName];
         if (!settings.activePreset) { alert("当前为临时规则，请点击“新建”保存为新存档。"); return; }
         settings.presets[settings.activePreset] = JSON.parse(JSON.stringify(settings.rules));
         saveSettingsDebounced();
-        alert("已保存到存档：" + settings.activePreset);
+        showToast("预设保存成功"); // 替换掉原来的 alert，改用柔和的 Toast
     });
 
     $(document).off('click', '#bl-preset-export').on('click', '#bl-preset-export', function() {
