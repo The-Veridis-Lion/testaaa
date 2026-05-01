@@ -1046,57 +1046,56 @@
         padding: 4px !important;
     }
 
-   #bl-purifier-popup .toolbar { 
-        flex-wrap: nowrap !important; 
+   #bl-purifier-popup .toolbar {
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
     }
-    .select-box { 
-        flex: 1 1 0 !important; /* 核心：让下拉框占满左边所有可用空间 */
+    .select-box, #bl-preset-select {
+        flex: 1 1 0 !important; /* 让它尽情弹性伸缩 */
+        width: 0 !important; /* 🌟 关键：打断原生宽度，强迫它被外部容器管束 */
         min-width: 0 !important; 
+        padding-right: 26px !important;
+        text-overflow: ellipsis !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
     }
-    #bl-preset-select { 
-        padding-right: 25px !important; 
-        text-overflow: ellipsis; 
-        white-space: nowrap; 
-        overflow: hidden; 
-    }
-    #bl-purifier-popup .toolbar .icon-group { 
-        flex: 0 0 auto !important; /* 右侧图标组只占用自己所需的最小宽度，不再强占 45% */
+    #bl-purifier-popup .toolbar .icon-group {
+        flex: 0 0 auto !important; /* 右侧图标组保持自身大小，不再强行占据比例 */
         display: flex !important;
         flex-wrap: nowrap !important;
     }
 }
-}
 
 /* 修改：自动淡出小弹窗 (屏幕居中版) */
 .bl-toast {
-    position: fixed;
-    top: 50%; /* 垂直居中 */
-    left: 50%; /* 水平居中 */
-    transform: translate(-50%, calc(-50% + 20px)); /* 初始状态往下一点点，做上浮动画 */
+    position: fixed !important;
+    top: 50% !important;  /* 强行垂直居中 */
+    left: 50% !important; /* 强行水平居中 */
+    transform: translate(-50%, calc(-50% + 20px)) !important; /* 初始偏下一点，用于上浮动画 */
     opacity: 0;
-    max-width: min(80vw, 420px);
-    padding: 12px 18px;
-    border-radius: 12px;
-    background: rgba(0, 0, 0, 0.75);
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 500;
-    line-height: 1.45;
-    text-align: center;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    pointer-events: none;
+    max-width: min(80vw, 420px) !important;
+    padding: 12px 18px !important;
+    border-radius: 12px !important;
+    background: rgba(0, 0, 0, 0.75) !important;
+    color: #ffffff !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.45 !important;
+    text-align: center !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    pointer-events: none !important;
     z-index: 10000050 !important;
-    transition: opacity 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
 }
 
 .bl-toast.show {
-    opacity: 1;
-    transform: translate(-50%, -50%); /* 最终完美停在正中央 */
+    opacity: 1 !important;
+    transform: translate(-50%, -50%) !important; /* 完美停在正中央 */
 }
 
 .bl-field-error {
