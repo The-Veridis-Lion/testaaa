@@ -42,10 +42,10 @@ export function showFeedbackToast(message, options = {}) {
     clearTimeout(feedbackToastTimer);
 
     $('#bl-feedback-toast-text').text(String(message || '操作成功'));
-    $toast.stop(true, true).css('display', 'flex').hide().fadeIn(200);
+    $toast.stop(true, true).css({ display: 'flex', opacity: 0 }).animate({ opacity: 1 }, 150);
 
     feedbackToastTimer = setTimeout(() => {
-        $toast.fadeOut(300);
+        $toast.animate({ opacity: 0 }, 200, function() { $(this).hide(); });
     }, 2000);
 }
 
@@ -57,28 +57,19 @@ export function closeActionConfirmModal() {
 export function showActionConfirmModal(options = {}) {
     const $modal = $('#bl-action-confirm-modal');
     if (!$modal.length) return;
-
-    const title = String(options.title || '确认操作');
-    const message = String(options.message || '确定要继续吗？');
-    const confirmText = String(options.confirmText || '确认');
-    const cancelText = String(options.cancelText || '取消');
     actionConfirmHandler = typeof options.onConfirm === 'function' ? options.onConfirm : null;
 
-    $('#bl-action-confirm-title').text(title);
-    $('#bl-action-confirm-message').html(safeHtml(message).replace(/\n/g, '<br>'));
-    $('#bl-action-confirm-submit').text(confirmText);
-    $('#bl-action-confirm-cancel').text(cancelText);
+    $('#bl-action-confirm-title').html(`<i class="fas fa-exclamation-triangle"></i> ${options.title || '确认操作'}`);
+    $('#bl-action-confirm-message').html(String(options.message || '确定要继续吗？').replace(/\n/g, '<br>'));
+    $('#bl-action-confirm-submit').text(options.confirmText || '确认');
+    $('#bl-action-confirm-cancel').text(options.cancelText || '取消');
 
     $('#bl-action-confirm-cancel').off('click').on('click', () => closeActionConfirmModal());
     $('#bl-action-confirm-submit').off('click').on('click', () => {
         const handler = actionConfirmHandler;
         actionConfirmHandler = null;
-        $modal.stop(true, true).fadeOut(120, () => {
-            if (typeof handler === 'function') handler();
-        });
-    });
-    $modal.off('click').on('click', (e) => {
-        if (e.target && e.target.id === 'bl-action-confirm-modal') closeActionConfirmModal();
+        $modal.stop(true, true).fadeOut(120);
+        if (typeof handler === 'function') handler();
     });
 
     $modal.stop(true, true).css('display', 'flex').hide().fadeIn(120);
@@ -126,9 +117,8 @@ function isElementVisibleInContainer(element, container) {
 function pulseElement(element) {
     if (!element) return;
     element.classList.remove('bl-reveal-flash');
-    void element.offsetWidth;
+    void element.getBoundingClientRect();
     element.classList.add('bl-reveal-flash');
-    setTimeout(() => element.classList.remove('bl-reveal-flash'), 1650);
 }
 
 export function revealAndPulse(target, container) {

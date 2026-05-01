@@ -708,12 +708,12 @@
 }
 
 .bl-reveal-flash {
-    animation: bl-reveal-flash 1s ease-in-out 2 !important;
+    animation: bl-reveal-flash-anim 0.8s ease-in-out 2 !important;
 }
 
-@keyframes bl-reveal-flash {
-    0%, 100% { background-color: var(--bl-background-secondary); }
-    50% { background-color: color-mix(in srgb, var(--bl-accent-color) 40%, transparent); transform: scale(1.02); }
+@keyframes bl-reveal-flash-anim {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(0.2); }
 }
 
 #bl-edit-subrules-container { 
@@ -1418,4 +1418,64 @@
         min-height: 60px !important;
         font-size: 17px !important;
     }
+}
+
+/* 确认与警告弹窗通用外壳 */
+.bl-action-confirm-card, .bl-regex-warning-card {
+    width: min(420px, 90vw) !important;
+    background: var(--bl-background-popup) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 16px !important;
+    padding: 24px 28px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+}
+
+/* 确认删除专用样式 */
+.bl-action-confirm-title {
+    font-size: 20px !important;
+    font-weight: bold !important;
+    margin: 0 !important;
+    color: var(--bl-text-primary) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+.bl-action-confirm-message {
+    font-size: 14px !important;
+    color: var(--bl-text-secondary) !important;
+    line-height: 1.6 !important;
+    margin: 4px 0 16px 0 !important;
+}
+.bl-action-confirm-actions {
+    display: flex !important;
+    gap: 12px !important;
+    justify-content: space-between !important;
+}
+.bl-action-confirm-actions button {
+    flex: 1 !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    border: none !important;
+    cursor: pointer !important;
+}
+#bl-action-confirm-cancel {
+    background: var(--bl-background-tertiary) !important;
+    color: var(--bl-text-primary) !important;
+}
+#bl-action-confirm-submit {
+    background: #2b4c3b !important;
+    color: #ffffff !important;
+}
+
+/* 警告弹窗项美化 */
+.bl-regex-warning-item {
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
 }
