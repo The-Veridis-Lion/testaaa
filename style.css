@@ -1045,6 +1045,26 @@
         font-size: 15px !important;
         padding: 4px !important;
     }
+
+   #bl-purifier-popup .toolbar { 
+        flex-wrap: nowrap !important; 
+    }
+    .select-box { 
+        flex: 1 1 0 !important; /* 核心：让下拉框占满左边所有可用空间 */
+        min-width: 0 !important; 
+    }
+    #bl-preset-select { 
+        padding-right: 25px !important; 
+        text-overflow: ellipsis; 
+        white-space: nowrap; 
+        overflow: hidden; 
+    }
+    #bl-purifier-popup .toolbar .icon-group { 
+        flex: 0 0 auto !important; /* 右侧图标组只占用自己所需的最小宽度，不再强占 45% */
+        display: flex !important;
+        flex-wrap: nowrap !important;
+    }
+}
 }
 
 /* 修改：自动淡出小弹窗 (屏幕居中版) */
