@@ -1498,3 +1498,29 @@
     0% { background-color: var(--bl-danger-soft); transform: scale(1.02); box-shadow: 0 0 15px var(--bl-accent-color); }
     100% { background-color: var(--bl-background-secondary); transform: scale(1); box-shadow: none; }
 }
+
+/* 统一：删除确认弹窗与正则警告弹窗 */
+.bl-action-confirm-card, .bl-regex-warning-card {
+    background: var(--bg-container) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-main) !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2) !important;
+}
+
+#bl-action-confirm-cancel {
+    background: var(--bl-background-secondary) !important;
+    color: var(--text-main) !important;
+}
+
+#bl-action-confirm-submit {
+    background: #2b4c3b !important;
+    color: #ffffff !important;
+}
+
+.bl-regex-warning-item {
+    background: var(--bl-background-secondary) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+}
