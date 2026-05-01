@@ -5,137 +5,84 @@ import { deepCleanObjectSync } from './cleanse.js';
 import { buildDiffSnippetsFromText, computeMessageSignature, ensureMessageDiffButton, getLatestTrackableDiffIndices, hasRealDiffCache, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
 
-const MODE_LABELS = {
-    text: '普通文本',
-    simple: '简易组合',
-    regex: '正则表达式',
-};
-
-function getModeLabel(mode) {
-    return MODE_LABELS[mode] || MODE_LABELS.text;
-}
-
-function getActivePresetDisplayName() {
+/**
+ * 根据当前规则构建净化处理器（文本/正则/简易语法）。
+ * @returns {Array} 可复用的处理器数组。
+ */
+export function buildProcessors() {
+    if (!runtimeState.isRegexDirty) return runtimeState.activeProcessors;
     const { extension_settings } = getAppContext();
-    const activePreset = String(extension_settings?.[extensionName]?.activePreset || '').trim();
-    return activePreset || '临时规则';
-}
+    const rules = extension_settings[extensionName]?.rules || [];
 
-function createTargetPreview(target, maxLength = 48) {
-    const clean = String(target || '').replace(/\s+/g, ' ').trim();
-    if (!clean) return '（空）';
-    return clean.length > maxLength ? `${clean.slice(0, maxLength)}...` : clean;
-}
+    let textTargets = [];
+    let wordToReplacements = Object.create(null);
+    let processors = [];
 
-function parseRegexPattern(rawTarget) {
-    let pattern = rawTarget;
-    let flags = 'gmu';
-    if (rawTarget.startsWith('/')) {
-        const lastSlash = rawTarget.lastIndexOf('/');
-        if (lastSlash > 0) {
-            pattern = rawTarget.substring(1, lastSlash);
-            flags = rawTarget.substring(lastSlash + 1);
-            if (!flags.includes('g')) flags += 'g';
-        }
-    }
-    return { pattern, flags };
-}
-
-function canMatchEmpty(regex) {
-    regex.lastIndex = 0;
-    const matched = regex.test('');
-    regex.lastIndex = 0;
-    return matched;
-}
-
-function buildDiagnostic(meta, reasonCode, reasonText, extra = {}) {
-    return {
-        ...meta,
-        reasonCode,
-        reasonText,
-        ...extra,
-    };
-}
-
-function compileRules(rules, options = {}) {
-    const presetName = String(options.presetName || '').trim() || '临时规则';
-    const ruleIndexOffset = Number.isInteger(options.ruleIndexOffset) ? options.ruleIndexOffset : 0;
-    const diagnostics = [];
-    const textTargets = [];
-    const wordToReplacements = Object.create(null);
-    const processors = [];
-
-    for (let ruleIndex = 0; ruleIndex < rules.length; ruleIndex++) {
-        const rule = rules[ruleIndex];
-        if (!rule || rule.enabled === false) continue;
-        const actualRuleIndex = ruleIndex + ruleIndexOffset;
-        const ruleName = String(rule.name || `合集 ${actualRuleIndex + 1}`).trim() || `合集 ${actualRuleIndex + 1}`;
+    for (const rule of rules) {
+        if (rule.enabled === false) continue;
         const subRulesToProcess = Array.isArray(rule.subRules) ? rule.subRules : [];
 
-        for (let subRuleIndex = 0; subRuleIndex < subRulesToProcess.length; subRuleIndex++) {
-            const sub = subRulesToProcess[subRuleIndex] || {};
+        for (const sub of subRulesToProcess) {
             const mode = sub.mode || 'text';
             const targets = Array.isArray(sub.targets) ? sub.targets : [];
             const replacements = Array.isArray(sub.replacements) ? sub.replacements : [];
 
-            for (let targetIndex = 0; targetIndex < targets.length; targetIndex++) {
-                const target = String(targets[targetIndex] || '').trim();
-                if (!target) continue;
-
-                const meta = {
-                    presetName,
-                    ruleIndex: actualRuleIndex,
-                    ruleName,
-                    subRuleIndex,
-                    targetIndex,
-                    mode,
-                    modeLabel: getModeLabel(mode),
-                    target,
-                    targetPreview: createTargetPreview(target),
-                };
-
-                if (mode === 'text') {
-                    textTargets.push(target);
-                    wordToReplacements[target] = replacements;
-                    continue;
-                }
-
-                if (mode === 'regex') {
-                    try {
-                        const { pattern, flags } = parseRegexPattern(target);
-                        const safetyRegex = new RegExp(pattern, flags);
-                        if (canMatchEmpty(safetyRegex)) {
-                            logger.warn(`拦截到危险的空匹配正则，已禁用单条规则: ${target}`);
-                            diagnostics.push(buildDiagnostic(meta, 'empty-match', '可匹配空字符，保存后会被自动 disable。'));
-                            continue;
-                        }
-                        processors.push({ regex: new RegExp(pattern, flags), replacements, isRegexMode: true });
-                    } catch (e) {
-                        logger.warn(`忽略非法正则表达式: ${target}`);
-                        diagnostics.push(buildDiagnostic(meta, 'invalid-regex', '正则语法无效，保存后会被自动 disable。', { error: String(e?.message || e || '') }));
+            if (mode === 'text') {
+                for (const t of targets) {
+                    if (t) {
+                        textTargets.push(t);
+                        wordToReplacements[t] = replacements;
                     }
-                    continue;
                 }
+            } else if (mode === 'regex') {
+                for (const t of targets) {
+                    if (t) {
+                        try {
+                            let pattern = t;
+                            let flags = 'gmu';
+                            if (t.startsWith('/')) {
+                                const lastSlash = t.lastIndexOf('/');
+                                if (lastSlash > 0) {
+                                    pattern = t.substring(1, lastSlash);
+                                    flags = t.substring(lastSlash + 1);
+                                    if (!flags.includes('g')) flags += 'g';
+                                }
+                            }
 
-                if (mode === 'simple') {
-                    try {
-                        let escaped = target.replace(/[.+^$()[\]\\]/g, '\\$&');
-                        escaped = escaped.replace(/\{([^}]+)\}/g, (match, group) => {
-                            return '(?:' + group.split(',').map(s => s.trim()).join('|') + ')';
-                        });
-                        escaped = escaped.replace(/\*/g, buildSimpleWildcardPattern());
+                            let testRegex = new RegExp(pattern, flags);
+                            if (testRegex.test("")) {
+                                logger.warn(`拦截到危险的空匹配正则，已忽略: ${t}`);
+                                return;
+                            }
 
-                        const safetyRegex = new RegExp(escaped, 'gmu');
-                        if (canMatchEmpty(safetyRegex)) {
-                            logger.warn(`拦截到危险的简易空匹配规则，已禁用单条规则: ${target}`);
-                            diagnostics.push(buildDiagnostic(meta, 'empty-match', '可匹配空字符，保存后会被自动 disable。'));
-                            continue;
+                            processors.push({ regex: testRegex, replacements, isRegexMode: true });
+                        } catch (e) {
+                            logger.warn(`忽略非法正则表达式: ${t}`);
                         }
+                    }
+                }
+            } else if (mode === 'simple') {
+                for (const t of targets) {
+                    if (t) {
+                        try {
+                            let escaped = t.replace(/[.+^$()[\]\\]/g, '\\$&');
+                            // 解析简易语法中的 {A,B} 备选分组。
+                            escaped = escaped.replace(/\{([^}]+)\}/g, (match, group) => {
+                                return '(?:' + group.split(',').map(s => s.trim()).join('|') + ')';
+                            });
+                            // 解析简易语法中的 * 通配符为受限匹配片段。
+                            escaped = escaped.replace(/\*/g, buildSimpleWildcardPattern());
 
-                        processors.push({ regex: new RegExp(escaped, 'gmu'), replacements, isRegexMode: true });
-                    } catch (e) {
-                        logger.warn(`简易规则解析失败: ${target}`);
-                        diagnostics.push(buildDiagnostic(meta, 'invalid-simple', '简易规则解析失败，保存后会被自动 disable。', { error: String(e?.message || e || '') }));
+                            let testRegex = new RegExp(escaped, 'gmu');
+                            if (testRegex.test("")) {
+                                logger.warn(`拦截到危险的简易空匹配规则，已忽略: ${t}`);
+                                return;
+                            }
+
+                            processors.push({ regex: testRegex, replacements, isRegexMode: true });
+                        } catch (e) {
+                            logger.warn(`简易规则解析失败: ${t}`);
+                        }
                     }
                 }
             }
@@ -150,34 +97,9 @@ function compileRules(rules, options = {}) {
         processors.unshift({ regex: textRegex, replacerMap: wordToReplacements, isRegexMode: false });
     }
 
-    return {
-        processors,
-        diagnostics,
-        textTargetCount: textTargets.length,
-    };
-}
-
-export function collectRuleDiagnostics(rules, options = {}) {
-    if (!Array.isArray(rules)) return [];
-    return compileRules(rules, options).diagnostics;
-}
-
-/**
- * 根据当前规则构建净化处理器（文本/正则/简易语法）。
- * @returns {Array} 可复用的处理器数组。
- */
-export function buildProcessors() {
-    if (!runtimeState.isRegexDirty) return runtimeState.activeProcessors;
-    const { extension_settings } = getAppContext();
-    const rules = extension_settings[extensionName]?.rules || [];
-    const compiled = compileRules(rules, {
-        presetName: getActivePresetDisplayName(),
-    });
-
-    runtimeState.activeProcessors = compiled.processors;
-    runtimeState.regexDiagnostics = compiled.diagnostics;
+    runtimeState.activeProcessors = processors;
     runtimeState.isRegexDirty = false;
-    logger.info(`规则处理器构建完成，共 ${compiled.processors.length} 个处理器（文本:${compiled.textTargetCount} | 正则:${compiled.processors.filter(p => p.isRegexMode).length} | 已禁用:${compiled.diagnostics.length}）`);
+    logger.info(`规则处理器构建完成，共 ${processors.length} 个处理器（文本:${textTargets.length} | 正则:${processors.filter(p => p.isRegexMode).length}）`);
     return runtimeState.activeProcessors;
 }
 

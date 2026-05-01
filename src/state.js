@@ -18,7 +18,6 @@ export const defaultSettings = {
 
 export const runtimeState = {
     activeProcessors: [],
-    regexDiagnostics: [],
     isRegexDirty: true,
     currentEditingIndex: -1,
     currentEditingSubrules: [],

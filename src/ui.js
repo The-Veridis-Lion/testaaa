@@ -8,153 +8,9 @@ function safeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
-const SUBRULE_MODE_META = {
-    simple: {
-        title: '简易组合',
-        desc: '推荐！支持 {} 与 * 号',
-    },
-    text: {
-        title: '普通文本',
-        desc: '按普通词条匹配，适合长词优先替换',
-    },
-    regex: {
-        title: '正则表达式',
-        desc: '专业模式，支持完整正则语法',
-    },
-};
-
-let feedbackToastTimer = null;
-let actionConfirmHandler = null;
-
-function getSubruleModeMeta(mode) {
-    return SUBRULE_MODE_META[mode] || SUBRULE_MODE_META.simple;
-}
-
-export function updateSubruleModeDisplay(mode) {
-    const meta = getSubruleModeMeta(mode);
-    $('#bl-modal-sub-mode-desc').text(meta.desc);
-}
-
-export function showFeedbackToast(message, options = {}) {
-    const $toast = $('#bl-feedback-toast');
-    if (!$toast.length) return;
-    clearTimeout(feedbackToastTimer);
-    
-    $('#bl-feedback-toast-text').text(String(message || '操作成功'));
-    // 放弃有 Bug 的 jQuery animate，使用纯 CSS 控制
-    $toast.css('display', 'flex');
-    // 强制重绘
-    void $toast[0].offsetWidth; 
-    $toast.removeClass('bl-toast-hide').addClass('bl-toast-show');
-    
-    feedbackToastTimer = setTimeout(() => {
-        $toast.removeClass('bl-toast-show').addClass('bl-toast-hide');
-        setTimeout(() => $toast.css('display', 'none'), 300);
-    }, 2000);
-}
-
-export function closeActionConfirmModal() {
-    actionConfirmHandler = null;
-    $('#bl-action-confirm-modal').stop(true, true).fadeOut(120);
-}
-
-export function showActionConfirmModal(options = {}) {
-    const $modal = $('#bl-action-confirm-modal');
-    if (!$modal.length) return;
-    actionConfirmHandler = typeof options.onConfirm === 'function' ? options.onConfirm : null;
-
-    $('#bl-action-confirm-title').html(`<i class="fas fa-exclamation-triangle"></i> ${options.title || '确认操作'}`);
-    $('#bl-action-confirm-message').html(String(options.message || '确定要继续吗？').replace(/\n/g, '<br>'));
-    $('#bl-action-confirm-submit').text(options.confirmText || '确认');
-    $('#bl-action-confirm-cancel').text(options.cancelText || '取消');
-
-    $('#bl-action-confirm-cancel').off('click').on('click', () => closeActionConfirmModal());
-    $('#bl-action-confirm-submit').off('click').on('click', () => {
-        const handler = actionConfirmHandler;
-        actionConfirmHandler = null;
-        $modal.stop(true, true).fadeOut(120);
-        if (typeof handler === 'function') handler();
-    });
-
-    $modal.stop(true, true).css('display', 'flex').hide().fadeIn(120);
-}
-
-export function closeRegexWarningModal() {
-    $('#bl-regex-warning-modal').stop(true, true).fadeOut(120);
-}
-
-export function showRegexWarningModal(diagnostics, options = {}) {
-    const items = Array.isArray(diagnostics) ? diagnostics : [];
-    if (items.length === 0) return;
-
-    const headerText = String(options.headerText || '保存成功，但以下规则会被 disable：');
-    $('#bl-regex-warning-summary').text(headerText);
-    $('#bl-regex-warning-list').html(items.map((item) => {
-        const groupNo = Number(item?.ruleIndex) + 1;
-        const subruleNo = Number(item?.subRuleIndex) + 1;
-        return `
-            <div class="bl-regex-warning-item">
-                <div class="bl-regex-warning-item-head">
-                    <span class="bl-regex-warning-chip">${safeHtml(item?.presetName || '临时规则')}</span>
-                    <span class="bl-regex-warning-chip">${safeHtml(item?.ruleName || `合集 ${groupNo}`)}</span>
-                </div>
-                <div class="bl-regex-warning-item-body">
-                    第 ${Number.isFinite(groupNo) ? groupNo : '?'} 个合集，第 ${Number.isFinite(subruleNo) ? subruleNo : '?'} 条规则
-                    <span class="bl-regex-warning-mode">${safeHtml(item?.modeLabel || '规则')}</span>
-                </div>
-                <div class="bl-regex-warning-item-target">${safeHtml(item?.targetPreview || item?.target || '（空）')}</div>
-                <div class="bl-regex-warning-item-reason">${safeHtml(item?.reasonText || '该规则会被自动 disable。')}</div>
-            </div>
-        `;
-    }).join(''));
-
-    $('#bl-regex-warning-modal').stop(true, true).css('display', 'flex').hide().fadeIn(120);
-}
-
-function isElementVisibleInContainer(element, container) {
-    if (!element || !container) return false;
-    const elementRect = element.getBoundingClientRect();
-    const containerRect = container.getBoundingClientRect();
-    return elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom;
-}
-
-function pulseElement(element) {
-    if (!element) return;
-    element.classList.remove('bl-reveal-flash');
-    void element.getBoundingClientRect();
-    element.classList.add('bl-reveal-flash');
-}
-
-export function revealAndPulse(target, container) {
-    window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-            const element = target?.jquery ? target.get(0) : target;
-            const scrollContainer = container?.jquery ? container.get(0) : container;
-            if (!element) return;
-
-            if (!scrollContainer || isElementVisibleInContainer(element, scrollContainer)) {
-                pulseElement(element);
-                return;
-            }
-
-            const containerRect = scrollContainer.getBoundingClientRect();
-            const elementRect = element.getBoundingClientRect();
-            const elementTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top);
-            const centeredOffset = (scrollContainer.clientHeight - elementRect.height) / 2;
-            const nextScrollTop = elementTop - centeredOffset;
-            const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
-            const clampedScrollTop = Math.max(0, Math.min(nextScrollTop, maxScrollTop));
-
-            $(scrollContainer).stop(true).animate({ scrollTop: clampedScrollTop }, 260, () => {
-                window.requestAnimationFrame(() => pulseElement(element));
-            });
-        });
-    });
-}
-
 export function setupUI() {
     logger.debug('[setupUI] 开始初始化 UI');
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-action-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal, #bl-feedback-toast, #bl-regex-warning-modal').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -263,19 +119,6 @@ export function setupUI() {
     `);
 
     $('body').append(`
-        <div id="bl-action-confirm-modal" class="bl-modal-shell" style="display:none;">
-            <div class="bl-modal-card bl-action-confirm-card">
-                <h3 id="bl-action-confirm-title" class="bl-action-confirm-title">确认删除</h3>
-                <p id="bl-action-confirm-message" class="bl-action-confirm-message">确定要删除当前内容吗？</p>
-                <div class="bl-modal-actions bl-action-confirm-actions">
-                    <button id="bl-action-confirm-cancel" class="bl-secondary-btn">取消</button>
-                    <button id="bl-action-confirm-submit" class="bl-primary-btn">确认删除</button>
-                </div>
-            </div>
-        </div>
-    `);
-
-    $('body').append(`
         <div id="bl-rule-transfer-modal" style="display:none;">
             <div class="bl-transfer-content">
                 <h3 class="bl-edit-modal-title bl-transfer-title"><i class="fas fa-copy"></i> 复制 / 转移规则合集</h3>
@@ -310,66 +153,40 @@ export function setupUI() {
     `);
 
     $('body').append(`
-        <div id="bl-feedback-toast" role="status" aria-live="polite" style="display:none;">
-            <i class="fas fa-exclamation-circle"></i>
-            <span id="bl-feedback-toast-text">操作成功</span>
-        </div>
-    `);
-
-    $('body').append(`
-        <div id="bl-regex-warning-modal" class="bl-modal-shell" style="display:none;">
-            <div class="bl-modal-card bl-regex-warning-card">
-                <div class="bl-regex-warning-header">
-                    <h3 class="bl-regex-warning-title"><i class="fa-solid fa-circle-exclamation"></i> 规则提醒</h3>
-                    <button id="bl-regex-warning-close-x" class="bl-icon-btn" title="关闭">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <p id="bl-regex-warning-summary" class="bl-regex-warning-summary">保存成功，但以下规则会被 disable：</p>
-                <div id="bl-regex-warning-list" class="bl-regex-warning-list"></div>
-                <div class="bl-modal-actions">
-                    <button id="bl-regex-warning-close" class="bl-primary-btn">我知道了</button>
-                </div>
-            </div>
-        </div>
-    `);
-
-    $('body').append(`
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
-            <div class="bl-modal-card" style="width: 90%; max-width: 400px; padding: 20px; border-radius: 12px; display: flex; flex-direction: column;">
-                
-                <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px dashed var(--border-dash); padding-bottom: 12px; margin-bottom: 12px;">
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <select id="bl-modal-sub-mode" style="border:none; font-size:16px; font-weight:bold; background:transparent; color:var(--text-main); padding:0; outline:none; cursor:pointer;">
-                            <option value="simple">🧩 简易组合</option>
-                            <option value="text">📝 普通文本</option>
-                            <option value="regex">⚙️ 正则表达式</option>
+            <div class="bl-modal-card bl-edit-modal-card" style="padding: 20px !important;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dotted var(--border-dash); padding-bottom: 12px;">
+                    <div style="position: relative; flex: 1; margin-right: 15px;">
+                        <select id="bl-modal-sub-mode" class="bl-input" style="margin: 0; width: 100%; font-size: 16px !important; font-weight: bold; background-color: transparent !important; border: none !important; padding: 0 !important; color: var(--text-main) !important; appearance: none; -webkit-appearance: none;">
+                            <option value="simple">🧩 简易组合 (推荐! 支持{}与*号)</option>
+                            <option value="text">📝 普通文本 (长词优先替换)</option>
+                            <option value="regex">⚙️ 正则表达式 (专业模式)</option>
                         </select>
-                        <div id="bl-modal-sub-mode-desc" style="font-size:12px; color:var(--text-sub); border: 1px solid var(--border-color); padding:2px 6px; border-radius:4px; width:fit-content;">推荐！支持{}与*号</div>
+                        <i class="fas fa-chevron-down" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--text-mute); pointer-events: none; font-size: 14px;"></i>
                     </div>
-                    <button id="bl-modal-sub-save" style="background:var(--bl-background-secondary); border:none; border-radius:8px; font-size:18px; cursor:pointer; color:var(--text-main); padding:6px 12px; transition: 0.2s;"><i class="fas fa-check"></i></button>
+                    <button id="bl-modal-sub-save" class="bl-icon-btn" style="background: transparent !important; border: none !important; color: var(--text-main) !important; font-size: 24px !important; padding: 0 5px !important; min-width: auto !important; height: auto !important;" title="完成保存"><i class="fas fa-check"></i></button>
                 </div>
                 
-                <div style="display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px;">
-                    <div class="bl-subrule-field">
-                        <label style="font-size:12px; color:var(--text-mute); margin-bottom:4px; display:block;">备注说明 (可选)</label>
-                        <input type="text" id="bl-modal-sub-remark" class="bl-input" placeholder="例如：处理特定角色的口头禅" style="background:var(--bl-background-secondary) !important; border:none !important;">
-                    </div>
-                    <div class="bl-subrule-field">
-                        <label style="font-size:12px; color:var(--text-mute); margin-bottom:4px; display:block;">查找内容</label>
-                        <textarea id="bl-modal-sub-target" class="bl-textarea" rows="3" style="background:var(--bl-background-secondary) !important; border:none !important; resize:none;"></textarea>
-                        <div id="bl-modal-sub-error" class="bl-error-text" style="display:none; color:#ff4757; font-size:12px; margin-top:4px;"></div>
-                    </div>
-                    <div class="bl-subrule-field">
-                        <label style="font-size:12px; color:var(--text-mute); margin-bottom:4px; display:block;">替换为</label>
-                        <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="3" placeholder="替换后词汇 (每行一条，支持随机，可留空)" style="background:var(--bl-background-secondary) !important; border:none !important; resize:none;"></textarea>
-                    </div>
+                <div class="bl-subrule-field" style="margin-bottom: 12px;">
+                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">备注说明 (可选)</label>
+                    <input type="text" id="bl-modal-sub-remark" class="bl-input" placeholder="例如：处理特定角色的口头禅" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;">
                 </div>
                 
-                <button id="bl-modal-sub-cancel" style="width:100%; background:var(--bl-background-tertiary); color:var(--text-main); border:none; padding:12px; border-radius:8px; font-size:14px; font-weight:bold; cursor:pointer;">取消修改</button>
+                <div class="bl-subrule-field" style="margin-bottom: 12px;">
+                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">查找内容</label>
+                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
+                </div>
+                
+                <div class="bl-subrule-field" style="margin-bottom: 15px;">
+                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">替换为</label>
+                    <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
+                </div>
+                
+                <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bg-button) !important;">取消修改</button>
             </div>
         </div>
     `);
+} 
 
 export function showDeepCleanOverlay() {
     $('body').append(`
@@ -617,7 +434,7 @@ export function renderSubrulesToModal() {
         }
 
         container.append(`
-            <div class="bl-subrule-card" data-subrule-index="${i}" style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
+            <div style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5));">
                     <div style="display: flex; align-items: center; margin: 0; padding: 0;">
                         ${badgeHTML}
@@ -660,7 +477,6 @@ export function openSingleRuleModal(index) {
     $('#bl-modal-sub-target').val(tStr);
     $('#bl-modal-sub-rep').val(rStr);
     $('#bl-modal-sub-remark').val(remark);
-    $('#bl-modal-sub-error').stop(true, true).hide().text('');
     
     $('#bl-modal-sub-mode').trigger('change');
     $('#bl-subrule-edit-modal').css('display', 'flex').hide().fadeIn(150);
