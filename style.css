@@ -689,6 +689,11 @@
         flex-grow: 0 !important;
     }
     .bl-modal-actions { margin-top: 12px !important; }
+    #bl-rule-edit-modal .bl-modal-actions > #bl-add-subrule-btn,
+    #bl-rule-edit-modal .bl-modal-actions > #bl-edit-save {
+        flex: 1 1 0 !important;
+        min-width: 0 !important;
+    }
     #bl-modal-sub-cancel,
     .bl-secondary-btn,
     .bl-primary-btn {
