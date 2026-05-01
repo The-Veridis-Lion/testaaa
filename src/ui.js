@@ -158,11 +158,12 @@ export function setupUI() {
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dotted var(--border-dash); padding-bottom: 12px;">
                     <div style="position: relative; flex: 1; margin-right: 15px;">
                         <select id="bl-modal-sub-mode" class="bl-input" style="margin: 0; width: 100%; font-size: 16px !important; font-weight: bold; background-color: transparent !important; border: none !important; padding: 0 !important; color: var(--text-main) !important; appearance: none; -webkit-appearance: none;">
-                            <option value="simple">🧩 简易组合 (推荐! 支持{}与*号)</option>
-                            <option value="text">📝 普通文本 (长词优先替换)</option>
-                            <option value="regex">⚙️ 正则表达式 (专业模式)</option>
+                            <option value="simple">🧩 简易组合</option>
+                            <option value="text">📝 普通文本</option>
+                            <option value="regex">⚙️ 正则表达式</option>
                         </select>
-                        <i class="fas fa-chevron-down" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--text-mute); pointer-events: none; font-size: 14px;"></i>
+                        <div id="bl-modal-sub-mode-badge" class="bl-mode-badge">推荐! 支持{}与*号</div>
+                        <i class="fas fa-chevron-down" style="position: absolute; right: 0; top: 30%; transform: translateY(-50%); color: var(--text-mute); pointer-events: none; font-size: 14px;"></i>
                     </div>
                     <button id="bl-modal-sub-save" class="bl-icon-btn" style="background: transparent !important; border: none !important; color: var(--text-main) !important; font-size: 24px !important; padding: 0 5px !important; min-width: auto !important; height: auto !important;" title="完成保存"><i class="fas fa-check"></i></button>
                 </div>
@@ -574,4 +575,17 @@ export function openEditModal(index = -1) {
 
     renderSubrulesToModal();
     modal.css('display', 'flex');
+}
+
+/**
+ * 弹出全屏淡出 Toast
+ */
+export function showToast(message) {
+    const $toast = $(`<div class="bl-toast"><i class="fas fa-check-circle" style="margin-right: 6px; color: #4ade80;"></i>${message}</div>`);
+    $('body').append($toast);
+    setTimeout(() => $toast.addClass('show'), 10);
+    setTimeout(() => {
+        $toast.removeClass('show');
+        setTimeout(() => $toast.remove(), 300);
+    }, 2000);
 }
