@@ -1479,3 +1479,14 @@
     border-radius: 10px !important;
     padding: 14px !important;
 }
+
+#bl-feedback-toast {
+    position: fixed !important; top: 40px !important; left: 50% !important; transform: translateX(-50%) !important;
+    background: #333333 !important; color: #ffffff !important; padding: 12px 24px !important; border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15) !important; z-index: 10000050 !important;
+    display: none; align-items: center !important; gap: 8px !important; font-size: 14px !important; font-weight: bold !important;
+    opacity: 0; pointer-events: none !important;
+    transition: opacity 0.3s ease, transform 0.3s ease !important;
+}
+#bl-feedback-toast.bl-toast-show { opacity: 1 !important; transform: translateX(-50%) translateY(10px) !important; }
+#bl-feedback-toast.bl-toast-hide { opacity: 0 !important; transform: translateX(-50%) translateY(0) !important; }
