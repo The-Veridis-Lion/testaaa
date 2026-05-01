@@ -532,29 +532,23 @@
 /* --- vNext: 保存/删除提示、规则提醒、两行模式选择、定位闪烁 --- */
 #bl-feedback-toast {
     position: fixed !important;
+    top: 40px !important;
     left: 50% !important;
-    bottom: 56px !important;
     transform: translateX(-50%) !important;
-    z-index: 10000030 !important;
+    z-index: 10000050 !important;
     display: none;
     align-items: center !important;
     justify-content: center !important;
     gap: 12px !important;
-    min-width: 200px !important;
-    max-width: min(88vw, 360px) !important;
-    padding: 15px 22px !important;
-    border: 1px solid rgba(255, 255, 255, 0.12) !important;
-    border-radius: 20px !important;
-    background: rgba(92, 92, 92, 0.8) !important;
+    background: var(--bl-accent-color) !important;
     color: #ffffff !important;
-    text-align: center !important;
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.26) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    pointer-events: none !important;
-    font-size: 16px !important;
+    padding: 12px 24px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2) !important;
+    font-size: 15px !important;
+    font-weight: bold !important;
     line-height: 1.4 !important;
-    font-weight: 600 !important;
+    pointer-events: none !important;
 }
 
 #bl-feedback-toast i {
@@ -568,11 +562,19 @@
     white-space: normal !important;
 }
 
+.bl-action-confirm-card,
+.bl-regex-warning-card {
+    background: var(--bl-background-popup) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    color: var(--bl-text-primary) !important;
+    box-shadow: var(--bl-panel-shadow) !important;
+    border-radius: 12px !important;
+    padding: 24px !important;
+}
+
 .bl-regex-warning-card {
     width: min(560px, 92vw) !important;
     max-height: min(78vh, 760px) !important;
-    padding: 18px 18px 16px !important;
-    border-radius: 14px !important;
     display: flex !important;
     flex-direction: column !important;
     gap: 10px !important;
@@ -706,18 +708,12 @@
 }
 
 .bl-reveal-flash {
-    animation: bl-reveal-flash 0.8s ease-in-out 2 !important;
+    animation: bl-reveal-flash 1s ease-in-out 2 !important;
 }
 
 @keyframes bl-reveal-flash {
-    0%, 100% {
-        filter: brightness(1);
-        box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
-    }
-    28%, 72% {
-        filter: brightness(0.9);
-        box-shadow: 0 0 0 1px color-mix(in srgb, var(--bl-accent-color) 26%, transparent), 0 10px 24px rgba(0, 0, 0, 0.16) !important;
-    }
+    0%, 100% { background-color: var(--bl-background-secondary); }
+    50% { background-color: color-mix(in srgb, var(--bl-accent-color) 40%, transparent); transform: scale(1.02); }
 }
 
 #bl-edit-subrules-container { 
@@ -1176,39 +1172,6 @@
    统一弹窗与反馈收口
 ========================================== */
 
-#bl-feedback-toast {
-    min-width: auto !important;
-    max-width: min(84vw, 320px) !important;
-    padding: 12px 18px !important;
-    border: none !important;
-    border-radius: 12px !important;
-    background: #4a4a4a !important;
-    color: #ffffff !important;
-    box-shadow: 0 16px 28px rgba(0, 0, 0, 0.24) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    font-size: 14px !important;
-    font-weight: 700 !important;
-    line-height: 1.45 !important;
-}
-
-#bl-action-confirm-modal {
-    background: rgba(92, 92, 92, 0.24) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-}
-
-.bl-action-confirm-card {
-    width: min(420px, 92vw) !important;
-    padding: 24px 22px 20px !important;
-    border-radius: 18px !important;
-    text-align: left !important;
-    background: #f3eee5 !important;
-    border: 1px solid rgba(116, 108, 97, 0.12) !important;
-    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16) !important;
-    color: #40372f !important;
-}
-
 .bl-action-confirm-title {
     margin: 0 0 10px 0 !important;
     color: #433d37 !important;
@@ -1225,26 +1188,6 @@
 
 .bl-action-confirm-actions {
     gap: 12px !important;
-}
-
-#bl-action-confirm-cancel {
-    background: #e5e2db !important;
-    color: #161616 !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-#bl-action-confirm-submit {
-    background: #243c35 !important;
-    color: #ffffff !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-#bl-regex-warning-modal {
-    background: rgba(90, 82, 76, 0.18) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
 }
 
 #bl-subrule-edit-modal {
@@ -1442,19 +1385,6 @@
     background: #e8edf3 !important;
 }
 
-.bl-reveal-flash {
-    animation: bl-reveal-flash 0.8s ease-in-out 2 !important;
-}
-
-@keyframes bl-reveal-flash {
-    0%, 100% {
-        filter: brightness(1);
-    }
-    50% {
-        filter: brightness(0.2);
-    }
-}
-
 @media screen and (max-width: 600px) {
     #bl-subrule-edit-modal {
         padding: 18px 14px !important;
@@ -1487,67 +1417,5 @@
     #bl-subrule-edit-modal .bl-subrule-modal-cancel {
         min-height: 60px !important;
         font-size: 17px !important;
-    }
-}
-
-.bl-regex-warning-card {
-    width: min(560px, 92vw) !important;
-    max-height: min(82vh, 760px) !important;
-    padding: 24px !important;
-    border-radius: 16px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 14px !important;
-    background: #fffdf8 !important;
-    border: none !important;
-    box-shadow: 0 24px 44px rgba(60, 43, 36, 0.16) !important;
-}
-
-.bl-regex-warning-title i {
-    color: #ff4757 !important;
-}
-
-.bl-regex-warning-summary {
-    color: #6b6159 !important;
-}
-
-.bl-regex-warning-list {
-    gap: 10px !important;
-    overflow-y: auto !important;
-    max-height: min(50vh, 460px) !important;
-    padding-right: 2px !important;
-}
-
-.bl-regex-warning-item {
-    border: none !important;
-    border-radius: 14px !important;
-    background: linear-gradient(180deg, #fff4f4 0%, #f7f5f2 100%) !important;
-    padding: 14px 14px 13px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    gap: 8px !important;
-    min-width: 0 !important;
-}
-
-.bl-regex-warning-item-body,
-.bl-regex-warning-item-target,
-.bl-regex-warning-item-reason {
-    word-break: break-word !important;
-    overflow-wrap: anywhere !important;
-}
-
-@media screen and (max-width: 600px) {
-    .bl-regex-warning-card {
-        width: min(100%, 92vw) !important;
-        max-height: min(86vh, 760px) !important;
-        padding: 20px 16px !important;
-    }
-
-    .bl-regex-warning-list {
-        max-height: min(54vh, 480px) !important;
-    }
-
-    .bl-regex-warning-item {
-        min-width: 0 !important;
     }
 }

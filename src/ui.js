@@ -36,19 +36,17 @@ export function updateSubruleModeDisplay(mode) {
 }
 
 export function showFeedbackToast(message, options = {}) {
-    const duration = Number(options.duration) > 0 ? Number(options.duration) : 2000;
-    const fadeDuration = Number(options.fadeDuration) > 0 ? Number(options.fadeDuration) : 220;
     const $toast = $('#bl-feedback-toast');
     if (!$toast.length) return;
 
     clearTimeout(feedbackToastTimer);
 
     $('#bl-feedback-toast-text').text(String(message || '操作成功'));
-    $toast.stop(true, true).css({ display: 'flex', opacity: 0 }).fadeTo(150, 1);
+    $toast.stop(true, true).css('display', 'flex').hide().fadeIn(200);
 
     feedbackToastTimer = setTimeout(() => {
-        $toast.stop(true, true).fadeTo(fadeDuration, 0, () => $toast.hide());
-    }, duration);
+        $toast.fadeOut(300);
+    }, 2000);
 }
 
 export function closeActionConfirmModal() {

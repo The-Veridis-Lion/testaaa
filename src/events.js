@@ -740,7 +740,7 @@ export function bindEvents() {
                     const target = container.find(`.bl-subrule-card[data-subrule-index="${newIndex}"]`);
                     return { container, target };
                 });
-            }, 150);
+            }, 250);
         }
     });
 
@@ -806,7 +806,7 @@ export function bindEvents() {
                     const target = container.find(`.card[data-index="${targetRuleIndex}"]`);
                     return { container, target };
                 });
-            }, 150);
+            }, 250);
         }
     });
 
