@@ -227,6 +227,10 @@
     border: 1px solid var(--card-border); 
     flex-shrink: 0 !important; /* 严禁 Android 端强行压缩卡片高度 */
 }
+.bl-highlight-flash {
+    animation: blHighlightFlash 0.8s ease-in-out 2;
+    will-change: filter;
+}
 .card.is-disabled { opacity: 0.65; }
 .card-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 6px; }
 .card-header.has-border { border-bottom: 1px dashed var(--border-dash); margin-bottom: 6px; }
@@ -290,6 +294,68 @@
 #bl-edit-subrules-container { flex: 1 !important; min-height: 0 !important; overflow-y: auto !important; display: flex !important; flex-direction: column !important; gap: 8px !important; padding-right: 5px !important; margin-bottom: 10px !important; }
 .bl-ghost-btn { padding: 10px !important; border-radius: 8px !important; background: var(--bl-background-secondary) !important; border: 1px dashed var(--bl-border-color) !important; color: var(--bl-text-primary) !important; cursor: pointer !important; font-size: 13px !important; font-weight: bold !important; transition: background 0.2s ease, border-color 0.2s ease !important; }
 .bl-ghost-btn:hover { background: var(--bl-background-tertiary) !important; border-color: var(--bl-accent-color) !important; }
+.bl-subrule-modal-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: flex-start !important;
+    gap: 14px !important;
+    margin-bottom: 15px !important;
+    padding-bottom: 12px !important;
+    border-bottom: 1px dotted var(--border-dash) !important;
+}
+.bl-subrule-mode-block {
+    flex: 1 !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+}
+.bl-subrule-mode-select-wrap {
+    position: relative !important;
+}
+.bl-subrule-mode-select {
+    margin: 0 !important;
+    width: 100% !important;
+    padding: 0 26px 0 0 !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--bl-text-primary) !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    appearance: none;
+    -webkit-appearance: none;
+}
+.bl-subrule-mode-select:focus {
+    border: none !important;
+    box-shadow: none !important;
+}
+.bl-subrule-mode-arrow {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--bl-text-secondary);
+    pointer-events: none;
+    font-size: 14px;
+}
+.bl-subrule-mode-hint {
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+    background: var(--bl-background-secondary) !important;
+    color: var(--bl-text-secondary) !important;
+    font-size: 12px !important;
+    line-height: 1.45 !important;
+}
+.bl-subrule-save-btn {
+    background: transparent !important;
+    border: none !important;
+    color: var(--bl-text-primary) !important;
+    font-size: 24px !important;
+    padding: 0 5px !important;
+    min-width: auto !important;
+    height: auto !important;
+    flex-shrink: 0 !important;
+}
 
 /* ✨ 映射规则精美卡片样式 (非悬浮，完美嵌入列表) */
 .bl-subrule-card {
@@ -979,4 +1045,53 @@
         font-size: 15px !important;
         padding: 4px !important;
     }
+}
+
+.bl-toast {
+    position: fixed;
+    top: 32px;
+    left: 50%;
+    transform: translate(-50%, -10px);
+    opacity: 0;
+    max-width: min(80vw, 420px);
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.72);
+    color: #ffffff;
+    font-size: 13px;
+    line-height: 1.45;
+    text-align: center;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: none;
+    z-index: 10000050 !important;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.bl-toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.bl-field-error {
+    display: none;
+    margin-top: 6px;
+    color: var(--bl-danger-color);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.bl-field-error.is-visible {
+    display: block;
+}
+
+#bl-modal-sub-target.bl-invalid {
+    outline: 1px solid var(--bl-danger-color) !important;
+    box-shadow: 0 0 0 1px var(--bl-danger-soft) !important;
+}
+
+@keyframes blHighlightFlash {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(0.1); }
 }

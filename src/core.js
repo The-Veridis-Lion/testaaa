@@ -1,6 +1,6 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { logger } from './log.js';
-import { buildSimpleWildcardPattern } from './utils.js';
+import { buildSimpleWildcardPattern, compileRegexTarget } from './utils.js';
 import { deepCleanObjectSync } from './cleanse.js';
 import { buildDiffSnippetsFromText, computeMessageSignature, ensureMessageDiffButton, getLatestTrackableDiffIndices, hasRealDiffCache, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, syncTrackedIndicesToLatestAssistantMessages, writeReadyDiffCache, clearTrackedDiffEntry } from './diff.js';
 import { getMessageDomNode, purifyDOM } from './dom.js';
@@ -37,28 +37,12 @@ export function buildProcessors() {
             } else if (mode === 'regex') {
                 for (const t of targets) {
                     if (t) {
-                        try {
-                            let pattern = t;
-                            let flags = 'gmu';
-                            if (t.startsWith('/')) {
-                                const lastSlash = t.lastIndexOf('/');
-                                if (lastSlash > 0) {
-                                    pattern = t.substring(1, lastSlash);
-                                    flags = t.substring(lastSlash + 1);
-                                    if (!flags.includes('g')) flags += 'g';
-                                }
-                            }
-
-                            let testRegex = new RegExp(pattern, flags);
-                            if (testRegex.test("")) {
-                                logger.warn(`拦截到危险的空匹配正则，已忽略: ${t}`);
-                                return;
-                            }
-
-                            processors.push({ regex: testRegex, replacements, isRegexMode: true });
-                        } catch (e) {
-                            logger.warn(`忽略非法正则表达式: ${t}`);
+                        const compiled = compileRegexTarget(t);
+                        if (!compiled.ok) {
+                            logger.warn(`忽略非法正则表达式: ${t} (${compiled.error.message})`);
+                            continue;
                         }
+                        processors.push({ regex: compiled.value.regex, replacements, isRegexMode: true });
                     }
                 }
             } else if (mode === 'simple') {

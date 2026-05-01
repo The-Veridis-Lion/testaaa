@@ -1,6 +1,6 @@
 import { extensionName, getAppContext, runtimeState } from './state.js';
 import { logger } from './log.js';
-import { deepClone, parseInputToWords, getCurrentCharacterContext } from './utils.js';
+import { deepClone, parseInputToWords, getCurrentCharacterContext, validateRegexTargetInput } from './utils.js';
 import {
     applyPresetByName,
     renderTags,
@@ -9,12 +9,13 @@ import {
     showConfirmModal,
     refreshCharacterBindingUI,
     applyCharacterPresetBinding,
+    focusLatestRuleCard,
     openSingleRuleModal,
     openTransferModal,
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
-    showToast // 🌟 新增导入 Toast
+    showToast,
 } from './ui.js';
 import {
     buildProcessors,
@@ -284,6 +285,60 @@ export function bindEvents() {
         return currentRules !== savedRules;
     }
     const { extension_settings, saveSettingsDebounced, eventSource, event_types } = getAppContext();
+    const formatRegexTargetError = (error) => `第 ${error.line} 行：${error.message}`;
+    const clearRegexTargetValidationState = () => {
+        $('#bl-modal-sub-target').removeClass('bl-invalid').removeAttr('aria-invalid');
+        $('#bl-modal-sub-target-error').removeClass('is-visible').text('');
+    };
+    const applyRegexTargetValidationError = (error) => {
+        const message = formatRegexTargetError(error);
+        $('#bl-modal-sub-target').addClass('bl-invalid').attr('aria-invalid', 'true');
+        $('#bl-modal-sub-target-error').addClass('is-visible').text(message);
+        return message;
+    };
+    const subruleModeUIMap = {
+        simple: {
+            hint: '适合批量覆盖相近表达，支持 {} 组合和 * 通配。',
+            targetPlaceholder: "简易语法 (每行一条)\n例如：{宛若,如同}{神明,恶魔}?",
+            replacementPlaceholder: "替换后词汇 (每行一条，支持随机，可留空)",
+        },
+        text: {
+            hint: '按普通词组逐项替换，适合稳定短语，长词会优先处理。',
+            targetPlaceholder: "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在",
+            replacementPlaceholder: "替换后词汇 (逗号/空格分隔，留空直接删除)",
+        },
+        regex: {
+            hint: '适合复杂匹配和捕获组替换，支持每行一条规则与 $1/$2 引用。',
+            targetPlaceholder: "正则匹配规则 (每行一条)\n支持裸模式 foo|bar 或 /foo|bar/gmu",
+            replacementPlaceholder: "替换后词汇 (每行一条，允许含逗号，可留空)\n支持 $1, $2 捕获组引用",
+        },
+    };
+    const validateRegexTargetField = (options = {}) => {
+        const mode = String($('#bl-modal-sub-mode').val() || '');
+        if (mode !== 'regex') {
+            clearRegexTargetValidationState();
+            return { ok: true, parsed: [] };
+        }
+
+        const result = validateRegexTargetInput($('#bl-modal-sub-target').val());
+        if (result.ok) {
+            clearRegexTargetValidationState();
+            return result;
+        }
+
+        const uiMessage = applyRegexTargetValidationError(result.error);
+        if (options.focus === true) $('#bl-modal-sub-target').trigger('focus');
+        if (options.toast === true) showToast(`正则规则有误：${uiMessage}`);
+        return { ...result, uiMessage };
+    };
+    const applySubruleModeUI = (rawMode) => {
+        const mode = subruleModeUIMap[rawMode] ? rawMode : 'simple';
+        const config = subruleModeUIMap[mode];
+        $('#bl-modal-sub-target').attr('placeholder', config.targetPlaceholder);
+        $('#bl-modal-sub-rep').attr('placeholder', config.replacementPlaceholder);
+        $('#bl-modal-sub-mode-hint').text(config.hint);
+        validateRegexTargetField();
+    };
 
     $(document).off('click', '#bl-wand-btn').on('click', '#bl-wand-btn', () => {
         updateToolbarUI();
@@ -490,11 +545,12 @@ export function bindEvents() {
         const rules = extension_settings[extensionName].rules || [];
         const index = Number($(this).data('index'));
         if (!Number.isInteger(index) || index < 0 || index >= rules.length) return;
+        const deletingCount = shouldBatchTransferRule(index, rules) ? getSelectedIndexesFromState(rules).length : 1;
         if (handleDeleteRule(index, rules)) {
             runtimeState.isRegexDirty = true;
             saveSettingsDebounced();
             renderTagsPreserveBatchSelection();
-            showToast("合集删除成功"); // 🌟 提示合集删除成功
+            showToast(deletingCount > 1 ? `已删除 ${deletingCount} 个合集` : '合集删除成功');
         }
     });
 
@@ -518,12 +574,13 @@ export function bindEvents() {
         renderSubrulesToModal();
     });
 
-    // 🌟 词条(子规则)删除交互确认与提示
     $(document).off('click', '.bl-del-subrule-btn').on('click', '.bl-del-subrule-btn', function() {
-        if (!confirm('确定要删除该映射规则吗？')) return; // 新增拦截
-        runtimeState.currentEditingSubrules.splice($(this).data('index'), 1);
+        const index = Number($(this).data('index'));
+        if (!Number.isInteger(index) || index < 0 || index >= runtimeState.currentEditingSubrules.length) return;
+        if (!confirm('确定要删除该映射规则吗？')) return;
+        runtimeState.currentEditingSubrules.splice(index, 1);
         renderSubrulesToModal();
-        showToast("词条删除成功"); // 提示词条删除成功
+        showToast('词条删除成功');
     });
 
     $(document).off('click', '.bl-edit-subrule-btn').on('click', '.bl-edit-subrule-btn', function() {
@@ -546,50 +603,37 @@ export function bindEvents() {
         }
     });
 
-    // 🌟 徽章动态联动更新
     $(document).off('change', '#bl-modal-sub-mode').on('change', '#bl-modal-sub-mode', function() {
-        const mode = $(this).val();
-        const $t = $('#bl-modal-sub-target');
-        const $r = $('#bl-modal-sub-rep');
-        const $badge = $('#bl-modal-sub-mode-badge'); // 获取徽章
-        
-        if (mode === 'regex') {
-            $t.attr('placeholder', "正则匹配规则 (每行一条)\n例如：/(宛若|如同)(神明|恶魔)/g");
-            $r.attr('placeholder', "替换后词汇 (每行一条，允许含逗号，可留空)\n支持 $1, $2 捕获组引用");
-            $badge.text("专业模式，支持捕获组引用");
-        } else if (mode === 'simple') {
-            $t.attr('placeholder', "简易语法 (每行一条)\n例如：{宛若,如同}{神明,恶魔}?");
-            $r.attr('placeholder', "替换后词汇 (每行一条，支持随机，可留空)");
-            $badge.text("推荐! 支持{}备选与*号通配");
-        } else {
-            $t.attr('placeholder', "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在");
-            $r.attr('placeholder', "替换后词汇 (逗号/空格分隔，留空直接删除)");
-            $badge.text("长词优先匹配替换");
-        }
+        applySubruleModeUI(String($(this).val() || 'simple'));
     });
 
-    // 🌟 正则自查拦截保存
+    $(document).off('input', '#bl-modal-sub-target').on('input', '#bl-modal-sub-target', () => {
+        if ($('#bl-modal-sub-mode').val() === 'regex') validateRegexTargetField();
+    });
+
     $(document).off('click', '#bl-modal-sub-save').on('click', '#bl-modal-sub-save', function() {
         const mode = $('#bl-modal-sub-mode').val();
-        const tStr = $('#bl-modal-sub-target').val();
+        const tStr = String($('#bl-modal-sub-target').val() || '');
         const rStr = $('#bl-modal-sub-rep').val();
         const remarkStr = $('#bl-modal-sub-remark').val().trim();
-        
-        // 正则语法拦截
+
         if (mode === 'regex') {
-            try {
-                new RegExp(tStr, 'gmu');
-            } catch (e) {
-                alert("正则表达式语法错误，请检查！\n\n错误详情：" + e.message);
+            const validation = validateRegexTargetField();
+            if (!validation.ok) {
+                showToast(`正则规则有误：${validation.uiMessage || formatRegexTargetError(validation.error)}`);
+                $('#bl-modal-sub-target').trigger('focus');
                 return;
             }
+        } else {
+            clearRegexTargetValidationState();
         }
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
         const replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
 
         if (targets.length === 0) {
-            alert("查找内容不能为空！");
+            showToast("查找内容不能为空！");
+            $('#bl-modal-sub-target').trigger('focus');
             return;
         }
 
@@ -601,6 +645,7 @@ export function bindEvents() {
             runtimeState.currentEditingSubrules[runtimeState.currentSubruleEditIndex] = subRule;
         }
 
+        clearRegexTargetValidationState();
         $('#bl-subrule-edit-modal').fadeOut(150);
         renderSubrulesToModal();
         
@@ -610,7 +655,14 @@ export function bindEvents() {
         }
     });
 
-    $(document).off('click', '#bl-modal-sub-cancel').on('click', '#bl-modal-sub-cancel', () => $('#bl-subrule-edit-modal').fadeOut(150));
+    $(document).off('click', '#bl-modal-sub-cancel').on('click', '#bl-modal-sub-cancel', () => {
+        clearRegexTargetValidationState();
+        $('#bl-subrule-edit-modal').fadeOut(150);
+    });
+
+    // ==========================================
+    // ✨ 修复：编辑合集弹窗上的叉号按钮 (已改为绑定 #bl-edit-cancel-x)
+    // ==========================================
 
     $(document).off('click', '#bl-edit-cancel-x').on('click', '#bl-edit-cancel-x', () => $('#bl-rule-edit-modal').hide());
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
@@ -620,20 +672,18 @@ export function bindEvents() {
         if (e.target && e.target.id === 'bl-rule-transfer-modal') closeTransferModal();
     });
 
-    // 🌟 合集保存、滚动、高亮、淡出提示
     $(document).off('click', '#bl-edit-save').on('click', '#bl-edit-save', () => {
+        const isCreatingNewRule = runtimeState.currentEditingIndex === -1;
         const nameVal = $('#bl-edit-name').val().trim();
         const validSubrules = runtimeState.currentEditingSubrules.filter(sub => sub.targets && sub.targets.length > 0);
         
         if (validSubrules.length === 0) {
-            alert("合集内至少需要保留一组有效映射！");
+            showToast("合集内至少需要保留一组有效映射！");
             return;
         }
 
         let isEnabled = true;
-        const isNewGroup = runtimeState.currentEditingIndex === -1; // 标记是否新增
-        
-        if (!isNewGroup) {
+        if (runtimeState.currentEditingIndex !== -1) {
             isEnabled = extension_settings[extensionName].rules[runtimeState.currentEditingIndex].enabled !== false;
         }
 
@@ -643,32 +693,20 @@ export function bindEvents() {
             enabled: isEnabled
         };
 
-        if (isNewGroup) extension_settings[extensionName].rules.push(newRule);
+        if (runtimeState.currentEditingIndex === -1) extension_settings[extensionName].rules.push(newRule);
         else extension_settings[extensionName].rules[runtimeState.currentEditingIndex] = newRule;
 
         runtimeState.isRegexDirty = true;
         saveSettingsDebounced();
         renderTags();
-        performGlobalCleanse();
-        $('#bl-rule-edit-modal').hide();
-        showToast("合集保存成功"); // 提示合集保存成功
-        
-        // 新增滚动与闪烁动画
-        if (isNewGroup) {
-            setTimeout(() => {
-                const newCard = $('#bl-tags-container .card').last()[0];
-                if (newCard) {
-                    const rect = newCard.getBoundingClientRect();
-                    const containerRect = $('#bl-tags-container')[0].getBoundingClientRect();
-                    // 判断是否在可视区内
-                    if (rect.top < containerRect.top || rect.bottom > containerRect.bottom) {
-                        newCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }
-                    $(newCard).addClass('bl-flash-highlight');
-                    setTimeout(() => $(newCard).removeClass('bl-flash-highlight'), 1600);
-                }
+        if (isCreatingNewRule) {
+            window.setTimeout(() => {
+                focusLatestRuleCard();
             }, 50);
         }
+        performGlobalCleanse();
+        $('#bl-rule-edit-modal').hide();
+        showToast("合集保存成功");
     });
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
@@ -737,7 +775,6 @@ export function bindEvents() {
         updateToolbarUI();
     });
 
-    // 🌟 存档删除与 Toast
     $(document).off('click', '#bl-preset-delete').on('click', '#bl-preset-delete', function() {
         const settings = extension_settings[extensionName];
         const name = settings.activePreset;
@@ -755,7 +792,7 @@ export function bindEvents() {
             renderTags();
             updateToolbarUI();
             performGlobalCleanse();
-            showToast("存档删除成功"); // 提示存档删除成功
+            showToast("删除成功");
         }
     });
 
@@ -770,16 +807,15 @@ export function bindEvents() {
         runtimeState.isRegexDirty = true;
         saveSettingsDebounced();
         updateToolbarUI();
-        renderTags(); 
+        renderTags(); // 必须重新渲染以清空列表
     });
 
-    // 🌟 存档保存与 Toast
     $(document).off('click', '#bl-preset-save').on('click', '#bl-preset-save', function() {
         const settings = extension_settings[extensionName];
-        if (!settings.activePreset) { alert("当前为临时规则，请点击“新建”保存为新存档。"); return; }
+        if (!settings.activePreset) { showToast("当前为临时规则，请点击“新建”保存为新存档。"); return; }
         settings.presets[settings.activePreset] = JSON.parse(JSON.stringify(settings.rules));
         saveSettingsDebounced();
-        showToast("预设保存成功"); // 替换掉原来的 alert，改用柔和的 Toast
+        showToast("保存成功");
     });
 
     $(document).off('click', '#bl-preset-export').on('click', '#bl-preset-export', function() {
