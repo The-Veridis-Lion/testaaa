@@ -25,10 +25,12 @@ import {
     performIncrementalCleanse,
     getMessageIndexFromEvent,
     getLatestMessageIndex,
+    cleanseMessageDataAtIndex,
+    queueIncrementalChatSave,
 } from './core.js';
 import { performDeepCleanse } from './cleanse.js';
-import { purifyDOM, isProtectedNode } from './dom.js';
-import { computeMessageSignature, getDiffSnippetsForMessage, getDiffStateForMessage, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, persistTrackedDiffState, resetDiffRuntimeState, restoreDiffStateFromChatMetadata } from './diff.js';
+import { getMessageDomNode, purifyDOM, isProtectedNode } from './dom.js';
+import { clearTrackedDiffEntry, computeMessageSignature, getDiffSnippetsForMessage, getDiffStateForMessage, injectDiffButtons, isAssistantMessage, markDiffComparisonPending, persistTrackedDiffState, resetDiffRuntimeState, restoreDiffStateFromChatMetadata } from './diff.js';
 
 let streamingDiffInjectTimer = null;
 let streamingPendingDiffIndices = [];
@@ -293,11 +295,7 @@ export function bindEvents() {
     const applyRegexTargetValidationError = (error) => {
         const message = formatRegexTargetError(error);
         $('#bl-modal-sub-target').addClass('bl-invalid').attr('aria-invalid', 'true');
-        
-        // ✨ 将原本单纯的 text(message) 改为带图标的 html，并对报错内容进行转义防注入
-        const safeMsg = String(message).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        $('#bl-modal-sub-target-error').addClass('is-visible').html(`<i class="fas fa-circle-exclamation"></i> ${safeMsg}`);
-        
+        $('#bl-modal-sub-target-error').addClass('is-visible').text(message);
         return message;
     };
     const subruleModeUIMap = {
@@ -426,12 +424,47 @@ export function bindEvents() {
 
     $(document).off('change', '.batch-item-checkbox').on('change', '.batch-item-checkbox', () => syncBatchSelectionStateFromDom(extension_settings[extensionName].rules || []));
 
+    const getDiffMessageByIndex = (index) => {
+        const { chat } = getAppContext();
+        return Array.isArray(chat) && Number.isInteger(index) && index >= 0 && index < chat.length ? chat[index] : null;
+    };
+
+    const syncDiffRevertToggleState = (msg) => {
+        const isReverted = msg?.__bl_is_reverted === true;
+        $('#bl-diff-revert-icon').attr('class', isReverted ? 'fas fa-wand-magic-sparkles' : 'fas fa-rotate-left');
+        $('#bl-diff-revert-text').text(isReverted ? '重新净化' : '撤回');
+        $('#bl-diff-revert-toggle').attr('title', isReverted ? '解除保护并重新净化' : '撤回净化并保护原文');
+        $('#bl-diff-mode-toggle').toggle(!isReverted);
+    };
+
+    const refreshMessageAfterRevertToggle = (index, msg) => {
+        const { chat } = getAppContext();
+        if (!Number.isInteger(index) || index < 0 || !Array.isArray(chat) || !msg) return;
+        try {
+            if (typeof updateMessageBlock === 'function') updateMessageBlock(index, chat[index]);
+        } catch (e) {
+            logger.warn(`updateMessageBlock 调用失败 index=${index}`, e);
+        }
+        const messageNode = getMessageDomNode(index);
+        if (messageNode && msg.__bl_is_reverted !== true) purifyDOM(messageNode);
+        injectDiffButtons([index]);
+        queueIncrementalChatSave();
+        renderDiffModalContent(index);
+    };
+
     function renderDiffModalContent(index) {
         const settings = extension_settings[extensionName];
         const mode = settings.diffViewMode || 'snippet';
+        const msg = getDiffMessageByIndex(index);
         const state = getDiffStateForMessage(index);
         const cached = getDiffSnippetsForMessage(index);
         const contentEl = $('#bl-diff-modal-content');
+        syncDiffRevertToggleState(msg);
+
+        if (msg?.__bl_is_reverted) {
+            contentEl.html('<div class="bl-diff-empty"><i class="fas fa-shield-halved" style="margin-right:6px;"></i>此消息已撤回并处于免净化保护状态，当前显示为原始文本。</div>');
+            return;
+        }
 
         if (state.status !== 'ready') {
             contentEl.html(`<div class="bl-diff-loading"><i class="fas fa-spinner fa-spin"></i><span>Loading...</span></div>`);
@@ -491,6 +524,23 @@ export function bindEvents() {
         settings.diffViewMode = settings.diffViewMode === 'full' ? 'snippet' : 'full';
         saveSettingsDebounced();
         if (runtimeState.currentDiffIndex !== undefined) renderDiffModalContent(runtimeState.currentDiffIndex);
+    });
+
+    $(document).off('click', '#bl-diff-revert-toggle').on('click', '#bl-diff-revert-toggle', function() {
+        const index = runtimeState.currentDiffIndex;
+        const msg = getDiffMessageByIndex(index);
+        if (!Number.isInteger(index) || index < 0 || !msg || typeof msg !== 'object') return;
+
+        if (msg.__bl_is_reverted === true) {
+            delete msg.__bl_is_reverted;
+            cleanseMessageDataAtIndex(index);
+        } else {
+            msg.mes = typeof msg.__bl_original_mes === 'string' ? msg.__bl_original_mes : msg.mes;
+            msg.__bl_is_reverted = true;
+            clearTrackedDiffEntry(index);
+        }
+
+        refreshMessageAfterRevertToggle(index, msg);
     });
 
     $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => $('#bl-diff-modal').hide());

@@ -1,4 +1,4 @@
-import { runtimeState } from './state.js';
+import { getAppContext, runtimeState } from './state.js';
 import { applyReplacements, applyVisualMask, buildProcessors } from './core.js';
 
 /**
@@ -28,6 +28,16 @@ export function isProtectedNode(node) {
     return false;
 }
 
+function isRevertedMessageDomNode(node) {
+    if (!node || node.nodeType !== 1) return false;
+    const mesNode = node.matches?.('.mes') ? node : node.closest?.('.mes');
+    if (!mesNode) return false;
+    const index = resolveMessageIndexFromDomNode(mesNode);
+    const { chat } = getAppContext();
+    const msg = Array.isArray(chat) ? chat[index] : null;
+    return msg?.__bl_is_reverted === true;
+}
+
 /**
  * 对指定 DOM 子树执行净化替换（文本节点、注释节点、输入框）。
  * @param {Node} rootNode 待净化根节点。
@@ -35,6 +45,7 @@ export function isProtectedNode(node) {
  */
 export function purifyDOM(rootNode) {
     if (!rootNode) return;
+    if (rootNode.nodeType === 1 && isRevertedMessageDomNode(rootNode)) return;
     buildProcessors();
     if (runtimeState.activeProcessors.length === 0) return;
 
@@ -43,7 +54,7 @@ export function purifyDOM(rootNode) {
 let node;
     while (node = walker.nextNode()) {
         const parent = node.parentNode;
-        if (parent && (isProtectedNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
+        if (parent && (isProtectedNode(parent) || isRevertedMessageDomNode(parent) || (document.activeElement && (document.activeElement === parent || parent.contains(document.activeElement))))) continue;
 
         const original = node.nodeValue || '';
         
@@ -57,7 +68,7 @@ let node;
     if (rootNode.nodeType === 1) {
         if (rootNode.matches && rootNode.matches('input, textarea')) {
             const input = rootNode;
-            if (!(isProtectedNode(input) || document.activeElement === input)) {
+            if (!(isProtectedNode(input) || isRevertedMessageDomNode(input) || document.activeElement === input)) {
                 const originalVal = input.value || '';
                 const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
                 if (originalVal !== nextVal) input.value = nextVal;
@@ -68,7 +79,7 @@ let node;
             const inputs = rootNode.querySelectorAll('input, textarea');
             for (let i = 0; i < inputs.length; i++) {
                 const input = inputs[i];
-                if (isProtectedNode(input) || document.activeElement === input) continue;
+                if (isProtectedNode(input) || isRevertedMessageDomNode(input) || document.activeElement === input) continue;
                 const originalVal = input.value || '';
                 const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
                 if (originalVal !== nextVal) input.value = nextVal;

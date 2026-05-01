@@ -583,7 +583,6 @@
         display: flex !important;
         flex-direction: column !important;
     }
-   }
 
 /* 768px 平板及侧边栏微调 */
 @media screen and (max-width: 768px) {
@@ -1048,11 +1047,6 @@
     }
 }
 
-/* ==========================================
-   全局独立组件 (Toast / 报错 / 动画)
-========================================== */
-
-/* 修复：自动淡出小弹窗 (Toast) */
 .bl-toast {
     position: fixed;
     top: 32px;
@@ -1062,7 +1056,7 @@
     max-width: min(80vw, 420px);
     padding: 10px 16px;
     border-radius: 10px;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.72);
     color: #ffffff;
     font-size: 13px;
     line-height: 1.45;
@@ -1074,26 +1068,22 @@
     z-index: 10000050 !important;
     transition: opacity 0.3s ease, transform 0.3s ease;
 }
+
 .bl-toast.show {
     opacity: 1;
     transform: translate(-50%, 0);
 }
 
-/* 修复：带警示图标的报错文字 */
 .bl-field-error {
     display: none;
     margin-top: 6px;
     color: var(--bl-danger-color);
-    font-size: 11.5px; /* 字体稍微小一点 */
-    font-weight: 600;  /* 稍微加粗更醒目 */
+    font-size: 12px;
     line-height: 1.4;
 }
+
 .bl-field-error.is-visible {
     display: block;
-}
-.bl-field-error i {
-    margin-right: 4px;
-    font-size: 12px;
 }
 
 #bl-modal-sub-target.bl-invalid {
@@ -1101,13 +1091,7 @@
     box-shadow: 0 0 0 1px var(--bl-danger-soft) !important;
 }
 
-/* 修复：新增卡片的高亮闪烁动画 */
 @keyframes blHighlightFlash {
-    0%, 100% { filter: brightness(1); border-color: var(--card-border); }
-    /* 除了变暗，加入主色调边框发光，确保在暗色主题也极其明显 */
-    50% { filter: brightness(0.4); border-color: var(--bl-accent-color); box-shadow: 0 0 10px color-mix(in srgb, var(--bl-accent-color) 40%, transparent); }
-}
-.bl-highlight-flash {
-    animation: blHighlightFlash 0.8s ease-in-out 2;
-    will-change: filter, border-color, box-shadow;
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(0.1); }
 }

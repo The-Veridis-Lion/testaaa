@@ -149,6 +149,9 @@ export function setupUI() {
                 <div class="bl-diff-modal-header">
                     <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i> 净化前文透视</h3>
                     <div class="bl-diff-header-actions">
+                        <button id="bl-diff-revert-toggle" class="bl-icon-btn bl-diff-header-btn" title="撤回净化并保护原文">
+                            <i id="bl-diff-revert-icon" class="fas fa-rotate-left"></i> <span id="bl-diff-revert-text">撤回</span>
+                        </button>
                         <button id="bl-diff-pos-toggle" class="bl-icon-btn bl-diff-header-btn" title="将顶部按钮收纳进三点菜单">
                             <i id="bl-diff-pos-icon" class="fa-solid fa-ellipsis"></i> <span id="bl-diff-pos-text">收纳按钮</span>
                         </button>

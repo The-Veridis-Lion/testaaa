@@ -249,6 +249,7 @@ export function cleanseMessageDataAtIndex(index, options = {}) {
     if (!Array.isArray(chat) || index < 0 || index >= chat.length) return false;
     const msg = chat[index];
     if (!msg || typeof msg !== 'object') return false;
+    if (msg.__bl_is_reverted) return false;
 
     const isAssistant = isAssistantMessage(msg);
     if (!isAssistant) {
@@ -276,6 +277,7 @@ export function cleanseMessageDataAtIndex(index, options = {}) {
     };
 
     if (typeof msg.mes === 'string' && dataResult.cleanedText !== msg.mes) {
+        if (typeof msg.__bl_original_mes !== 'string') msg.__bl_original_mes = sourceMes;
         msg.mes = dataResult.cleanedText;
         changed = true;
     }
@@ -328,6 +330,11 @@ export function performNonStreamingFinalCleanse(payload) {
 
     const msg = chat[index];
     if (!isAssistantMessage(msg)) return;
+    if (msg?.__bl_is_reverted) {
+        clearTrackedDiffEntry(index);
+        injectDiffButtons([index]);
+        return;
+    }
 
     const previousState = runtimeState.diffMessageStates.get(index);
     const currentSignature = computeMessageSignature(msg);
@@ -394,6 +401,11 @@ export function performIncrementalCleanse(payload, options = {}) {
     const msg = Array.isArray(chat) ? chat[index] : null;
     const assistant = isAssistantMessage(msg);
     if (!assistant) return;
+    if (msg?.__bl_is_reverted) {
+        clearTrackedDiffEntry(index);
+        injectDiffButtons([index]);
+        return;
+    }
     if (assistant) {
         const signature = computeMessageSignature(msg);
         if (options.visualOnly) markDiffComparisonPending(index, signature);
@@ -454,20 +466,22 @@ export function performGlobalCleanse() {
             let mainCache = { snippets: [], fullDiff: '' };
             const assistant = isAssistantMessage(msg);
             const signature = assistant ? computeMessageSignature(msg) : '';
+            const isReverted = msg?.__bl_is_reverted === true;
 
-            if (typeof msg?.mes === 'string') {
+            if (!isReverted && typeof msg?.mes === 'string') {
                 const { cleanedText, snippets: mesSnippets, fullDiff } = buildDiffSnippetsFromText(msg.mes);
                 mainCache = {
                     snippets: Array.from(new Set(mesSnippets)),
                     fullDiff,
                 };
                 if (msg.mes !== cleanedText) {
+                    if (typeof msg.__bl_original_mes !== 'string') msg.__bl_original_mes = msg.mes;
                     msg.mes = cleanedText;
                     msgChanged = true;
                 }
             }
 
-            if (msg?.swipes && Array.isArray(msg.swipes)) {
+            if (!isReverted && msg?.swipes && Array.isArray(msg.swipes)) {
                 for (let i = 0; i < msg.swipes.length; i++) {
                     if (typeof msg.swipes[i] === 'string') {
                         const { cleanedText } = buildDiffSnippetsFromText(msg.swipes[i]);
@@ -485,7 +499,7 @@ export function performGlobalCleanse() {
                 }
             }
 
-            if (assistant && latestDiffIndices.has(index)) {
+            if (assistant && latestDiffIndices.has(index) && !isReverted) {
                 writeReadyDiffCache(index, signature, mainCache, {
                     preserveExistingRealDiff: true,
                 });

@@ -26,6 +26,10 @@ function shouldSkipDbExtensionFieldByMeta(depth, rootNamespace, currentKey, isGl
     return key.includes('Prompt') || key.includes('Settings') || key.includes('Template');
 }
 
+function isRevertedMessageObject(value) {
+    return !!(value && typeof value === 'object' && value.__bl_is_reverted === true);
+}
+
 /**
  * 同步深度清理对象中的所有字符串字段。
  * @param {object} rootObj 待清理对象。
@@ -41,9 +45,11 @@ export function deepCleanObjectSync(rootObj) {
         const current = stack.pop();
         if (!current || seen.has(current)) continue;
         seen.add(current);
+        if (isRevertedMessageObject(current)) continue;
 
         for (let key in current) {
             if (!Object.prototype.hasOwnProperty.call(current, key)) continue;
+            if (key === '__bl_original_mes') continue;
             const val = current[key];
             if (typeof val === 'string') {
                 const cleaned = applyReplacements(val);
@@ -91,11 +97,13 @@ export async function safeDeepScrub(rootObj, isGlobalSettings = false, options =
         const rootNamespace = currentItem?.rootNamespace || '';
         if (!current || seen.has(current)) continue;
         seen.add(current);
+        if (isRevertedMessageObject(current)) continue;
 
         try {
             for (let key in current) {
                 if (Object.prototype.hasOwnProperty.call(current, key)) {
                     if (isGlobalSettings && key === extensionName) continue;
+                    if (key === '__bl_original_mes') continue;
                     const nextDepth = depth + 1;
                     const nextRootNamespace = depth === 0 ? key : rootNamespace;
                     if (shouldSkipDbExtensionFieldByMeta(nextDepth, nextRootNamespace, key, isGlobalSettings)) continue;
