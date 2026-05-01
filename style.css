@@ -529,6 +529,218 @@
     }
 }
 
+/* --- vNext: 保存/删除提示、规则提醒、两行模式选择、定位闪烁 --- */
+#bl-feedback-toast {
+    position: fixed !important;
+    left: 50% !important;
+    bottom: 56px !important;
+    transform: translateX(-50%) !important;
+    z-index: 10000030 !important;
+    display: none;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 180px !important;
+    max-width: min(88vw, 320px) !important;
+    padding: 13px 18px !important;
+    border-radius: 18px !important;
+    background: rgba(92, 92, 92, 0.78) !important;
+    color: #ffffff !important;
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.24) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    pointer-events: none !important;
+    font-size: 16px !important;
+    line-height: 1.2 !important;
+    font-weight: 600 !important;
+}
+
+#bl-feedback-toast i {
+    font-size: 18px !important;
+    color: #ffffff !important;
+    flex-shrink: 0 !important;
+}
+
+#bl-feedback-toast span {
+    color: #ffffff !important;
+    white-space: nowrap !important;
+}
+
+.bl-regex-warning-card {
+    width: min(560px, 92vw) !important;
+    max-height: min(78vh, 760px) !important;
+    padding: 18px 18px 16px !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+}
+
+.bl-regex-warning-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+}
+
+.bl-regex-warning-title {
+    margin: 0 !important;
+    font-size: 18px !important;
+    color: var(--bl-text-primary) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.bl-regex-warning-title i {
+    color: var(--bl-accent-color) !important;
+}
+
+.bl-regex-warning-summary {
+    margin: 0 !important;
+    color: var(--bl-text-secondary) !important;
+    font-size: 13px !important;
+    line-height: 1.55 !important;
+}
+
+.bl-regex-warning-list {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    overflow-y: auto !important;
+    max-height: min(48vh, 460px) !important;
+    padding-right: 4px !important;
+}
+
+.bl-regex-warning-item {
+    border: 1px solid color-mix(in srgb, var(--bl-text-primary) 12%, transparent) !important;
+    border-radius: 12px !important;
+    background: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important;
+    padding: 12px 13px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 6px !important;
+}
+
+.bl-regex-warning-item-head {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+}
+
+.bl-regex-warning-chip {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 3px 8px !important;
+    border-radius: 999px !important;
+    background: color-mix(in srgb, var(--bl-accent-color) 14%, transparent) !important;
+    color: var(--bl-text-primary) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+}
+
+.bl-regex-warning-item-body,
+.bl-regex-warning-item-target,
+.bl-regex-warning-item-reason {
+    color: var(--bl-text-primary) !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    word-break: break-word !important;
+}
+
+.bl-regex-warning-item-target {
+    font-weight: 700 !important;
+}
+
+.bl-regex-warning-item-reason {
+    color: var(--bl-text-secondary) !important;
+}
+
+.bl-regex-warning-mode {
+    margin-left: 6px !important;
+    color: var(--bl-accent-color) !important;
+    font-weight: 700 !important;
+}
+
+.bl-mode-select-shell {
+    position: relative !important;
+    flex: 1 !important;
+    min-width: 0 !important;
+    margin-right: 15px !important;
+}
+
+.bl-mode-select-display {
+    min-height: 54px !important;
+    padding: 2px 28px 2px 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 6px !important;
+}
+
+.bl-mode-select-title {
+    color: var(--bl-text-primary) !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    line-height: 1.2 !important;
+}
+
+.bl-mode-select-desc {
+    width: fit-content !important;
+    max-width: calc(100% - 8px) !important;
+    padding: 4px 10px !important;
+    border-radius: 999px !important;
+    border: 1px solid color-mix(in srgb, var(--bl-text-primary) 18%, transparent) !important;
+    background: color-mix(in srgb, var(--bl-text-primary) 4%, transparent) !important;
+    color: var(--bl-text-secondary) !important;
+    font-size: 12px !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+.bl-mode-select-native {
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    opacity: 0 !important;
+    cursor: pointer !important;
+    border: none !important;
+    background: transparent !important;
+    appearance: auto !important;
+    -webkit-appearance: menulist !important;
+}
+
+.bl-mode-select-chevron {
+    position: absolute !important;
+    right: 0 !important;
+    top: 14px !important;
+    color: var(--text-mute) !important;
+    pointer-events: none !important;
+    font-size: 14px !important;
+}
+
+.card,
+.bl-subrule-card {
+    transition: filter 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
+}
+
+.bl-reveal-flash {
+    animation: bl-reveal-flash 0.8s ease 2 !important;
+}
+
+@keyframes bl-reveal-flash {
+    0%, 100% {
+        filter: brightness(1);
+    }
+    25%, 65% {
+        filter: brightness(0.9);
+        box-shadow: 0 0 0 1px color-mix(in srgb, var(--bl-accent-color) 26%, transparent), 0 10px 24px rgba(0, 0, 0, 0.16) !important;
+    }
+}
+
 #bl-edit-subrules-container { 
     flex: 1 !important; 
     min-height: 200px !important; 

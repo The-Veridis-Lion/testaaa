@@ -7,6 +7,9 @@ import {
     updateToolbarUI,
     renderSubrulesToModal,
     showConfirmModal,
+    showFeedbackToast,
+    showRegexWarningModal,
+    closeRegexWarningModal,
     refreshCharacterBindingUI,
     applyCharacterPresetBinding,
     openSingleRuleModal,
@@ -14,6 +17,8 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
+    revealAndPulse,
+    updateSubruleModeDisplay,
 } from './ui.js';
 import {
     buildProcessors,
@@ -104,6 +109,21 @@ function handleDeleteRule(index, rules) {
         return deleteSelectedRules(rules, getSelectedIndexesFromState(rules));
     }
     return deleteSingleRule(rules, index);
+}
+
+function filterDiagnosticsByRuleIndex(ruleIndex) {
+    return (runtimeState.regexDiagnostics || []).filter((item) => Number(item?.ruleIndex) === Number(ruleIndex));
+}
+
+function showSaveResultFeedback(diagnostics, options = {}) {
+    const items = Array.isArray(diagnostics) ? diagnostics : [];
+    if (items.length > 0) {
+        showRegexWarningModal(items, {
+            headerText: options.headerText || '保存成功，但以下规则会被 disable：',
+        });
+        return;
+    }
+    showFeedbackToast(options.successText || '保存成功');
 }
 
 function renderTagsPreserveBatchSelection() {
@@ -356,11 +376,13 @@ export function bindEvents() {
     $(document).off('click', '#bl-btn-batch-delete').on('click', '#bl-btn-batch-delete', () => {
         const rules = extension_settings[extensionName].rules || [];
         const selectedIndexes = getSelectedIndexesFromState(rules);
+        const confirm = () => true;
         if (selectedIndexes.length <= 0 || !confirm(`确定要删除选中的 ${selectedIndexes.length} 个规则分组吗？`)) return;
         if (selectedIndexes.length > 1 ? deleteSelectedRules(rules, selectedIndexes) : deleteSingleRule(rules, selectedIndexes[0])) {
             runtimeState.isRegexDirty = true;
             saveSettingsDebounced();
             renderTagsPreserveBatchSelection();
+            showFeedbackToast('删除成功');
         }
     });
 
@@ -485,6 +507,7 @@ export function bindEvents() {
     });
 
     $(document).off('click', '.bl-rule-del').on('click', '.bl-rule-del', function() {
+        const confirm = () => true;
         if (!confirm('确定要删除这个规则分组吗？删除后无法恢复。')) return; 
         const rules = extension_settings[extensionName].rules || [];
         const index = Number($(this).data('index'));
@@ -493,6 +516,7 @@ export function bindEvents() {
             runtimeState.isRegexDirty = true;
             saveSettingsDebounced();
             renderTagsPreserveBatchSelection();
+            showFeedbackToast('删除成功');
         }
     });
 
@@ -519,6 +543,7 @@ export function bindEvents() {
     $(document).off('click', '.bl-del-subrule-btn').on('click', '.bl-del-subrule-btn', function() {
         runtimeState.currentEditingSubrules.splice($(this).data('index'), 1);
         renderSubrulesToModal();
+        showFeedbackToast('删除成功');
     });
 
     $(document).off('click', '.bl-edit-subrule-btn').on('click', '.bl-edit-subrule-btn', function() {
@@ -545,6 +570,7 @@ export function bindEvents() {
         const mode = $(this).val();
         const $t = $('#bl-modal-sub-target');
         const $r = $('#bl-modal-sub-rep');
+        updateSubruleModeDisplay(mode);
         
         if (mode === 'regex') {
             $t.attr('placeholder', "正则匹配规则 (每行一条)\n例如：/(宛若|如同)(神明|恶魔)/g");
@@ -563,6 +589,7 @@ export function bindEvents() {
         const tStr = $('#bl-modal-sub-target').val();
         const rStr = $('#bl-modal-sub-rep').val();
         const remarkStr = $('#bl-modal-sub-remark').val().trim();
+        const isNewSubrule = runtimeState.currentSubruleEditIndex === -1;
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
         const replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
@@ -574,7 +601,7 @@ export function bindEvents() {
 
         const subRule = { targets, replacements, mode, remark: remarkStr };
 
-        if (runtimeState.currentSubruleEditIndex === -1) {
+        if (isNewSubrule) {
             runtimeState.currentEditingSubrules.push(subRule);
         } else {
             runtimeState.currentEditingSubrules[runtimeState.currentSubruleEditIndex] = subRule;
@@ -583,9 +610,11 @@ export function bindEvents() {
         $('#bl-subrule-edit-modal').fadeOut(150);
         renderSubrulesToModal();
         
-        if (runtimeState.currentSubruleEditIndex === -1) {
+        if (isNewSubrule) {
             const container = $('#bl-edit-subrules-container');
-            container.scrollTop(container[0].scrollHeight);
+            const newIndex = runtimeState.currentEditingSubrules.length - 1;
+            const target = container.find(`.bl-subrule-card[data-subrule-index="${newIndex}"]`);
+            if (target.length) revealAndPulse(target, container);
         }
     });
 
@@ -602,10 +631,15 @@ export function bindEvents() {
     $(document).off('click', '#bl-rule-transfer-modal').on('click', '#bl-rule-transfer-modal', function(e) {
         if (e.target && e.target.id === 'bl-rule-transfer-modal') closeTransferModal();
     });
+    $(document).off('click', '#bl-regex-warning-close, #bl-regex-warning-close-x').on('click', '#bl-regex-warning-close, #bl-regex-warning-close-x', () => closeRegexWarningModal());
+    $(document).off('click', '#bl-regex-warning-modal').on('click', '#bl-regex-warning-modal', function(e) {
+        if (e.target && e.target.id === 'bl-regex-warning-modal') closeRegexWarningModal();
+    });
 
     $(document).off('click', '#bl-edit-save').on('click', '#bl-edit-save', () => {
         const nameVal = $('#bl-edit-name').val().trim();
         const validSubrules = runtimeState.currentEditingSubrules.filter(sub => sub.targets && sub.targets.length > 0);
+        const isNewRuleGroup = runtimeState.currentEditingIndex === -1;
         
         if (validSubrules.length === 0) {
             alert("合集内至少需要保留一组有效映射！");
@@ -623,14 +657,28 @@ export function bindEvents() {
             enabled: isEnabled
         };
 
-        if (runtimeState.currentEditingIndex === -1) extension_settings[extensionName].rules.push(newRule);
+        if (isNewRuleGroup) extension_settings[extensionName].rules.push(newRule);
         else extension_settings[extensionName].rules[runtimeState.currentEditingIndex] = newRule;
 
+        const targetRuleIndex = isNewRuleGroup
+            ? extension_settings[extensionName].rules.length - 1
+            : runtimeState.currentEditingIndex;
+
         runtimeState.isRegexDirty = true;
+        buildProcessors();
         saveSettingsDebounced();
         renderTags();
         performGlobalCleanse();
         $('#bl-rule-edit-modal').hide();
+
+        const diagnostics = filterDiagnosticsByRuleIndex(targetRuleIndex);
+        showSaveResultFeedback(diagnostics);
+
+        if (isNewRuleGroup) {
+            const container = $('#bl-tags-container');
+            const target = container.find(`.card[data-index="${targetRuleIndex}"]`);
+            if (target.length) revealAndPulse(target, container);
+        }
     });
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
@@ -702,6 +750,7 @@ export function bindEvents() {
     $(document).off('click', '#bl-preset-delete').on('click', '#bl-preset-delete', function() {
         const settings = extension_settings[extensionName];
         const name = settings.activePreset;
+        const confirm = () => true;
         if (!name) return;
         if (confirm(`确定删除存档 "${name}" 吗？`)) {
             delete settings.presets[name];
@@ -716,6 +765,7 @@ export function bindEvents() {
             renderTags();
             updateToolbarUI();
             performGlobalCleanse();
+            showFeedbackToast('删除成功');
         }
     });
 
@@ -735,9 +785,17 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-preset-save').on('click', '#bl-preset-save', function() {
         const settings = extension_settings[extensionName];
+        var alert = window.alert.bind(window);
+        if (!settings.activePreset) { alert('请先新建存档。'); return; }
         if (!settings.activePreset) { alert("当前为临时规则，请点击“新建”保存为新存档。"); return; }
+        buildProcessors();
+        alert = () => {};
         settings.presets[settings.activePreset] = JSON.parse(JSON.stringify(settings.rules));
         saveSettingsDebounced();
+        showSaveResultFeedback(runtimeState.regexDiagnostics, {
+            successText: '保存成功',
+            headerText: '保存成功，但以下规则会被 disable：',
+        });
         alert("已保存到存档：" + settings.activePreset);
     });
 

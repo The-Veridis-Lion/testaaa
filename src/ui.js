@@ -8,9 +8,122 @@ function safeHtml(str) {
     return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
+const SUBRULE_MODE_META = {
+    simple: {
+        title: '🧩 简易组合',
+        desc: '推荐，支持 {} 与 *',
+    },
+    text: {
+        title: '📝 普通文本',
+        desc: '长词优先替换',
+    },
+    regex: {
+        title: '⚙️ 正则表达式',
+        desc: '专业模式',
+    },
+};
+
+let feedbackToastTimer = null;
+let feedbackToastFadeTimer = null;
+
+function getSubruleModeMeta(mode) {
+    return SUBRULE_MODE_META[mode] || SUBRULE_MODE_META.simple;
+}
+
+export function updateSubruleModeDisplay(mode) {
+    const meta = getSubruleModeMeta(mode);
+    $('#bl-modal-sub-mode-title').text(meta.title);
+    $('#bl-modal-sub-mode-desc').text(meta.desc);
+}
+
+export function showFeedbackToast(message, options = {}) {
+    const duration = Number(options.duration) > 0 ? Number(options.duration) : 2000;
+    const $toast = $('#bl-feedback-toast');
+    if (!$toast.length) return;
+
+    clearTimeout(feedbackToastTimer);
+    clearTimeout(feedbackToastFadeTimer);
+
+    $('#bl-feedback-toast-text').text(String(message || '操作成功'));
+    $toast.stop(true, true).removeClass('is-hiding').css('display', 'flex').hide().fadeIn(120);
+
+    feedbackToastTimer = setTimeout(() => {
+        $toast.addClass('is-hiding');
+        feedbackToastFadeTimer = setTimeout(() => {
+            $toast.stop(true, true).fadeOut(220, () => $toast.removeClass('is-hiding'));
+        }, 0);
+    }, duration);
+}
+
+export function closeRegexWarningModal() {
+    $('#bl-regex-warning-modal').hide();
+}
+
+export function showRegexWarningModal(diagnostics, options = {}) {
+    const items = Array.isArray(diagnostics) ? diagnostics : [];
+    if (items.length === 0) return;
+
+    const headerText = String(options.headerText || '保存成功，但以下规则会被 disable：');
+    $('#bl-regex-warning-summary').text(headerText);
+    $('#bl-regex-warning-list').html(items.map((item) => {
+        const groupNo = Number(item?.ruleIndex) + 1;
+        const subruleNo = Number(item?.subRuleIndex) + 1;
+        return `
+            <div class="bl-regex-warning-item">
+                <div class="bl-regex-warning-item-head">
+                    <span class="bl-regex-warning-chip">${safeHtml(item?.presetName || '临时规则')}</span>
+                    <span class="bl-regex-warning-chip">${safeHtml(item?.ruleName || `合集 ${groupNo}`)}</span>
+                </div>
+                <div class="bl-regex-warning-item-body">
+                    第 ${Number.isFinite(groupNo) ? groupNo : '?'} 个合集，第 ${Number.isFinite(subruleNo) ? subruleNo : '?'} 条规则
+                    <span class="bl-regex-warning-mode">${safeHtml(item?.modeLabel || '规则')}</span>
+                </div>
+                <div class="bl-regex-warning-item-target">${safeHtml(item?.targetPreview || item?.target || '（空）')}</div>
+                <div class="bl-regex-warning-item-reason">${safeHtml(item?.reasonText || '该规则会被自动 disable。')}</div>
+            </div>
+        `;
+    }).join(''));
+
+    $('#bl-regex-warning-modal').css('display', 'flex');
+}
+
+function isElementVisibleInContainer(element, container) {
+    if (!element || !container) return false;
+    const elementRect = element.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    return elementRect.top >= containerRect.top && elementRect.bottom <= containerRect.bottom;
+}
+
+function pulseElement(element) {
+    if (!element) return;
+    element.classList.remove('bl-reveal-flash');
+    void element.offsetWidth;
+    element.classList.add('bl-reveal-flash');
+    setTimeout(() => element.classList.remove('bl-reveal-flash'), 1700);
+}
+
+export function revealAndPulse(target, container) {
+    const element = target?.jquery ? target.get(0) : target;
+    const scrollContainer = container?.jquery ? container.get(0) : container;
+    if (!element) return;
+
+    if (!scrollContainer || isElementVisibleInContainer(element, scrollContainer)) {
+        pulseElement(element);
+        return;
+    }
+
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const elementRect = element.getBoundingClientRect();
+    const nextScrollTop = scrollContainer.scrollTop + (elementRect.top - containerRect.top) - Math.max(12, (scrollContainer.clientHeight - element.clientHeight) / 2);
+    const maxScrollTop = Math.max(0, scrollContainer.scrollHeight - scrollContainer.clientHeight);
+    const clampedScrollTop = Math.max(0, Math.min(nextScrollTop, maxScrollTop));
+
+    $(scrollContainer).stop(true).animate({ scrollTop: clampedScrollTop }, 260, () => pulseElement(element));
+}
+
 export function setupUI() {
     logger.debug('[setupUI] 开始初始化 UI');
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal, #bl-feedback-toast, #bl-regex-warning-modal').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -153,16 +266,45 @@ export function setupUI() {
     `);
 
     $('body').append(`
+        <div id="bl-feedback-toast" style="display:none;">
+            <i class="fa-solid fa-circle-exclamation"></i>
+            <span id="bl-feedback-toast-text">操作成功</span>
+        </div>
+    `);
+
+    $('body').append(`
+        <div id="bl-regex-warning-modal" class="bl-modal-shell" style="display:none;">
+            <div class="bl-modal-card bl-regex-warning-card">
+                <div class="bl-regex-warning-header">
+                    <h3 class="bl-regex-warning-title"><i class="fa-solid fa-circle-exclamation"></i> 规则提醒</h3>
+                    <button id="bl-regex-warning-close-x" class="bl-icon-btn" title="关闭">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <p id="bl-regex-warning-summary" class="bl-regex-warning-summary">保存成功，但以下规则会被 disable：</p>
+                <div id="bl-regex-warning-list" class="bl-regex-warning-list"></div>
+                <div class="bl-modal-actions">
+                    <button id="bl-regex-warning-close" class="bl-primary-btn">我知道了</button>
+                </div>
+            </div>
+        </div>
+    `);
+
+    $('body').append(`
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
             <div class="bl-modal-card bl-edit-modal-card" style="padding: 20px !important;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px dotted var(--border-dash); padding-bottom: 12px;">
-                    <div style="position: relative; flex: 1; margin-right: 15px;">
-                        <select id="bl-modal-sub-mode" class="bl-input" style="margin: 0; width: 100%; font-size: 16px !important; font-weight: bold; background-color: transparent !important; border: none !important; padding: 0 !important; color: var(--text-main) !important; appearance: none; -webkit-appearance: none;">
+                    <div class="bl-mode-select-shell">
+                        <div id="bl-modal-sub-mode-display" class="bl-mode-select-display">
+                            <div id="bl-modal-sub-mode-title" class="bl-mode-select-title">🧩 简易组合</div>
+                            <div id="bl-modal-sub-mode-desc" class="bl-mode-select-desc">推荐，支持 {} 与 *</div>
+                        </div>
+                        <select id="bl-modal-sub-mode" class="bl-input bl-mode-select-native">
                             <option value="simple">🧩 简易组合 (推荐! 支持{}与*号)</option>
                             <option value="text">📝 普通文本 (长词优先替换)</option>
                             <option value="regex">⚙️ 正则表达式 (专业模式)</option>
                         </select>
-                        <i class="fas fa-chevron-down" style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: var(--text-mute); pointer-events: none; font-size: 14px;"></i>
+                        <i class="fas fa-chevron-down bl-mode-select-chevron"></i>
                     </div>
                     <button id="bl-modal-sub-save" class="bl-icon-btn" style="background: transparent !important; border: none !important; color: var(--text-main) !important; font-size: 24px !important; padding: 0 5px !important; min-width: auto !important; height: auto !important;" title="完成保存"><i class="fas fa-check"></i></button>
                 </div>
@@ -434,7 +576,7 @@ export function renderSubrulesToModal() {
         }
 
         container.append(`
-            <div style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
+            <div class="bl-subrule-card" data-subrule-index="${i}" style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5));">
                     <div style="display: flex; align-items: center; margin: 0; padding: 0;">
                         ${badgeHTML}
