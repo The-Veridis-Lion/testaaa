@@ -26,7 +26,7 @@ function isScriptEditorDialogNode(node) {
  */
 function isKnownPluginContainerNode(node) {
     if (!node || !node.closest) return false;
-    return Boolean(node.closest('#tavern_helper, #regex_editor_template, #qr--settings, #completion_prompt_manager_popup, #xiaobai_template_editor, #task_editor')); //酒馆助手，正则弹窗，qr，预设，小白角色模板，循环任务
+    return Boolean(node.closest('#tavern_helper, #regex_editor_template, #qr--settings, #completion_prompt_manager_popup, #xiaobai_template_editor, #task_editor')); //酒馆助手，正则弹窗，qr，预设，小白角色模板
 } 
 
 /**
@@ -44,13 +44,14 @@ export function isProtectedNode(node) {
     if ((node.id && node.id.includes('shujuku_v120-')) || node.closest('[id*="shujuku_v120-"]')) return true;
 
     const promptIds = [
-        'system_prompt', 'post_history_prompt', 'floating_prompt', 'nsfw_prompt', 'author_note', 'jailbreak_prompt',
-        'chat_completions_system_prompt', 'chat_completions_jailbreak_prompt', 'completion_prompt_manager_popup_entry_form_prompt',
-        'completion_prompt_manager_popup_entry_form_name', 'description_textarea', 'personality_textarea', 'scenario_textarea',
-        'mes_example_textarea', 'first_mes_textarea', 'creator_notes_textarea'
+        'system_prompt', 'post_history_prompt', 'floating_prompt', 'nsfw_prompt', 'author_note', 'jailbreak_prompt', //预设
+        'chat_completions_system_prompt', 'chat_completions_jailbreak_prompt', 'completion_prompt_manager_popup_entry_form_prompt',//预设
+        'completion_prompt_manager_popup_entry_form_name', 'description_textarea', 'personality_textarea', 'scenario_textarea',//世界书&人设
+        'mes_example_textarea', 'first_mes_textarea', 'creator_notes_textarea', '' //聊天
     ];
     if (node.id && promptIds.includes(node.id)) return true;
     if (node.id && node.id.startsWith('world_entry_content_')) return true;
+    if (node.matches?.('.task_name_edit, .task_commands_edit')) return true; //小白任务
     const dataFor = typeof node.getAttribute === 'function' ? node.getAttribute('data-for') : '';
     if (dataFor && dataFor.startsWith('world_entry_content_')) return true;
     if (node.tagName === 'TEXTAREA' && node.name === 'comment') return true;
