@@ -26,7 +26,7 @@ function isScriptEditorDialogNode(node) {
  */
 function isKnownPluginContainerNode(node) {
     if (!node || !node.closest) return false;
-    return Boolean(node.closest('#tavern_helper, #regex_container, #qr_container, .inline-drawer, .scrollableInner'));
+    return Boolean(node.closest('#tavern_helper, #regex_setting, #qr--settings, #completion_prompt_manager_popup'));
 }
 
 /**
