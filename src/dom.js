@@ -26,8 +26,8 @@ function isScriptEditorDialogNode(node) {
  */
 function isKnownPluginContainerNode(node) {
     if (!node || !node.closest) return false;
-    return Boolean(node.closest('#tavern_helper, #regex_editor_template, #qr--settings, #completion_prompt_manager_popup'));
-}
+    return Boolean(node.closest('#tavern_helper, #regex_editor_template, #qr--settings, #completion_prompt_manager_popup, #xiaobai_template_editor, #task_editor')); //酒馆助手，正则弹窗，qr，预设，小白角色模板，循环任务
+} 
 
 /**
  * 判断节点是否属于受保护区域。
