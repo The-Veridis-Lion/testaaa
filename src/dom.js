@@ -19,27 +19,14 @@ function isScriptEditorDialogNode(node) {
 }
 
 /**
- * 判断节点是否属于宿主应用的正则脚本编辑字段。
- * 同一套字段会出现在全局预设、角色卡等不同位置，因此按字段类名和占位标识匹配。
+ * 判断节点是否位于已知宿主插件容器内。
+ * 这里不需要真正识别“插件类型”，只要容器 id 稳定，就可以把整个区域视为受保护输入区。
  * @param {Element} node 待检查节点。
- * @returns {boolean} true 表示节点属于正则编辑字段。
+ * @returns {boolean} true 表示节点位于已知插件容器内。
  */
-function isRegexScriptEditorNode(node) {
-    if (!node || !node.matches) return false;
-    const regexFieldSelector = [
-        '.regex_script_name',
-        '.find_regex',
-        '.regex_replace_string',
-        '.regex_trim_strings',
-        '[data-i18n*="ext_regex_replace_string_placeholder"]',
-        '[data-i18n*="ext_regex_trim_placeholder"]',
-    ].join(', ');
-    if (node.matches(regexFieldSelector)) return true;
-
-    const placeholder = typeof node.getAttribute === 'function' ? String(node.getAttribute('placeholder') || '') : '';
-    return placeholder.includes('使用 {{match}}')
-        || placeholder.includes('查找正则表达式')
-        || placeholder.includes('全局修剪正则表达式匹配');
+function isKnownPluginContainerNode(node) {
+    if (!node || !node.closest) return false;
+    return Boolean(node.closest('#tavern_helper, #regex_container, #qr_container, .inline-drawer, .scrollableInner'));
 }
 
 /**
@@ -51,8 +38,8 @@ export function isProtectedNode(node) {
     if (!node || !node.closest) return false;
     if (node.closest('.name_text')) return true;
     if (node.closest('#bl-purifier-popup, #bl-batch-popup, #bl-confirm-modal, #bl-rule-edit-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal')) return true;
+    if (isKnownPluginContainerNode(node)) return true;
     if (isScriptEditorDialogNode(node)) return true;
-    if (isRegexScriptEditorNode(node)) return true;
     if (node.closest('#advanced_formatting, #api_settings')) return true;
     if ((node.id && node.id.includes('shujuku_v120-')) || node.closest('[id*="shujuku_v120-"]')) return true;
 
@@ -103,28 +90,6 @@ let node;
 
         const nextValue = runtimeState.isStreamingGeneration ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
         if (original !== nextValue) node.nodeValue = nextValue;
-    }
-
-    if (rootNode.nodeType === 1) {
-        if (rootNode.matches && rootNode.matches('input, textarea')) {
-            const input = rootNode;
-            if (!(isProtectedNode(input) || isRevertedMessageDomNode(input) || document.activeElement === input)) {
-                const originalVal = input.value || '';
-                const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
-                if (originalVal !== nextVal) input.value = nextVal;
-            }
-        }
-
-        if (rootNode.querySelectorAll) {
-            const inputs = rootNode.querySelectorAll('input, textarea');
-            for (let i = 0; i < inputs.length; i++) {
-                const input = inputs[i];
-                if (isProtectedNode(input) || isRevertedMessageDomNode(input) || document.activeElement === input) continue;
-                const originalVal = input.value || '';
-                const nextVal = runtimeState.isStreamingGeneration ? applyVisualMask(originalVal) : applyReplacements(originalVal, { deterministic: true });
-                if (originalVal !== nextVal) input.value = nextVal;
-            }
-        }
     }
 }
 
