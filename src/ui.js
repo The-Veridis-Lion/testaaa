@@ -10,20 +10,21 @@ function safeHtml(str) {
 
 export function showToast(message) {
     $('.bl-toast').remove();
+    const themeMode = String($('#bl-purifier-popup').attr('data-bl-theme') || 'auto');
     // 替换为 100% 兼容的 fas fa-exclamation-circle 图标
-    const $toast = $('<div class="bl-toast" role="status" aria-live="polite"><i class="fas fa-exclamation-circle" style="margin-right: 6px; font-size: 15px;"></i><span class="bl-toast-text"></span></div>');
+    const $toast = $(`<div class="bl-toast" data-bl-theme="${themeMode}" role="status" aria-live="polite"><i class="fas fa-exclamation-circle" style="margin-right: 6px; font-size: 15px;"></i><span class="bl-toast-text"></span></div>`);
     $toast.find('.bl-toast-text').text(String(message || ''));
     $('body').append($toast);
-    setTimeout(() => $toast.addClass('show'), 10);
+    setTimeout(() => $toast.addClass('bl-show'), 10);
     setTimeout(() => {
-        $toast.removeClass('show');
+        $toast.removeClass('bl-show');
         setTimeout(() => $toast.remove(), 300);
     }, 2000);
 }
 
 export function setupUI() {
     logger.debug('[setupUI] 开始初始化 UI');
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal, .bl-toast').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal, #bl-loading-overlay, .bl-toast').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -34,12 +35,12 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-purifier-popup" data-bl-theme="auto" style="display:none;">
-            <div class="header">
-                <div class="title">
+            <div class="bl-header">
+                <div class="bl-title">
                     <i class="fas fa-globe"></i>
                     全局映射预设
                 </div>
-                <div class="icon-group">
+                <div class="bl-icon-group">
                     <button id="bl-theme-toggle" title="切换主题"><i class="fas fa-circle-half-stroke"></i></button>
                     <button id="bl-default-toggle" title="设为默认预设" class="bl-bind-toggle"><i class="fas fa-star"></i></button>
                     <button id="bl-character-bind-toggle" title="将当前角色绑定到当前预设" class="bl-bind-toggle"><i class="fas fa-link-slash"></i></button>
@@ -49,9 +50,9 @@ export function setupUI() {
                 </div>
             </div>
 
-            <div class="toolbar">
-                <select id="bl-preset-select" class="select-box"></select>
-                <div class="icon-group">
+            <div class="bl-toolbar">
+                <select id="bl-preset-select" class="bl-select-box"></select>
+                <div class="bl-icon-group">
                     <button id="bl-preset-rename" title="重命名"><i class="fas fa-pen"></i></button>
                     <button id="bl-preset-save" title="保存"><i class="fas fa-save"></i></button>
                     <button id="bl-preset-new" title="新建"><i class="fas fa-plus"></i></button>
@@ -59,34 +60,34 @@ export function setupUI() {
                 </div>
             </div>
 
-            <div class="action-buttons">
-                <button id="bl-open-new-rule-btn" class="btn-secondary"><i class="fas fa-folder-plus"></i> 新增规则分组</button>
-                <button class="btn-secondary" id="bl-batch-toggle"><i class="fas fa-list-check"></i> 批量编辑模式</button>
+            <div class="bl-action-buttons">
+                <button id="bl-open-new-rule-btn" class="bl-btn-secondary"><i class="fas fa-folder-plus"></i> 新增规则分组</button>
+                <button class="bl-btn-secondary" id="bl-batch-toggle"><i class="fas fa-list-check"></i> 批量编辑模式</button>
             </div>
 
-            <div class="batch-operations" id="bl-batch-operations">
-                <button class="batch-btn" id="bl-btn-select-all"><i class="far fa-check-square"></i> 全选</button>
-                <button class="batch-btn" id="bl-btn-select-invert"><i class="fas fa-minus-square"></i> 反选</button>
-                <button class="batch-btn" id="bl-btn-batch-transfer"><i class="fas fa-copy"></i> 复制 / 转移</button>
-                <button class="batch-btn danger" id="bl-btn-batch-delete"><i class="fas fa-trash"></i> 删除</button>
+            <div class="bl-batch-operations" id="bl-batch-operations">
+                <button class="bl-batch-btn" id="bl-btn-select-all"><i class="far fa-check-square"></i> 全选</button>
+                <button class="bl-batch-btn" id="bl-btn-select-invert"><i class="fas fa-minus-square"></i> 反选</button>
+                <button class="bl-batch-btn" id="bl-btn-batch-transfer"><i class="fas fa-copy"></i> 复制 / 转移</button>
+                <button class="bl-batch-btn bl-danger" id="bl-btn-batch-delete"><i class="fas fa-trash"></i> 删除</button>
             </div>
 
-            <div class="divider"></div>
+            <div class="bl-divider"></div>
 
-            <div id="bl-tags-container" class="card-list" style="overflow-y:auto; flex:1;"></div>
+            <div id="bl-tags-container" class="bl-card-list" style="overflow-y:auto; flex:1;"></div>
 
-            <div class="bottom-bar">
-                <label class="checkbox-label" title="开启后，被修改过的消息旁会显示溯源按钮">
+            <div class="bl-bottom-bar">
+                <label class="bl-checkbox-label" title="开启后，被修改过的消息旁会显示溯源按钮">
                     <input type="checkbox" id="bl-diff-global-toggle">
-                    <span class="custom-checkbox square"></span>
-                    <span class="bottom-text">透视模式</span>
+                    <span class="bl-custom-checkbox bl-square"></span>
+                    <span class="bl-bottom-text">透视模式</span>
                 </label>
-                <label class="checkbox-label" title="开启后仅过滤 AI 回复，用户消息不受影响">
+                <label class="bl-checkbox-label" title="开启后仅过滤 AI 回复，用户消息不受影响">
                     <input type="checkbox" id="bl-skip-user-toggle">
-                    <span class="custom-checkbox square"></span>
-                    <span class="bottom-text">跳过用户消息</span>
+                    <span class="bl-custom-checkbox bl-square"></span>
+                    <span class="bl-bottom-text">跳过用户消息</span>
                 </label>
-                <button id="bl-deep-clean-btn" class="btn-danger"><i class="fas fa-broom"></i> 深度清理</button>
+                <button id="bl-deep-clean-btn" class="bl-btn-danger"><i class="fas fa-broom"></i> 深度清理</button>
             </div>
         </div>`);
 
@@ -97,13 +98,13 @@ export function setupUI() {
                     <h3 id="bl-edit-modal-title" class="bl-edit-modal-title" style="margin: 0; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-pen"></i> 编辑规则合集
                     </h3>
-                    <button id="bl-edit-cancel-x" class="bl-icon-btn" style="background: transparent !important; border: none !important; box-shadow: none !important; font-size: 20px !important; color: var(--text-mute); padding: 0 !important; min-width: auto !important; height: auto !important; cursor: pointer;">
+                    <button id="bl-edit-cancel-x" class="bl-icon-btn" style="background: transparent !important; border: none !important; box-shadow: none !important; font-size: 20px !important; color: var(--bl-text-mute); padding: 0 !important; min-width: auto !important; height: auto !important; cursor: pointer;">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="bl-edit-field">
                     <label class="bl-field-label">规则组合集名称</label>
-                    <input type="text" id="bl-edit-name" class="bl-input" placeholder="例如：程度副词与认知失能净化" style="background: var(--bg-button) !important; border: 1px solid var(--border-color) !important; color: var(--text-main) !important;">
+                    <input type="text" id="bl-edit-name" class="bl-input" placeholder="例如：程度副词与认知失能净化" style="background: var(--bl-bg-button) !important; border: 1px solid var(--bl-border-color-base) !important; color: var(--bl-text-main) !important;">
                 </div>
                 <label class="bl-field-label" style="margin-bottom:6px; flex-shrink:0;">映射规则列表</label>
                 <div id="bl-edit-subrules-container"></div>
@@ -193,21 +194,21 @@ export function setupUI() {
                 
                 <div class="bl-subrule-field" style="margin-bottom: 12px;">
                     <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">备注说明 (可选)</label>
-                    <input type="text" id="bl-modal-sub-remark" class="bl-input" placeholder="例如：处理特定角色的口头禅" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;">
+                    <input type="text" id="bl-modal-sub-remark" class="bl-input" placeholder="例如：处理特定角色的口头禅" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;">
                 </div>
                 
                 <div class="bl-subrule-field" style="margin-bottom: 12px;">
                     <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">查找内容</label>
-                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
+                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
                     <div id="bl-modal-sub-target-error" class="bl-field-error" aria-live="polite"></div>
                 </div>
                 
                 <div class="bl-subrule-field" style="margin-bottom: 15px;">
                     <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">替换为</label>
-                    <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
+                    <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
                 </div>
                 
-                <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bg-button) !important;">取消修改</button>
+                <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bl-bg-button) !important;">取消修改</button>
             </div>
         </div>
     `);
@@ -217,7 +218,7 @@ export function focusLatestRuleCard() {
     const container = document.getElementById('bl-tags-container');
     if (!container) return;
 
-    const cards = container.querySelectorAll('.card');
+    const cards = container.querySelectorAll('.bl-card');
     const latestCard = cards[cards.length - 1];
     if (!latestCard) return;
 
@@ -239,8 +240,9 @@ export function focusLatestRuleCard() {
 }
 
 export function showDeepCleanOverlay() {
+    const themeMode = String($('#bl-purifier-popup').attr('data-bl-theme') || 'auto');
     $('body').append(`
-        <div id="bl-loading-overlay" class="bl-loading-overlay">
+        <div id="bl-loading-overlay" class="bl-loading-overlay" data-bl-theme="${themeMode}">
             <h2 class="bl-loading-title"><i class="fas fa-spinner fa-spin"></i> 正在执行全方位深度清理 (包含角色卡与世界书)...</h2>
             <p id="bl-loading-status">正在初始化清理任务，请稍候。</p>
             <div class="bl-progress-track"><div id="bl-progress-fill" class="bl-progress-fill"></div></div>
@@ -262,7 +264,7 @@ export function showConfirmModal(onConfirm = () => performDeepCleanse()) {
     const $cancelBtn = $('#bl-modal-cancel');
 
     $modal.css('display', 'flex');
-    $confirmBtn.prop('disabled', true).addClass('is-disabled');
+    $confirmBtn.prop('disabled', true).addClass('bl-is-disabled');
 
     let timeLeft = 3;
     $confirmBtn.text(`确认清理 (${timeLeft}s)`);
@@ -274,7 +276,7 @@ export function showConfirmModal(onConfirm = () => performDeepCleanse()) {
         } else {
             clearInterval(timer);
             $confirmBtn.prop('disabled', false)
-                .removeClass('is-disabled')
+                .removeClass('bl-is-disabled')
                 .text('我已切换，确认清理！');
         }
     }, 1000);
@@ -399,42 +401,42 @@ export function renderTags() {
             const tPreview = safeHtml((sub.targets || []).join(mode === 'text' ? ', ' : ' | ')) || '（空）';
             const rPreview = safeHtml((sub.replacements || []).join(', ')) || '【直接删除】';
             return `
-                <div class="rule-item">
-                    <span class="tag">${tagText}</span>
-                    <span class="source">${tPreview}</span>
-                    <i class="fas fa-arrow-right arrow"></i>
-                    <span class="target">${rPreview}</span>
+                <div class="bl-rule-item">
+                    <span class="bl-tag">${tagText}</span>
+                    <span class="bl-source">${tPreview}</span>
+                    <i class="fas fa-arrow-right bl-arrow"></i>
+                    <span class="bl-target">${rPreview}</span>
                 </div>`;
         }).join('');
 
         const moreHtml = subRules.length > maxPreview
-            ? `<div class="more-text">... 以及其他 ${subRules.length - maxPreview} 组映射</div>`
+            ? `<div class="bl-more-text">... 以及其他 ${subRules.length - maxPreview} 组映射</div>`
             : '';
         const bodyHtml = subRules.length > 0
-            ? `<div class="card-body">${subRulesHtml}${moreHtml}</div>`
+            ? `<div class="bl-card-body">${subRulesHtml}${moreHtml}</div>`
             : '';
 
         const isEnabled = r.enabled !== false;
         const checkedAttr = isEnabled ? 'checked' : '';
         const moveUpDisabled = i === 0 ? 'disabled' : '';
         const moveDownDisabled = i === rules.length - 1 ? 'disabled' : '';
-        const headerClass = subRules.length > 0 ? 'card-header has-border' : 'card-header';
+        const headerClass = subRules.length > 0 ? 'bl-card-header bl-has-border' : 'bl-card-header';
 
         return `
-            <div class="card ${!isEnabled ? 'is-disabled' : ''}" data-index="${i}">
+            <div class="bl-card ${!isEnabled ? 'bl-is-disabled' : ''}" data-index="${i}">
                 <div class="${headerClass}">
-                    <div class="header-left">
-                        <label class="batch-checkbox-label">
+                    <div class="bl-header-left">
+                        <label class="bl-batch-checkbox-label">
                             <input type="checkbox" class="batch-item-checkbox" data-index="${i}">
-                            <span class="custom-checkbox square-2px"></span>
+                            <span class="bl-custom-checkbox bl-square-2px"></span>
                         </label>
-                        <label class="checkbox-label">
+                        <label class="bl-checkbox-label">
                             <input type="checkbox" class="bl-rule-toggle" data-index="${i}" ${checkedAttr}>
-                            <span class="custom-checkbox"></span>
-                            <span class="group-title">${name}</span>
+                            <span class="bl-custom-checkbox"></span>
+                            <span class="bl-group-title">${name}</span>
                         </label>
                     </div>
-                    <div class="icon-group compact">
+                    <div class="bl-icon-group bl-compact">
                         <button class="bl-rule-move-up" data-index="${i}" title="上移合集" ${moveUpDisabled}><i class="fas fa-arrow-up"></i></button>
                         <button class="bl-rule-move-down" data-index="${i}" title="下移合集" ${moveDownDisabled}><i class="fas fa-arrow-down"></i></button>
                         <button class="bl-rule-transfer" data-index="${i}" title="复制/转移到其他存档"><i class="fas fa-copy"></i></button>
@@ -477,7 +479,7 @@ export function renderSubrulesToModal() {
         let remarkHTML = '';
         if (remark) {
             remarkHTML = `
-                <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5)); font-size: 11px; color: var(--text-mute); font-style: italic;">
+                <div style="margin-top: 8px; padding-top: 10px; border-top: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5)); font-size: 11px; color: var(--bl-text-mute); font-style: italic;">
                     <i class="fas fa-info-circle" style="margin-right: 4px;"></i>${safeHtml(remark)}
                 </div>
             `;
@@ -499,7 +501,7 @@ export function renderSubrulesToModal() {
                 </div>
                 <div style="font-size: 13px !important; color: var(--bl-text-primary); line-height: 1.5; word-break: break-all;">
                     <b style="font-size: 13px !important;">${tPreview}</b> 
-                    <i class="fas fa-arrow-right" style="color: var(--text-mute); font-size: 11px; margin: 0 6px;"></i> 
+                    <i class="fas fa-arrow-right" style="color: var(--bl-text-mute); font-size: 11px; margin: 0 6px;"></i> 
                     <span style="font-size: 13px !important;">${rPreview}</span>
                 </div>
                 ${remarkHTML}

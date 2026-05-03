@@ -72,7 +72,7 @@ function applyBatchSelectionStateToDom(rules) {
 }
 
 function getBatchOperationContext(clickedIndex, rules) {
-    const isBatchMode = $('#bl-purifier-popup').hasClass('is-batch-mode');
+    const isBatchMode = $('#bl-purifier-popup').hasClass('bl-is-batch-mode');
     const selectedIndexes = getSelectedIndexesFromState(rules);
     const selectedSet = new Set(selectedIndexes);
     const shouldBatch = isBatchMode && selectedIndexes.length > 1 && selectedSet.has(clickedIndex);
@@ -366,7 +366,7 @@ export function bindEvents() {
     const applyThemeMode = (mode) => {
         const normalized = ['auto', 'light', 'dark'].includes(mode) ? mode : 'auto';
         settings.themeMode = normalized;
-        $('#bl-purifier-popup, .bl-modal-shell, #bl-rule-transfer-modal, #bl-diff-modal').attr('data-bl-theme', normalized);
+        $('#bl-purifier-popup, .bl-modal-shell, #bl-rule-transfer-modal, #bl-diff-modal, .bl-toast, #bl-loading-overlay').attr('data-bl-theme', normalized);
     };
 
     applyThemeMode(settings.themeMode || 'auto');
@@ -394,11 +394,11 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-batch-toggle').on('click', '#bl-batch-toggle', function() {
         const $popup = $('#bl-purifier-popup');
-        const isBatchMode = !$popup.hasClass('is-batch-mode');
-        $popup.toggleClass('is-batch-mode', isBatchMode);
+        const isBatchMode = !$popup.hasClass('bl-is-batch-mode');
+        $popup.toggleClass('bl-is-batch-mode', isBatchMode);
         $('#bl-batch-operations').toggle(isBatchMode);
-        $('.batch-checkbox-label').toggle(isBatchMode);
-        $(this).toggleClass('active', isBatchMode);
+        $popup.find('.bl-batch-checkbox-label').toggle(isBatchMode);
+        $(this).toggleClass('bl-active', isBatchMode);
         if (!isBatchMode) {
             $('.batch-item-checkbox').prop('checked', false);
             runtimeState.batchSelectedRuleIds = [];
