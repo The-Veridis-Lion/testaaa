@@ -903,6 +903,7 @@
 .bl-diff-actions-item + .bl-diff-actions-item { border-top: 1px solid var(--bl-border-color) !important; }
 .bl-diff-actions-item:hover { background: var(--bl-background-secondary) !important; }
 .bl-diff-actions-item i { flex: 0 0 16px !important; width: 16px !important; text-align: center !important; }
+.bl-diff-inline-icon { margin: 0 3px !important; }
 
 /* 差异高亮片段 (Snippet & Full Text) */
 .bl-diff-snippet { display: block !important; line-height: 1.8 !important; white-space: pre-wrap !important; word-break: break-word !important; padding: 12px 14px !important; background: var(--bl-background-secondary) !important; border-radius: 8px !important; border-left: 3px solid var(--bl-border-color) !important; }
@@ -1152,9 +1153,6 @@
     .bl-diff-header-actions {
         gap: 4px !important;
     }
-    #bl-diff-revert-toggle {
-        display: none !important;
-    }
     .bl-diff-header-btn,
     .bl-diff-modal-close {
         width: 34px !important;
@@ -1165,6 +1163,9 @@
         border-radius: 10px !important;
     }
     #bl-diff-mode-text {
+        display: none !important;
+    }
+    #bl-diff-revert-text {
         display: none !important;
     }
     .bl-diff-actions-menu {

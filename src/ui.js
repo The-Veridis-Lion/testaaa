@@ -327,10 +327,6 @@ export function setupUI() {
                                 <i class="fa-solid fa-ellipsis"></i>
                             </button>
                             <div id="bl-diff-actions-menu" class="bl-diff-actions-menu" hidden>
-                                <button id="bl-diff-menu-revert" type="button" class="bl-diff-actions-item" title="撤回净化并保护原文">
-                                    <i id="bl-diff-menu-revert-icon" class="fas fa-rotate-left"></i>
-                                    <span id="bl-diff-menu-revert-text">撤回净化</span>
-                                </button>
                                 <button id="bl-diff-menu-pos-toggle" type="button" class="bl-diff-actions-item" title="将顶部按钮收纳进菜单">
                                     <i id="bl-diff-menu-pos-icon" class="fa-solid fa-ellipsis"></i>
                                     <span id="bl-diff-menu-pos-text">顶部按钮：收纳</span>

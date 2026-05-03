@@ -647,13 +647,10 @@ export function bindEvents() {
 
     const syncDiffRevertToggleState = (msg) => {
         const isReverted = msg?.__bl_is_reverted === true;
-        const revertTitle = isReverted ? '解除保护并重新净化' : '撤回净化并保护原文';
+        const revertTitle = isReverted ? '重新净化文本' : '撤回净化并保护原文';
         $('#bl-diff-revert-icon').attr('class', isReverted ? 'fas fa-wand-magic-sparkles' : 'fas fa-rotate-left');
-        $('#bl-diff-revert-text').text(isReverted ? '重新净化' : '撤回');
+        $('#bl-diff-revert-text').text(isReverted ? '重新净化' : '撤回净化');
         $('#bl-diff-revert-toggle').attr('title', revertTitle);
-        $('#bl-diff-menu-revert-icon').attr('class', isReverted ? 'fas fa-wand-magic-sparkles' : 'fas fa-rotate-left');
-        $('#bl-diff-menu-revert-text').text(isReverted ? '重新净化' : '撤回净化');
-        $('#bl-diff-menu-revert').attr('title', revertTitle);
         $('#bl-diff-mode-toggle').toggle(!isReverted);
     };
 
@@ -707,7 +704,7 @@ export function bindEvents() {
         syncDiffRevertToggleState(msg);
 
         if (msg?.__bl_is_reverted) {
-            contentEl.html('<div class="bl-diff-empty"><i class="fas fa-shield-halved" style="margin-right:6px;"></i>此消息已撤回并处于免净化保护状态，当前显示为原始文本。</div>');
+            contentEl.html('<div class="bl-diff-empty"><i class="fas fa-shield-halved" style="margin-right:6px;"></i>此消息已撤回并处于免净化保护状态，当前显示为原始文本。点击 <i class="fas fa-wand-magic-sparkles bl-diff-inline-icon"></i> 重新净化文本。</div>');
             return;
         }
 
@@ -778,7 +775,6 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-diff-revert-toggle').on('click', '#bl-diff-revert-toggle', () => toggleCurrentDiffRevert());
-    $(document).off('click', '#bl-diff-menu-revert').on('click', '#bl-diff-menu-revert', () => toggleCurrentDiffRevert());
 
     $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => closeDiffModal());
     $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) { if (e.target && e.target.id === 'bl-diff-modal') closeDiffModal(); });
