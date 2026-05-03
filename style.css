@@ -459,6 +459,10 @@
     flex: 0 0 auto !important;
     white-space: nowrap !important;
 }
+.bl-regex-replacement-actions[hidden],
+.bl-regex-replacement-list[hidden] {
+    display: none !important;
+}
 .bl-subrule-mini-btn {
     padding: 6px 10px !important;
     border-radius: 999px !important;
@@ -474,12 +478,6 @@
 .bl-subrule-mini-btn:hover {
     background: var(--bl-background-tertiary) !important;
     border-color: var(--bl-accent-color) !important;
-}
-.bl-regex-replacement-helper {
-    margin-top: 8px !important;
-    color: var(--bl-text-secondary) !important;
-    font-size: 12px !important;
-    line-height: 1.5 !important;
 }
 .bl-regex-replacement-list {
     margin-top: 10px !important;
@@ -522,19 +520,6 @@
     cursor: pointer !important;
 }
 .bl-regex-replacement-chip-remove:hover { color: var(--bl-btn-danger) !important; }
-.bl-regex-replacement-empty {
-    display: none;
-    margin-top: 10px !important;
-    padding: 12px !important;
-    border-radius: 10px !important;
-    border: 1px dashed var(--bl-border-color) !important;
-    background: var(--bl-background-secondary) !important;
-    color: var(--bl-text-mute) !important;
-    font-size: 12px !important;
-    line-height: 1.5 !important;
-    text-align: center !important;
-}
-.bl-regex-replacement-empty.is-visible { display: block !important; }
 .bl-subrule-save-btn {
     background: transparent !important;
     border: none !important;

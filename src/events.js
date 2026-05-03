@@ -19,7 +19,6 @@ import {
     removeRegexReplacementInput,
     startEditingRegexReplacementInput,
     recognizeRegexReplacementInput,
-    commitRegexReplacementInput,
     hasPendingRegexReplacementInput,
     setSingleRuleReplacementEditor,
     getSingleRuleReplacementValues,
@@ -311,18 +310,18 @@ export function bindEvents() {
         simple: {
             hint: '适合批量覆盖相近表达，支持 {} 组合和 * 通配。',
             targetPlaceholder: "简易语法 (每行一条)\n例如：{宛若,如同}{神明,恶魔}?",
-            replacementPlaceholder: "替换后词汇 (每行一条，支持随机，可留空)",
+            replacementPlaceholder: "替换后词汇（每行一条，支持随机，可留空）\n留空时，命中后会直接删除",
         },
         text: {
             hint: '按普通词组逐项替换，适合稳定短语，长词会优先处理。',
             targetPlaceholder: "被替换词汇 (逗号/空格分隔)\n例如：嘴角勾起, 并不存在",
-            replacementPlaceholder: "替换后词汇 (逗号/空格分隔，留空直接删除)",
+            replacementPlaceholder: "替换后词汇（逗号/空格分隔，可留空）\n留空时，命中后会直接删除",
         },
         regex: {
             hint: '适合复杂匹配和捕获组替换；每次命中会从替换项里随机选一个。',
             targetPlaceholder: "正则匹配规则 (每行一条)\n支持裸模式 foo|bar 或 /foo|bar/gmu",
-            replacementPlaceholder: "先在这里输入候选内容，再用右侧按钮加入替换项",
-            regexHelper: '按行识别适合常见随机候选；存为单项适合 $1\\n$2 这类多行模板。',
+            replacementPlaceholder: "替换模板（每行一条，支持随机；可用 $1、\\n，可留空）\n点“按行识别”后加入下方替换项",
+            regexEditPlaceholder: "正在编辑替换项；可用 $1、\\n\n点“更新替换项”保存修改",
         },
     };
     const validateRegexTargetField = (options = {}) => {
@@ -354,13 +353,19 @@ export function bindEvents() {
         $('#bl-modal-sub-mode').data('current-mode', mode);
         $('#bl-modal-sub-target').attr('placeholder', config.targetPlaceholder);
         $('#bl-modal-sub-rep').attr('placeholder', config.replacementPlaceholder);
-        $('#bl-modal-sub-regex-helper').data('default-text', config.regexHelper || '');
         if (mode === 'regex') {
+            $('#bl-modal-sub-rep')
+                .data('regex-default-placeholder', config.replacementPlaceholder)
+                .data('regex-edit-placeholder', config.regexEditPlaceholder || config.replacementPlaceholder);
             const activeEditIndex = Number($('#bl-modal-sub-rep').data('regex-edit-index'));
-            $('#bl-modal-sub-regex-helper').text(activeEditIndex >= 0
-                ? `正在编辑替换项 ${activeEditIndex + 1}，修改后点“更新该项”。`
-                : (config.regexHelper || ''));
-            $('#bl-modal-sub-regex-commit').text(activeEditIndex >= 0 ? '更新该项' : '存为单项');
+            $('#bl-modal-sub-regex-recognize').text(activeEditIndex >= 0 ? '更新替换项' : '按行识别');
+            $('#bl-modal-sub-rep').attr('placeholder', activeEditIndex >= 0
+                ? (config.regexEditPlaceholder || config.replacementPlaceholder)
+                : config.replacementPlaceholder);
+        } else {
+            $('#bl-modal-sub-rep')
+                .removeData('regex-default-placeholder')
+                .removeData('regex-edit-placeholder');
         }
         $('#bl-modal-sub-mode-hint').text(config.hint);
         validateRegexTargetField();
@@ -691,16 +696,7 @@ export function bindEvents() {
     $(document).off('click', '#bl-modal-sub-regex-recognize').on('click', '#bl-modal-sub-regex-recognize', () => {
         const result = recognizeRegexReplacementInput();
         if (!result.ok) {
-            showToast('先在替换框里输入内容，再按行识别。');
-            $('#bl-modal-sub-rep').trigger('focus');
-            return;
-        }
-    });
-
-    $(document).off('click', '#bl-modal-sub-regex-commit').on('click', '#bl-modal-sub-regex-commit', () => {
-        const result = commitRegexReplacementInput();
-        if (!result.ok) {
-            showToast('替换项内容不能为空。');
+            showToast('请先在替换框中输入内容，再点右侧按钮。');
             $('#bl-modal-sub-rep').trigger('focus');
             return;
         }
@@ -735,7 +731,7 @@ export function bindEvents() {
         }
 
         if (mode === 'regex' && hasPendingRegexReplacementInput()) {
-            showToast('替换框里还有未加入的内容，请先按右侧按钮处理。');
+            showToast('替换框里还有未处理的内容，请先点右侧按钮。');
             $('#bl-modal-sub-rep').trigger('focus');
             return;
         }

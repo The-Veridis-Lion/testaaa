@@ -69,12 +69,12 @@ function syncRegexReplacementInputState() {
         $element.find('.bl-regex-replacement-chip-main').attr('data-index', index);
         $element.find('.bl-regex-replacement-chip-remove').attr('data-index', index);
     });
-    $('#bl-modal-sub-regex-empty').toggleClass('is-visible', $items.length === 0);
-    $('#bl-modal-sub-regex-commit').text(editIndex >= 0 ? '更新该项' : '存为单项');
-    const defaultHelperText = String($('#bl-modal-sub-regex-helper').data('default-text') || '');
-    $('#bl-modal-sub-regex-helper').text(editIndex >= 0
-        ? `正在编辑替换项 ${editIndex + 1}，修改后点“更新该项”。`
-        : defaultHelperText);
+    const isEditing = editIndex >= 0;
+    const defaultPlaceholder = String($textarea.data('regex-default-placeholder') || '');
+    const editPlaceholder = String($textarea.data('regex-edit-placeholder') || defaultPlaceholder);
+    $('#bl-modal-sub-regex-list').prop('hidden', $items.length === 0);
+    $('#bl-modal-sub-regex-recognize').text(isEditing ? '更新替换项' : '按行识别');
+    $textarea.attr('placeholder', isEditing ? editPlaceholder : defaultPlaceholder);
 }
 
 export function showToast(message) {
@@ -275,15 +275,12 @@ export function setupUI() {
                 <div class="bl-subrule-field" style="margin-bottom: 15px;">
                     <div class="bl-subrule-replacement-head">
                         <label class="bl-field-label" style="margin-bottom: 0; font-weight: 600;">替换为</label>
-                        <div id="bl-modal-sub-regex-actions" class="bl-regex-replacement-actions" style="display:none;">
+                        <div id="bl-modal-sub-regex-actions" class="bl-regex-replacement-actions" hidden>
                             <button id="bl-modal-sub-regex-recognize" type="button" class="bl-subrule-mini-btn">按行识别</button>
-                            <button id="bl-modal-sub-regex-commit" type="button" class="bl-subrule-mini-btn">存为单项</button>
                         </div>
                     </div>
                     <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
-                    <div id="bl-modal-sub-regex-helper" class="bl-regex-replacement-helper" style="display:none;"></div>
-                    <div id="bl-modal-sub-regex-list" class="bl-regex-replacement-list" style="display:none;"></div>
-                    <div id="bl-modal-sub-regex-empty" class="bl-regex-replacement-empty" style="display:none;">未添加替换项时，命中后会直接删除。</div>
+                    <div id="bl-modal-sub-regex-list" class="bl-regex-replacement-list" hidden></div>
                 </div>
                 
                 <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bl-bg-button) !important;">取消修改</button>
@@ -497,17 +494,8 @@ export function startEditingRegexReplacementInput(index) {
 }
 
 export function recognizeRegexReplacementInput() {
-    const draft = String($('#bl-modal-sub-rep').val() ?? '');
-    const lines = draft.replace(/\r/g, '').split('\n').filter((line) => line.trim() !== '');
-    if (lines.length === 0) return { ok: false, reason: 'empty' };
-    lines.forEach((line) => addRegexReplacementInput(line));
-    $('#bl-modal-sub-rep').val('').data('regex-edit-index', -1);
-    syncRegexReplacementInputState();
-    return { ok: true, count: lines.length };
-}
-
-export function commitRegexReplacementInput() {
-    const draft = String($('#bl-modal-sub-rep').val() ?? '');
+    const $textarea = $('#bl-modal-sub-rep');
+    const draft = String($textarea.val() ?? '');
     if (draft.trim() === '') return { ok: false, reason: 'empty' };
 
     const editIndex = getRegexReplacementEditIndex();
@@ -518,15 +506,17 @@ export function commitRegexReplacementInput() {
         $item.find('.bl-regex-replacement-chip-main')
             .html(formatReplacementCandidatePreview(draft))
             .attr('title', draft || '点击编辑替换项');
-        $('#bl-modal-sub-rep').val('').data('regex-edit-index', -1);
+        $textarea.val('').data('regex-edit-index', -1);
         syncRegexReplacementInputState();
         return { ok: true, mode: 'update' };
     }
 
-    addRegexReplacementInput(draft);
-    $('#bl-modal-sub-rep').val('').data('regex-edit-index', -1);
+    const lines = draft.replace(/\r/g, '').split('\n').filter((line) => line.trim() !== '');
+    if (lines.length === 0) return { ok: false, reason: 'empty' };
+    lines.forEach((line) => addRegexReplacementInput(line));
+    $textarea.val('').data('regex-edit-index', -1);
     syncRegexReplacementInputState();
-    return { ok: true, mode: 'append' };
+    return { ok: true, mode: 'append', count: lines.length };
 }
 
 export function hasPendingRegexReplacementInput() {
@@ -540,20 +530,26 @@ export function hasPendingRegexReplacementInput() {
 export function setSingleRuleReplacementEditor(mode, replacements = []) {
     const normalized = normalizeReplacementList(replacements);
     const isRegexMode = mode === 'regex';
-    $('#bl-modal-sub-rep').data('regex-edit-index', -1);
+    const $textarea = $('#bl-modal-sub-rep');
+    const $actions = $('#bl-modal-sub-regex-actions');
+    const $list = $('#bl-modal-sub-regex-list');
+    $textarea.data('regex-edit-index', -1);
 
     if (isRegexMode) {
-        $('#bl-modal-sub-rep').val('');
-        $('#bl-modal-sub-regex-list').empty();
+        $textarea.val('');
+        $list.empty();
         normalized.forEach((value) => addRegexReplacementInput(value));
-        $('#bl-modal-sub-regex-actions, #bl-modal-sub-regex-helper, #bl-modal-sub-regex-list, #bl-modal-sub-regex-empty').show();
+        $actions.prop('hidden', false);
         syncRegexReplacementInputState();
         return;
     }
 
-    $('#bl-modal-sub-regex-list').empty().hide();
-    $('#bl-modal-sub-regex-actions, #bl-modal-sub-regex-helper, #bl-modal-sub-regex-empty').hide();
-    $('#bl-modal-sub-rep').val(normalized.join(mode === 'text' ? ', ' : '\n'));
+    $list.empty().prop('hidden', true);
+    $actions.prop('hidden', true);
+    $textarea
+        .val(normalized.join(mode === 'text' ? ', ' : '\n'))
+        .removeData('regex-default-placeholder')
+        .removeData('regex-edit-placeholder');
 }
 
 export function getSingleRuleReplacementValues(mode) {
