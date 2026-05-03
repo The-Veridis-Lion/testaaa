@@ -1034,6 +1034,7 @@
     }
 
     #bl-rule-edit-modal,
+    #bl-rule-search-modal,
     #bl-diff-modal,
     #bl-subrule-edit-modal {
         position: fixed !important;
@@ -1049,6 +1050,7 @@
         z-index: 10000005 !important;
     }
     #bl-rule-edit-modal > .bl-edit-modal-card,
+    #bl-rule-search-modal > .bl-rule-search-card,
     #bl-subrule-edit-modal > .bl-edit-modal-card,
     .bl-diff-modal-card {
         position: relative !important;
