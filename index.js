@@ -1,7 +1,7 @@
 import { extension_settings } from "../../../extensions.js";
 import { saveSettingsDebounced, eventSource, event_types, saveChat, chat_metadata, chat } from "../../../../script.js";
 
-import { defaultSettings, extensionName, initAppContext, runtimeState } from './src/state.js';
+import { defaultSettings, extensionName, initAppContext, runtimeState, markRulesDataDirty } from './src/state.js';
 import { logger } from './src/log.js';
 import { bindEvents, initRealtimeInterceptor } from './src/events.js';
 import { setupUI, updateToolbarUI, applyCharacterPresetBinding, cleanupInvalidPresetBindings } from './src/ui.js';
@@ -51,7 +51,7 @@ function migrateOldData() {
             });
         }
         delete settings.bannedWords;
-        runtimeState.isRegexDirty = true;
+        markRulesDataDirty();
     }
 
     if (settings) {

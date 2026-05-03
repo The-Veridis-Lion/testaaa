@@ -1,4 +1,4 @@
-import { extensionName, getAppContext, runtimeState } from './state.js';
+import { extensionName, getAppContext, runtimeState, markRulesDataDirty, markRulesUiDirty, markPresetsUiDirty } from './state.js';
 import { logger } from './log.js';
 import { deepClone, getCurrentCharacterContext, getPresetForCharacter, parseInputToWords } from './utils.js';
 import { performGlobalCleanse } from './core.js';
@@ -51,6 +51,24 @@ function buildRegexReplacementChip(value = '') {
     $chip.data('value', normalizedValue);
     $chip.find('.bl-regex-replacement-chip-main').html(preview).attr('title', normalizedValue || '点击编辑替换项');
     return $chip;
+}
+
+function appendRegexReplacementInputs(values = [], options = {}) {
+    const normalizedValues = normalizeReplacementList(values);
+    const { sync = true } = options;
+    if (normalizedValues.length === 0) return $();
+
+    const $container = $('#bl-modal-sub-regex-list');
+    const fragment = document.createDocumentFragment();
+    const nodes = [];
+    normalizedValues.forEach((value) => {
+        const node = buildRegexReplacementChip(value)[0];
+        nodes.push(node);
+        fragment.appendChild(node);
+    });
+    $container.append(fragment);
+    if (sync) syncRegexReplacementInputState();
+    return $(nodes);
 }
 
 function syncRegexReplacementInputState() {
@@ -289,6 +307,9 @@ export function setupUI() {
             </div>
         </div>
     `);
+
+    markRulesUiDirty(true);
+    markPresetsUiDirty(true);
 } 
 
 export function focusLatestRuleCard() {
@@ -379,7 +400,7 @@ export function applyPresetByName(name, options = {}) {
     const presetExists = !!(presetName && settings.presets?.[presetName]);
     settings.activePreset = presetExists ? presetName : "";
     settings.rules = presetExists ? deepClone(settings.presets[presetName]) : [];
-    runtimeState.isRegexDirty = true;
+    markRulesDataDirty();
     saveSettingsDebounced();
     logger.info(`切换预设: ${presetName || '(临时规则)'}, 存在=${presetExists}`);
     if (!options.skipRender) {
@@ -452,24 +473,22 @@ export function updateToolbarUI() {
     const settings = extension_settings[extensionName];
     cleanupInvalidPresetBindings();
     const select = $('#bl-preset-select');
-    select.empty();
-    select.append('<option value="">-- 临时规则 (未绑定存档) --</option>');
+    if (!select.length) return;
 
-    if (settings.presets) {
-        for (let name in settings.presets) {
-            select.append($('<option>', { value: name, text: name }));
-        }
+    if (runtimeState.presetsUiDirty || select.children().length === 0) {
+        const presetNames = settings.presets ? Object.keys(settings.presets) : [];
+        const optionsHtml = ['<option value="">-- 临时规则 (未绑定存档) --</option>']
+            .concat(presetNames.map((name) => `<option value="${safeHtml(name)}">${safeHtml(name)}</option>`))
+            .join('');
+        select.html(optionsHtml);
+        markPresetsUiDirty(false);
     }
     select.val(settings.activePreset || "");
     refreshCharacterBindingUI();
 }
 
 export function addRegexReplacementInput(value = '') {
-    const $container = $('#bl-modal-sub-regex-list');
-    const $item = buildRegexReplacementChip(value);
-    $container.append($item);
-    syncRegexReplacementInputState();
-    return $item;
+    return appendRegexReplacementInputs([value]).eq(0);
 }
 
 export function removeRegexReplacementInput(index) {
@@ -515,7 +534,7 @@ export function recognizeRegexReplacementInput() {
 
     const lines = draft.replace(/\r/g, '').split('\n').filter((line) => line.trim() !== '');
     if (lines.length === 0) return { ok: false, reason: 'empty' };
-    lines.forEach((line) => addRegexReplacementInput(line));
+    appendRegexReplacementInputs(lines, { sync: false });
     $textarea.val('').data('regex-edit-index', -1);
     syncRegexReplacementInputState();
     return { ok: true, mode: 'append', count: lines.length };
@@ -540,7 +559,7 @@ export function setSingleRuleReplacementEditor(mode, replacements = []) {
     if (isRegexMode) {
         $textarea.val('');
         $list.empty();
-        normalized.forEach((value) => addRegexReplacementInput(value));
+        appendRegexReplacementInputs(normalized, { sync: false });
         $actions.prop('hidden', false);
         syncRegexReplacementInputState();
         return;
@@ -564,6 +583,10 @@ export function getSingleRuleReplacementValues(mode) {
 }
 
 export function renderTags() {
+    const container = $('#bl-tags-container');
+    if (!container.length) return;
+    if (!runtimeState.rulesUiDirty && container.children().length > 0) return;
+
     const { extension_settings } = getAppContext();
     const rules = extension_settings[extensionName]?.rules || [];
     const html = rules.map((r, i) => {
@@ -624,19 +647,19 @@ export function renderTags() {
             </div>`;
     }).join('');
 
-    $('#bl-tags-container').html(html || '<div class="bl-empty-state">当前无规则，请点击上方按钮新增</div>');
+    container.html(html || '<div class="bl-empty-state">当前无规则，请点击上方按钮新增</div>');
+    markRulesUiDirty(false);
 }
 
 export function renderSubrulesToModal() {
     const container = $('#bl-edit-subrules-container');
-    container.empty();
-
+    if (!container.length) return;
     if (runtimeState.currentEditingSubrules.length === 0) {
         container.html('<div style="text-align:center; color:var(--bl-text-secondary); font-size:12px; padding:20px;">当前合集没有映射规则，请点击下方按钮添加。</div>');
         return;
     }
 
-    runtimeState.currentEditingSubrules.forEach((sub, i) => {
+    const html = runtimeState.currentEditingSubrules.map((sub, i) => {
         const mode = sub.mode || 'text';
         const remark = sub.remark ? sub.remark.trim() : '';
         const moveUpDisabled = i === 0 ? 'disabled' : '';
@@ -648,8 +671,8 @@ export function renderSubrulesToModal() {
         else if (mode === 'simple') badgeHTML = `<span style="${badgeBaseStyle} background:color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%);">简易</span>`;
         else badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-text-secondary); color:var(--bl-background-popup);">普通</span>`;
 
-        let tPreview = safeHtml(sub.targets.join(mode === 'text' ? ', ' : ' | '));
-        let rPreview = formatReplacementPreview(sub.replacements || [], mode);
+        const tPreview = safeHtml((sub.targets || []).join(mode === 'text' ? ', ' : ' | '));
+        const rPreview = formatReplacementPreview(sub.replacements || [], mode);
 
         let remarkHTML = '';
         if (remark) {
@@ -660,7 +683,7 @@ export function renderSubrulesToModal() {
             `;
         }
 
-        container.append(`
+        return `
             <div style="flex-shrink: 0 !important; background: var(--bl-background-secondary); border: 1px solid var(--bl-border-color); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; display: flex; flex-direction: column; box-shadow: 0 4px 10px rgba(0,0,0,0.04);">
                 <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px dotted color-mix(in srgb, var(--bl-text-primary) 35%, rgba(128,128,128,0.5));">
                     <div style="display: flex; align-items: center; margin: 0; padding: 0;">
@@ -681,8 +704,10 @@ export function renderSubrulesToModal() {
                 </div>
                 ${remarkHTML}
             </div>
-        `);
-    });
+        `;
+    }).join('');
+
+    container.html(html);
 }
 
 export function openSingleRuleModal(index) {
@@ -726,8 +751,7 @@ export function openTransferModal(ruleIndexOrIndexes) {
         .filter((v) => Number.isInteger(v) && v >= 0);
     runtimeState.currentTransferRuleIndex = runtimeState.currentTransferRuleIndexes[0] ?? -1;
     const $select = $('#bl-transfer-target');
-    $select.empty();
-    targetNames.forEach(name => $select.append($('<option>', { value: name, text: name })));
+    $select.html(targetNames.map((name) => `<option value="${safeHtml(name)}">${safeHtml(name)}</option>`).join(''));
     $('#bl-rule-transfer-modal').css('display', 'flex');
 }
 
@@ -773,12 +797,12 @@ export function runRuleTransfer(isMove) {
             sourceRules.splice(uniqueIndexes[i], 1);
         }
         runtimeState.batchSelectedRuleIds = [];
+        markRulesDataDirty();
     }
 
-    runtimeState.isRegexDirty = true;
     closeTransferModal();
     saveSettingsDebounced();
-    renderTags();
+    if (isMove) renderTags();
 }
 
 export function openEditModal(index = -1) {

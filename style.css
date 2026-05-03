@@ -404,18 +404,13 @@
     display: inline-flex !important;
     align-items: center !important;
     flex: 0 1 auto !important;
-    width: fit-content !important;
+    width: auto !important;
     max-width: 100% !important;
     min-width: 0 !important;
 }
 .bl-subrule-mode-select {
     margin: 0 !important;
-    display: block !important;
-    width: auto !important;
     max-width: 100% !important;
-    min-width: 0 !important;
-    min-height: 0 !important;
-    height: auto !important;
     padding: 0 22px 0 0 !important;
     border: none !important;
     background: transparent !important;

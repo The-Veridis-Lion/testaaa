@@ -1,4 +1,4 @@
-import { extensionName, getAppContext, runtimeState } from './state.js';
+import { extensionName, getAppContext, runtimeState, markRulesDataDirty, markPresetsUiDirty } from './state.js';
 import { logger } from './log.js';
 import { deepClone, parseInputToWords, getCurrentCharacterContext, validateRegexTargetInput, normalizeImportedRulesPayload } from './utils.js';
 import {
@@ -452,7 +452,7 @@ export function bindEvents() {
         const selectedIndexes = getSelectedIndexesFromState(rules);
         if (selectedIndexes.length <= 0 || !confirm(`确定要删除选中的 ${selectedIndexes.length} 个规则分组吗？`)) return;
         if (selectedIndexes.length > 1 ? deleteSelectedRules(rules, selectedIndexes) : deleteSingleRule(rules, selectedIndexes[0])) {
-            runtimeState.isRegexDirty = true;
+            markRulesDataDirty();
             saveSettingsDebounced();
             renderTagsPreserveBatchSelection();
         }
@@ -599,7 +599,7 @@ export function bindEvents() {
         const ctx = getBatchOperationContext(index, rules);
         if (ctx.shouldBatch) { if (!batchMoveRules(rules, ctx.selectedIndexes, 'up')) return; }
         else { if (index <= 0) return; [rules[index - 1], rules[index]] = [rules[index], rules[index - 1]]; }
-        runtimeState.isRegexDirty = true;
+        markRulesDataDirty();
         saveSettingsDebounced();
         renderTagsPreserveBatchSelection();
     });
@@ -611,7 +611,7 @@ export function bindEvents() {
         const ctx = getBatchOperationContext(index, rules);
         if (ctx.shouldBatch) { if (!batchMoveRules(rules, ctx.selectedIndexes, 'down')) return; }
         else { if (index >= rules.length - 1) return; [rules[index], rules[index + 1]] = [rules[index + 1], rules[index]]; }
-        runtimeState.isRegexDirty = true;
+        markRulesDataDirty();
         saveSettingsDebounced();
         renderTagsPreserveBatchSelection();
     });
@@ -624,7 +624,7 @@ export function bindEvents() {
         const ctx = getBatchOperationContext(index, rules);
         if (ctx.shouldBatch) ctx.selectedIndexes.forEach((idx) => { rules[idx].enabled = targetEnabled; });
         else rules[index].enabled = targetEnabled;
-        runtimeState.isRegexDirty = true;
+        markRulesDataDirty();
         saveSettingsDebounced();
         renderTagsPreserveBatchSelection();
         performGlobalCleanse();
@@ -637,7 +637,7 @@ export function bindEvents() {
         if (!Number.isInteger(index) || index < 0 || index >= rules.length) return;
         const deletingCount = shouldBatchTransferRule(index, rules) ? getSelectedIndexesFromState(rules).length : 1;
         if (handleDeleteRule(index, rules)) {
-            runtimeState.isRegexDirty = true;
+            markRulesDataDirty();
             saveSettingsDebounced();
             renderTagsPreserveBatchSelection();
             showToast(deletingCount > 1 ? `已删除 ${deletingCount} 个合集` : '合集删除成功');
@@ -800,7 +800,7 @@ export function bindEvents() {
         if (runtimeState.currentEditingIndex === -1) extension_settings[extensionName].rules.push(newRule);
         else extension_settings[extensionName].rules[runtimeState.currentEditingIndex] = newRule;
 
-        runtimeState.isRegexDirty = true;
+        markRulesDataDirty();
         saveSettingsDebounced();
         renderTags();
         if (isCreatingNewRule) {
@@ -875,6 +875,7 @@ export function bindEvents() {
             if (settings.characterBindings[key] === oldName) settings.characterBindings[key] = newName;
         });
         settings.activePreset = newName;
+        markPresetsUiDirty(true);
         saveSettingsDebounced();
         updateToolbarUI();
     });
@@ -891,7 +892,7 @@ export function bindEvents() {
             });
             settings.activePreset = "";
             settings.rules = [];
-            runtimeState.isRegexDirty = true;
+            markRulesDataDirty({ presetsUi: true });
             saveSettingsDebounced();
             renderTags();
             updateToolbarUI();
@@ -908,7 +909,7 @@ export function bindEvents() {
         settings.presets[name] = [];
         settings.activePreset = name;
         settings.rules = [];
-        runtimeState.isRegexDirty = true;
+        markRulesDataDirty({ presetsUi: true });
         saveSettingsDebounced();
         updateToolbarUI();
         renderTags(); // 必须重新渲染以清空列表
@@ -971,7 +972,7 @@ export function bindEvents() {
                         settings.activePreset = "";
                     }
 
-                    runtimeState.isRegexDirty = true;
+                    markRulesDataDirty({ presetsUi: Boolean(newName) });
                     saveSettingsDebounced();
                     renderTags();
                     updateToolbarUI();

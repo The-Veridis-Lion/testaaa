@@ -20,6 +20,8 @@ export const defaultSettings = {
 export const runtimeState = {
     activeProcessors: [],
     isRegexDirty: true,
+    rulesUiDirty: true,
+    presetsUiDirty: true,
     currentEditingIndex: -1,
     currentEditingSubrules: [],
     currentSubruleEditIndex: -1,
@@ -61,4 +63,19 @@ export function getAppContext() {
 
 export function markRegexDirty(dirty = true) {
     runtimeState.isRegexDirty = dirty;
+}
+
+export function markRulesUiDirty(dirty = true) {
+    runtimeState.rulesUiDirty = dirty;
+}
+
+export function markPresetsUiDirty(dirty = true) {
+    runtimeState.presetsUiDirty = dirty;
+}
+
+export function markRulesDataDirty(options = {}) {
+    const { rulesUi = true, presetsUi = false } = options;
+    markRegexDirty(true);
+    if (rulesUi) markRulesUiDirty(true);
+    if (presetsUi) markPresetsUiDirty(true);
 }
