@@ -606,11 +606,54 @@ export function bindEvents() {
         return Array.isArray(chat) && Number.isInteger(index) && index >= 0 && index < chat.length ? chat[index] : null;
     };
 
+    const closeDiffActionsMenu = () => {
+        $('#bl-diff-actions-menu').prop('hidden', true);
+        $('#bl-diff-menu-toggle').attr('aria-expanded', 'false');
+    };
+
+    const openDiffActionsMenu = () => {
+        $('#bl-diff-actions-menu').prop('hidden', false);
+        $('#bl-diff-menu-toggle').attr('aria-expanded', 'true');
+    };
+
+    const syncDiffModeToggleState = (mode) => {
+        const isFullMode = mode === 'full';
+        const nextText = isFullMode ? '切回片段' : '全文模式';
+        const nextTitle = isFullMode ? '切回片段模式' : '切换到全文模式';
+        $('#bl-diff-mode-text').text(nextText);
+        $('#bl-diff-mode-icon').attr('class', isFullMode ? 'fa-solid fa-list-ul' : 'fa-solid fa-file-lines');
+        $('#bl-diff-mode-toggle').attr('title', nextTitle).attr('aria-label', nextTitle);
+    };
+
+    const syncDiffPositionMenuState = (settings) => {
+        const shouldExposeTopButton = settings.diffButtonInExtraMenu === true;
+        $('#bl-diff-menu-pos-icon').attr('class', shouldExposeTopButton ? 'fa-solid fa-thumbtack' : 'fa-solid fa-ellipsis');
+        $('#bl-diff-menu-pos-text').text(shouldExposeTopButton ? '顶部按钮：外显' : '顶部按钮：收纳');
+        $('#bl-diff-menu-pos-toggle').attr('title', shouldExposeTopButton ? '将顶部按钮恢复为外显' : '将顶部按钮收纳进菜单');
+    };
+
+    const syncDiffBottomMenuState = (settings) => {
+        const isBottomVisible = settings.showBottomDiffButton !== false;
+        $('#bl-diff-menu-bottom-icon').attr('class', isBottomVisible ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye');
+        $('#bl-diff-menu-bottom-text').text(isBottomVisible ? '尾部按钮：隐藏' : '尾部按钮：显示');
+        $('#bl-diff-menu-bottom-toggle').attr('title', isBottomVisible ? '隐藏消息尾部按钮' : '显示消息尾部按钮');
+    };
+
+    const syncDiffPreferenceMenuState = () => {
+        const settings = extension_settings[extensionName];
+        syncDiffPositionMenuState(settings);
+        syncDiffBottomMenuState(settings);
+    };
+
     const syncDiffRevertToggleState = (msg) => {
         const isReverted = msg?.__bl_is_reverted === true;
+        const revertTitle = isReverted ? '解除保护并重新净化' : '撤回净化并保护原文';
         $('#bl-diff-revert-icon').attr('class', isReverted ? 'fas fa-wand-magic-sparkles' : 'fas fa-rotate-left');
         $('#bl-diff-revert-text').text(isReverted ? '重新净化' : '撤回');
-        $('#bl-diff-revert-toggle').attr('title', isReverted ? '解除保护并重新净化' : '撤回净化并保护原文');
+        $('#bl-diff-revert-toggle').attr('title', revertTitle);
+        $('#bl-diff-menu-revert-icon').attr('class', isReverted ? 'fas fa-wand-magic-sparkles' : 'fas fa-rotate-left');
+        $('#bl-diff-menu-revert-text').text(isReverted ? '重新净化' : '撤回净化');
+        $('#bl-diff-menu-revert').attr('title', revertTitle);
         $('#bl-diff-mode-toggle').toggle(!isReverted);
     };
 
@@ -629,81 +672,7 @@ export function bindEvents() {
         renderDiffModalContent(index);
     };
 
-    function renderDiffModalContent(index) {
-        const settings = extension_settings[extensionName];
-        const mode = settings.diffViewMode || 'snippet';
-        const msg = getDiffMessageByIndex(index);
-        const state = getDiffStateForMessage(index);
-        const cached = getDiffSnippetsForMessage(index);
-        const contentEl = $('#bl-diff-modal-content');
-        syncDiffRevertToggleState(msg);
-
-        if (msg?.__bl_is_reverted) {
-            contentEl.html('<div class="bl-diff-empty"><i class="fas fa-shield-halved" style="margin-right:6px;"></i>此消息已撤回并处于免净化保护状态，当前显示为原始文本。</div>');
-            return;
-        }
-
-        if (state.status !== 'ready') {
-            contentEl.html(`<div class="bl-diff-loading"><i class="fas fa-spinner fa-spin"></i><span>Loading...</span></div>`);
-            $('#bl-diff-mode-text').text(mode === 'full' ? '切回片段' : '全文模式');
-            $('#bl-diff-mode-icon').attr('class', mode === 'full' ? 'fa-solid fa-list-ul' : 'fa-solid fa-file-lines');
-            return;
-        }
-        if (mode === 'full') {
-            contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || '<div class="bl-diff-empty">当前消息未触发差异。</div>'}</div>`);
-            $('#bl-diff-mode-text').text('切回片段');
-            $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-list-ul');
-        } else {
-            contentEl.html(cached.snippets.length > 0 ? cached.snippets.join('<hr class="bl-diff-divider">') : '<div class="bl-diff-empty">当前消息未触发差异。</div>');
-            $('#bl-diff-mode-text').text('全文模式');
-            $('#bl-diff-mode-icon').attr('class', 'fa-solid fa-file-lines');
-        }
-    }
-
-    runtimeState.diffModalRefresh = (index) => {
-        if (runtimeState.currentDiffIndex === undefined) return;
-        if (index !== undefined && index !== runtimeState.currentDiffIndex) return;
-        if ($('#bl-diff-modal').is(':visible')) renderDiffModalContent(runtimeState.currentDiffIndex);
-    };
-
-    $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
-        const index = Number($(this).attr('data-index'));
-        if (!Number.isInteger(index) || index < 0) return;
-        const settings = extension_settings[extensionName];
-        if (settings.diffButtonInExtraMenu) {
-            $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-thumbtack');
-            $('#bl-diff-pos-text').text('外显按钮');
-        } else {
-            $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-ellipsis');
-            $('#bl-diff-pos-text').text('收纳按钮');
-        }
-        runtimeState.currentDiffIndex = index;
-        renderDiffModalContent(index);
-        $('#bl-diff-modal').css('display', 'flex');
-    });
-
-    $(document).off('click', '#bl-diff-pos-toggle').on('click', '#bl-diff-pos-toggle', function() {
-        const settings = extension_settings[extensionName];
-        settings.diffButtonInExtraMenu = !settings.diffButtonInExtraMenu;
-        saveSettingsDebounced();
-        if (settings.diffButtonInExtraMenu) {
-            $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-thumbtack');
-            $('#bl-diff-pos-text').text('外显按钮');
-        } else {
-            $('#bl-diff-pos-icon').attr('class', 'fa-solid fa-ellipsis');
-            $('#bl-diff-pos-text').text('收纳按钮');
-        }
-        injectDiffButtons();
-    });
-
-    $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
-        const settings = extension_settings[extensionName];
-        settings.diffViewMode = settings.diffViewMode === 'full' ? 'snippet' : 'full';
-        saveSettingsDebounced();
-        if (runtimeState.currentDiffIndex !== undefined) renderDiffModalContent(runtimeState.currentDiffIndex);
-    });
-
-    $(document).off('click', '#bl-diff-revert-toggle').on('click', '#bl-diff-revert-toggle', function() {
+    const toggleCurrentDiffRevert = () => {
         const index = runtimeState.currentDiffIndex;
         const msg = getDiffMessageByIndex(index);
         if (!Number.isInteger(index) || index < 0 || !msg || typeof msg !== 'object') return;
@@ -717,11 +686,102 @@ export function bindEvents() {
             clearTrackedDiffEntry(index);
         }
 
+        closeDiffActionsMenu();
         refreshMessageAfterRevertToggle(index, msg);
+    };
+
+    const closeDiffModal = () => {
+        closeDiffActionsMenu();
+        $('#bl-diff-modal').hide();
+    };
+
+    function renderDiffModalContent(index) {
+        const settings = extension_settings[extensionName];
+        const mode = settings.diffViewMode || 'snippet';
+        const msg = getDiffMessageByIndex(index);
+        const state = getDiffStateForMessage(index);
+        const cached = getDiffSnippetsForMessage(index);
+        const contentEl = $('#bl-diff-modal-content');
+        syncDiffPreferenceMenuState();
+        syncDiffModeToggleState(mode);
+        syncDiffRevertToggleState(msg);
+
+        if (msg?.__bl_is_reverted) {
+            contentEl.html('<div class="bl-diff-empty"><i class="fas fa-shield-halved" style="margin-right:6px;"></i>此消息已撤回并处于免净化保护状态，当前显示为原始文本。</div>');
+            return;
+        }
+
+        if (state.status !== 'ready') {
+            contentEl.html(`<div class="bl-diff-loading"><i class="fas fa-spinner fa-spin"></i><span>Loading...</span></div>`);
+            return;
+        }
+        if (mode === 'full') {
+            contentEl.html(`<div class="bl-diff-full-text">${cached.fullDiff || '<div class="bl-diff-empty">当前消息未触发差异。</div>'}</div>`);
+        } else {
+            contentEl.html(cached.snippets.length > 0 ? cached.snippets.join('<hr class="bl-diff-divider">') : '<div class="bl-diff-empty">当前消息未触发差异。</div>');
+        }
+    }
+
+    runtimeState.diffModalRefresh = (index) => {
+        if (runtimeState.currentDiffIndex === undefined) return;
+        if (index !== undefined && index !== runtimeState.currentDiffIndex) return;
+        if ($('#bl-diff-modal').is(':visible')) renderDiffModalContent(runtimeState.currentDiffIndex);
+    };
+
+    $(document).off('click', '.bl-diff-btn').on('click', '.bl-diff-btn', function() {
+        const index = Number($(this).attr('data-index'));
+        if (!Number.isInteger(index) || index < 0) return;
+        runtimeState.currentDiffIndex = index;
+        renderDiffModalContent(index);
+        closeDiffActionsMenu();
+        $('#bl-diff-modal').css('display', 'flex');
     });
 
-    $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => $('#bl-diff-modal').hide());
-    $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) { if (e.target && e.target.id === 'bl-diff-modal') $('#bl-diff-modal').hide(); });
+    $(document).off('click', '#bl-diff-menu-toggle').on('click', '#bl-diff-menu-toggle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if ($('#bl-diff-actions-menu').prop('hidden')) openDiffActionsMenu();
+        else closeDiffActionsMenu();
+    });
+
+    $(document).off('click', '#bl-diff-actions-menu').on('click', '#bl-diff-actions-menu', function(e) {
+        e.stopPropagation();
+    });
+
+    $(document).off('click.bl-diff-menu').on('click.bl-diff-menu', function(e) {
+        if ($(e.target).closest('#bl-diff-menu-toggle, #bl-diff-actions-menu').length === 0) closeDiffActionsMenu();
+    });
+
+    $(document).off('click', '#bl-diff-menu-pos-toggle').on('click', '#bl-diff-menu-pos-toggle', function() {
+        const settings = extension_settings[extensionName];
+        settings.diffButtonInExtraMenu = !settings.diffButtonInExtraMenu;
+        saveSettingsDebounced();
+        syncDiffPreferenceMenuState();
+        closeDiffActionsMenu();
+        injectDiffButtons();
+    });
+
+    $(document).off('click', '#bl-diff-menu-bottom-toggle').on('click', '#bl-diff-menu-bottom-toggle', function() {
+        const settings = extension_settings[extensionName];
+        settings.showBottomDiffButton = settings.showBottomDiffButton === false;
+        saveSettingsDebounced();
+        syncDiffPreferenceMenuState();
+        closeDiffActionsMenu();
+        injectDiffButtons();
+    });
+
+    $(document).off('click', '#bl-diff-mode-toggle').on('click', '#bl-diff-mode-toggle', function() {
+        const settings = extension_settings[extensionName];
+        settings.diffViewMode = settings.diffViewMode === 'full' ? 'snippet' : 'full';
+        saveSettingsDebounced();
+        if (runtimeState.currentDiffIndex !== undefined) renderDiffModalContent(runtimeState.currentDiffIndex);
+    });
+
+    $(document).off('click', '#bl-diff-revert-toggle').on('click', '#bl-diff-revert-toggle', () => toggleCurrentDiffRevert());
+    $(document).off('click', '#bl-diff-menu-revert').on('click', '#bl-diff-menu-revert', () => toggleCurrentDiffRevert());
+
+    $(document).off('click', '#bl-diff-modal-close').on('click', '#bl-diff-modal-close', () => closeDiffModal());
+    $(document).off('click', '#bl-diff-modal').on('click', '#bl-diff-modal', function(e) { if (e.target && e.target.id === 'bl-diff-modal') closeDiffModal(); });
     
     $(document).off('click', '#bl-open-new-rule-btn').on('click', '#bl-open-new-rule-btn', () => openEditModal(-1));
     $(document).off('click', '.bl-rule-edit').on('click', '.bl-rule-edit', function() { openEditModal($(this).data('index')); });

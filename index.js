@@ -29,6 +29,7 @@ function ensureSettingsShape() {
     if (settings.enableVisualDiff === undefined) settings.enableVisualDiff = true;
     if (!settings.diffViewMode) settings.diffViewMode = 'snippet';
     if (settings.diffButtonInExtraMenu === undefined) settings.diffButtonInExtraMenu = false;
+    if (settings.showBottomDiffButton === undefined) settings.showBottomDiffButton = true;
     if (settings.logLevel === undefined) settings.logLevel = 2;
     if (settings.skipUserMessages === undefined) settings.skipUserMessages = false;
     cleanupInvalidPresetBindings();

@@ -11,6 +11,7 @@ export const defaultSettings = {
     enableVisualDiff: true,
     diffViewMode: "snippet",
     diffButtonInExtraMenu: false,
+    showBottomDiffButton: true,
     deepCleanTimeoutSec: 120,
     themeMode: "auto",
     logLevel: 2,  // 0=off, 1=error, 2=warn(default), 3=info, 4=debug

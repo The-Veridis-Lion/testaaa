@@ -314,18 +314,34 @@ export function setupUI() {
         <div id="bl-diff-modal" style="display:none;">
             <div class="bl-diff-modal-card">
                 <div class="bl-diff-modal-header">
-                    <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i> 净化前文透视</h3>
+                    <h3 class="bl-diff-modal-title"><i class="fa-solid fa-eye"></i><span class="bl-diff-title-text">净化前文透视</span></h3>
                     <div class="bl-diff-header-actions">
-                        <button id="bl-diff-revert-toggle" class="bl-icon-btn bl-diff-header-btn" title="撤回净化并保护原文">
+                        <button id="bl-diff-revert-toggle" type="button" class="bl-icon-btn bl-diff-header-btn" title="撤回净化并保护原文">
                             <i id="bl-diff-revert-icon" class="fas fa-rotate-left"></i> <span id="bl-diff-revert-text">撤回</span>
                         </button>
-                        <button id="bl-diff-pos-toggle" class="bl-icon-btn bl-diff-header-btn" title="将顶部按钮收纳进三点菜单">
-                            <i id="bl-diff-pos-icon" class="fa-solid fa-ellipsis"></i> <span id="bl-diff-pos-text">收纳按钮</span>
-                        </button>
-                        <button id="bl-diff-mode-toggle" class="bl-icon-btn bl-diff-header-btn" title="切换视图模式">
+                        <button id="bl-diff-mode-toggle" type="button" class="bl-icon-btn bl-diff-header-btn" title="切换到全文模式" aria-label="切换到全文模式">
                             <i id="bl-diff-mode-icon" class="fa-solid fa-file-lines"></i> <span id="bl-diff-mode-text">全文模式</span>
                         </button>
-                        <button id="bl-diff-modal-close" class="bl-diff-modal-close" aria-label="关闭">&times;</button>
+                        <div class="bl-diff-menu-wrap">
+                            <button id="bl-diff-menu-toggle" type="button" class="bl-icon-btn bl-diff-header-btn bl-diff-menu-toggle" title="更多操作" aria-label="更多操作" aria-haspopup="true" aria-expanded="false">
+                                <i class="fa-solid fa-ellipsis"></i>
+                            </button>
+                            <div id="bl-diff-actions-menu" class="bl-diff-actions-menu" hidden>
+                                <button id="bl-diff-menu-revert" type="button" class="bl-diff-actions-item" title="撤回净化并保护原文">
+                                    <i id="bl-diff-menu-revert-icon" class="fas fa-rotate-left"></i>
+                                    <span id="bl-diff-menu-revert-text">撤回净化</span>
+                                </button>
+                                <button id="bl-diff-menu-pos-toggle" type="button" class="bl-diff-actions-item" title="将顶部按钮收纳进菜单">
+                                    <i id="bl-diff-menu-pos-icon" class="fa-solid fa-ellipsis"></i>
+                                    <span id="bl-diff-menu-pos-text">顶部按钮：收纳</span>
+                                </button>
+                                <button id="bl-diff-menu-bottom-toggle" type="button" class="bl-diff-actions-item" title="隐藏消息尾部按钮">
+                                    <i id="bl-diff-menu-bottom-icon" class="fa-solid fa-eye-slash"></i>
+                                    <span id="bl-diff-menu-bottom-text">尾部按钮：隐藏</span>
+                                </button>
+                            </div>
+                        </div>
+                        <button id="bl-diff-modal-close" type="button" class="bl-diff-modal-close" aria-label="关闭">&times;</button>
                     </div>
                 </div>
                 <div id="bl-diff-modal-content" class="bl-diff-modal-content"></div>

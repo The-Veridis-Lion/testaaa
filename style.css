@@ -890,11 +890,19 @@
 #bl-diff-modal { position: fixed !important; inset: 0 !important; z-index: 10000000 !important; background: var(--bl-overlay-bg) !important; display: none; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
 .bl-diff-modal-card { width: min(860px, 96vw); max-height: min(82vh, 900px); background: var(--bl-background-popup); border-radius: 12px; border: 1px solid var(--bl-border-color); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; }
 .bl-diff-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--bl-border-color); }
-.bl-diff-modal-title { margin: 0; color: var(--bl-text-primary); font-size: 16px; }
-.bl-diff-modal-close { border: 0; background: transparent; color: var(--bl-text-secondary); font-size: 26px; cursor: pointer; line-height: 1; }
+.bl-diff-modal-title { margin: 0; color: var(--bl-text-primary); font-size: 16px; display: flex; align-items: center; gap: 8px; flex: 1 1 auto; min-width: 0; white-space: nowrap; }
+.bl-diff-title-text { overflow: hidden; text-overflow: ellipsis; }
+.bl-diff-modal-close { border: 0; background: transparent; color: var(--bl-text-secondary); font-size: 26px; cursor: pointer; line-height: 1; flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; }
 .bl-diff-modal-content { padding: 12px 16px 16px; overflow-y: auto; max-height: min(70vh, 760px); color: var(--bl-text-primary); }
-.bl-diff-header-actions { display: flex !important; align-items: center !important; gap: 12px !important; }
-.bl-diff-header-btn { padding: 6px 12px !important; min-height: 30px !important; font-size: 13px !important; }
+.bl-diff-header-actions { display: flex !important; align-items: center !important; gap: 8px !important; flex: 0 0 auto !important; }
+.bl-diff-header-btn { display: inline-flex !important; align-items: center !important; justify-content: center !important; gap: 6px !important; padding: 6px 12px !important; min-height: 34px !important; font-size: 13px !important; white-space: nowrap !important; flex-shrink: 0 !important; }
+.bl-diff-menu-wrap { position: relative !important; flex: 0 0 auto !important; }
+.bl-diff-menu-toggle { width: 34px !important; min-width: 34px !important; padding: 0 !important; }
+.bl-diff-actions-menu { position: absolute !important; top: calc(100% + 8px) !important; right: 0 !important; width: 208px !important; background: var(--bl-background-popup) !important; border: 1px solid var(--bl-border-color) !important; border-radius: 12px !important; box-shadow: 0 12px 24px rgba(0,0,0,0.18) !important; overflow: hidden !important; z-index: 4 !important; }
+.bl-diff-actions-item { width: 100% !important; display: flex !important; align-items: center !important; gap: 10px !important; border: none !important; background: transparent !important; color: var(--bl-text-primary) !important; font-size: 14px !important; text-align: left !important; padding: 12px 14px !important; cursor: pointer !important; }
+.bl-diff-actions-item + .bl-diff-actions-item { border-top: 1px solid var(--bl-border-color) !important; }
+.bl-diff-actions-item:hover { background: var(--bl-background-secondary) !important; }
+.bl-diff-actions-item i { flex: 0 0 16px !important; width: 16px !important; text-align: center !important; }
 
 /* 差异高亮片段 (Snippet & Full Text) */
 .bl-diff-snippet { display: block !important; line-height: 1.8 !important; white-space: pre-wrap !important; word-break: break-word !important; padding: 12px 14px !important; background: var(--bl-background-secondary) !important; border-radius: 8px !important; border-left: 3px solid var(--bl-border-color) !important; }
@@ -1133,6 +1141,38 @@
         min-height: 46px !important;
         max-height: none !important;
         font-size: 15px !important;
+    }
+    .bl-diff-modal-header {
+        gap: 8px !important;
+        padding: 12px !important;
+    }
+    .bl-diff-modal-title {
+        font-size: 15px !important;
+    }
+    .bl-diff-header-actions {
+        gap: 4px !important;
+    }
+    #bl-diff-revert-toggle {
+        display: none !important;
+    }
+    .bl-diff-header-btn,
+    .bl-diff-modal-close {
+        width: 34px !important;
+        min-width: 34px !important;
+        height: 34px !important;
+        min-height: 34px !important;
+        padding: 0 !important;
+        border-radius: 10px !important;
+    }
+    #bl-diff-mode-text {
+        display: none !important;
+    }
+    .bl-diff-actions-menu {
+        width: min(220px, 74vw) !important;
+    }
+    .bl-diff-actions-item {
+        font-size: 14px !important;
+        padding: 12px 13px !important;
     }
 }
 
