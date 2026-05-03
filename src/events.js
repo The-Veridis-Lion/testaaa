@@ -16,6 +16,10 @@ import {
     runRuleTransfer,
     openEditModal,
     showToast,
+    addRegexReplacementInput,
+    removeRegexReplacementInput,
+    setSingleRuleReplacementEditor,
+    getSingleRuleReplacementValues,
 } from './ui.js';
 import {
     buildProcessors,
@@ -312,9 +316,10 @@ export function bindEvents() {
             replacementPlaceholder: "替换后词汇 (逗号/空格分隔，留空直接删除)",
         },
         regex: {
-            hint: '适合复杂匹配和捕获组替换，支持每行一条规则与 $1/$2 引用。',
+            hint: '适合复杂匹配和捕获组替换；每次命中会从替换项里随机选一个。',
             targetPlaceholder: "正则匹配规则 (每行一条)\n支持裸模式 foo|bar 或 /foo|bar/gmu",
-            replacementPlaceholder: "替换后词汇 (每行一条，允许含逗号，可留空)\n支持 $1, $2 捕获组引用",
+            replacementPlaceholder: "支持 $1、$2、\\n 与真实换行；留空可作为删除候选",
+            regexHelper: '每个替换项都会作为一个随机候选，项内可以直接输入真实换行。',
         },
     };
     const validateRegexTargetField = (options = {}) => {
@@ -338,8 +343,17 @@ export function bindEvents() {
     const applySubruleModeUI = (rawMode) => {
         const mode = subruleModeUIMap[rawMode] ? rawMode : 'simple';
         const config = subruleModeUIMap[mode];
+        const previousMode = String($('#bl-modal-sub-mode').data('current-mode') || '');
+        if (previousMode && previousMode !== mode) {
+            const previousReplacements = getSingleRuleReplacementValues(previousMode);
+            setSingleRuleReplacementEditor(mode, previousReplacements);
+        }
+        $('#bl-modal-sub-mode').data('current-mode', mode);
         $('#bl-modal-sub-target').attr('placeholder', config.targetPlaceholder);
         $('#bl-modal-sub-rep').attr('placeholder', config.replacementPlaceholder);
+        $('#bl-modal-sub-regex-list').data('placeholder', config.replacementPlaceholder);
+        $('#bl-modal-sub-regex-helper').text(config.regexHelper || '');
+        $('#bl-modal-sub-regex-list .bl-regex-replacement-input').attr('placeholder', config.replacementPlaceholder);
         $('#bl-modal-sub-mode-hint').text(config.hint);
         validateRegexTargetField();
     };
@@ -666,11 +680,19 @@ export function bindEvents() {
         if ($('#bl-modal-sub-mode').val() === 'regex') validateRegexTargetField();
     });
 
+    $(document).off('click', '#bl-modal-add-regex-replacement').on('click', '#bl-modal-add-regex-replacement', () => {
+        const $item = addRegexReplacementInput('');
+        $item.find('.bl-regex-replacement-input').trigger('focus');
+    });
+
+    $(document).off('click', '.bl-regex-replacement-remove').on('click', '.bl-regex-replacement-remove', function() {
+        removeRegexReplacementInput($(this).data('index'));
+    });
+
     $(document).off('click', '#bl-modal-sub-save').on('click', '#bl-modal-sub-save', function() {
-        const mode = $('#bl-modal-sub-mode').val();
+        const mode = String($('#bl-modal-sub-mode').val() || 'simple');
         const tStr = String($('#bl-modal-sub-target').val() || '');
-        const rStr = $('#bl-modal-sub-rep').val();
-        const remarkStr = $('#bl-modal-sub-remark').val().trim();
+        const remarkStr = String($('#bl-modal-sub-remark').val() || '').trim();
 
         if (mode === 'regex') {
             const validation = validateRegexTargetField();
@@ -684,7 +706,7 @@ export function bindEvents() {
         }
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
-        const replacements = parseInputToWords(rStr, mode === 'text' ? 'text' : 'regex', { isTarget: false });
+        const replacements = getSingleRuleReplacementValues(mode);
 
         if (targets.length === 0) {
             showToast("查找内容不能为空！");
