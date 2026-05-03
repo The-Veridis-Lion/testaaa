@@ -679,14 +679,211 @@
 .bl-transfer-btn { flex: 1 !important; padding: 9px 10px !important; border-radius: 8px !important; border: 1px solid var(--bl-border-color) !important; background: var(--bl-background-secondary) !important; color: var(--bl-text-primary) !important; cursor: pointer !important; transition: background 0.2s !important; white-space: nowrap !important; font-size: 13px !important; line-height: 1.2 !important; }
 .bl-transfer-btn:hover { background: var(--bl-background-tertiary) !important; }
 
-/* 5.4 清理进度遮罩 (Loading) */
+/* 5.4 搜索页弹窗 */
+#bl-rule-search-modal { z-index: 10000004 !important; }
+.bl-rule-search-card {
+    width: min(580px, 96vw) !important;
+    max-height: min(85vh, 860px) !important;
+    border-radius: 16px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+.bl-rule-search-header {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding: 14px 16px !important;
+    border-bottom: 1px solid var(--bl-border-color) !important;
+    flex-shrink: 0 !important;
+}
+.bl-rule-search-back {
+    flex: 0 0 34px !important;
+    min-width: 34px !important;
+    width: 34px !important;
+    min-height: 34px !important;
+    height: 34px !important;
+    padding: 0 !important;
+    color: var(--bl-text-primary) !important;
+}
+.bl-rule-search-field {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+.bl-rule-search-field-icon {
+    position: absolute !important;
+    left: 14px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    color: var(--bl-text-mute) !important;
+    font-size: 15px !important;
+    pointer-events: none !important;
+}
+.bl-rule-search-input {
+    height: 44px !important;
+    padding: 0 40px 0 40px !important;
+    border-radius: 999px !important;
+    font-size: 15px !important;
+    line-height: 44px !important;
+    white-space: nowrap !important;
+    overflow-x: auto !important;
+    text-overflow: clip !important;
+    scrollbar-width: none !important;
+}
+.bl-rule-search-input::-webkit-scrollbar { display: none !important; }
+.bl-rule-search-clear {
+    position: absolute !important;
+    right: 8px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    min-width: 28px !important;
+    width: 28px !important;
+    min-height: 28px !important;
+    height: 28px !important;
+    padding: 0 !important;
+    color: var(--bl-text-mute) !important;
+}
+.bl-rule-search-clear:hover { color: var(--bl-text-primary) !important; }
+.bl-rule-search-submit {
+    flex: 0 0 auto !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--bl-btn-danger) !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    padding: 0 2px !important;
+    cursor: pointer !important;
+    white-space: nowrap !important;
+}
+.bl-rule-search-body {
+    flex: 1 1 auto !important;
+    min-height: 320px !important;
+    padding: 16px !important;
+    overflow-y: auto !important;
+    background: color-mix(in srgb, var(--bl-text-primary) 2%, transparent) !important;
+}
+.bl-rule-search-empty {
+    min-height: 280px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    color: var(--bl-text-secondary) !important;
+    text-align: center !important;
+}
+.bl-rule-search-empty-icon {
+    font-size: 24px !important;
+    color: var(--bl-text-mute) !important;
+}
+.bl-rule-search-empty-title {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: var(--bl-text-primary) !important;
+}
+.bl-rule-search-empty-text {
+    font-size: 13px !important;
+    line-height: 1.6 !important;
+}
+.bl-rule-search-results {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+}
+.bl-rule-search-result-card {
+    background: var(--bl-bg-card) !important;
+    border: 1px solid var(--bl-card-border) !important;
+    border-radius: 14px !important;
+    padding: 14px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    box-shadow: 0 8px 18px rgba(0,0,0,0.04) !important;
+}
+.bl-rule-search-result-card.bl-is-disabled { opacity: 0.65 !important; }
+.bl-rule-search-result-head {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: space-between !important;
+    gap: 10px !important;
+}
+.bl-rule-search-result-group {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    color: var(--bl-text-secondary) !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    line-height: 1.4 !important;
+}
+.bl-rule-search-menu-wrap {
+    position: relative !important;
+    flex: 0 0 auto !important;
+}
+.bl-rule-search-menu-toggle {
+    min-width: 30px !important;
+    width: 30px !important;
+    min-height: 30px !important;
+    height: 30px !important;
+    padding: 0 !important;
+    color: var(--bl-text-secondary) !important;
+}
+.bl-rule-search-menu {
+    position: absolute !important;
+    top: calc(100% + 8px) !important;
+    right: 0 !important;
+    width: 128px !important;
+    background: var(--bl-background-popup) !important;
+    border: 1px solid var(--bl-border-color) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.14) !important;
+    overflow: hidden !important;
+    z-index: 3 !important;
+}
+.bl-rule-search-menu-item {
+    width: 100% !important;
+    border: none !important;
+    background: transparent !important;
+    color: var(--bl-text-primary) !important;
+    font-size: 14px !important;
+    text-align: left !important;
+    padding: 12px 14px !important;
+    cursor: pointer !important;
+}
+.bl-rule-search-menu-item + .bl-rule-search-menu-item {
+    border-top: 1px solid var(--bl-border-color) !important;
+}
+.bl-rule-search-menu-item:hover {
+    background: var(--bl-background-secondary) !important;
+}
+.bl-rule-search-result-preview {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    min-width: 0 !important;
+    font-size: 14px !important;
+}
+.bl-rule-search-result-preview .bl-source {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+}
+.bl-rule-search-result-preview .bl-target {
+    flex: 0 1 38% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+}
+
+/* 5.5 清理进度遮罩 (Loading) */
 .bl-loading-overlay { position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; background: rgba(0, 0, 0, 0.85) !important; z-index: 9999999 !important; display: flex !important; flex-direction: column !important; justify-content: center !important; align-items: center !important; color: white !important; backdrop-filter: blur(5px) !important; padding: 20px !important; box-sizing: border-box !important; }
 .bl-loading-title { margin-bottom: 20px !important; font-size: 20px !important; text-align: center !important; }
 .bl-progress-track { width: min(560px, 88vw) !important; height: 12px !important; border-radius: 999px !important; overflow: hidden !important; border: 1px solid rgba(255, 255, 255, 0.35) !important; background: rgba(255, 255, 255, 0.2) !important; margin-top: 12px !important; }
 .bl-progress-fill { width: 0%; height: 100% !important; background: linear-gradient(90deg, #7f5af0 0%, #2cb67d 100%) !important; transition: width 0.2s ease !important; }
 .bl-progress-percent { margin-top: 8px !important; font-weight: bold !important; }
 
-/* 5.5 对比透视弹窗 (Diff View) */
+/* 5.6 对比透视弹窗 (Diff View) */
 .bl-diff-btn { font-size: inherit !important; }
 #bl-diff-modal { position: fixed !important; inset: 0 !important; z-index: 10000000 !important; background: var(--bl-overlay-bg) !important; display: none; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; }
 .bl-diff-modal-card { width: min(860px, 96vw); max-height: min(82vh, 900px); background: var(--bl-background-popup); border-radius: 12px; border: 1px solid var(--bl-border-color); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; }
@@ -776,6 +973,63 @@
     #bl-rule-transfer-modal .bl-transfer-content { width: min(420px, 92vw) !important; }
     .bl-transfer-actions { flex-wrap: nowrap !important; }
     .bl-transfer-actions > .bl-transfer-btn { flex: 1 1 0 !important; min-width: 0 !important; font-size: 12px !important; padding: 8px 6px !important; }
+
+    #bl-rule-search-modal {
+        padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom)) !important;
+        z-index: 10000005 !important;
+    }
+    #bl-rule-search-modal > .bl-rule-search-card {
+        width: 100% !important;
+        max-height: 88vh !important;
+        border-radius: 18px !important;
+    }
+    .bl-rule-search-header {
+        gap: 8px !important;
+        padding: 12px !important;
+    }
+    .bl-rule-search-back {
+        flex: 0 0 32px !important;
+        min-width: 32px !important;
+        width: 32px !important;
+        min-height: 32px !important;
+        height: 32px !important;
+    }
+    .bl-rule-search-input {
+        height: 42px !important;
+        font-size: 16px !important;
+        padding: 0 36px 0 38px !important;
+    }
+    .bl-rule-search-field-icon {
+        left: 13px !important;
+        font-size: 14px !important;
+    }
+    .bl-rule-search-clear {
+        right: 6px !important;
+    }
+    .bl-rule-search-submit {
+        font-size: 15px !important;
+    }
+    .bl-rule-search-body {
+        min-height: 260px !important;
+        padding: 14px 12px 18px !important;
+    }
+    .bl-rule-search-empty {
+        min-height: 220px !important;
+    }
+    .bl-rule-search-empty-title {
+        font-size: 16px !important;
+    }
+    .bl-rule-search-result-card {
+        padding: 12px !important;
+        border-radius: 12px !important;
+    }
+    .bl-rule-search-result-preview {
+        font-size: 13px !important;
+        gap: 5px !important;
+    }
+    .bl-rule-search-menu {
+        width: 122px !important;
+    }
 
     #bl-rule-edit-modal,
     #bl-diff-modal,

@@ -26,6 +26,56 @@ function normalizeReplacementList(replacements) {
     return Array.isArray(replacements) ? replacements.map((value) => String(value ?? '')) : [];
 }
 
+function getRulePreviewTagText(mode = 'text') {
+    if (mode === 'regex') return '正则';
+    if (mode === 'simple') return '简易';
+    return '普通';
+}
+
+function getRuleSourcePreviewText(sub = {}) {
+    const mode = sub.mode || 'text';
+    return safeHtml((sub.targets || []).join(mode === 'text' ? ', ' : ' | ')) || '（空）';
+}
+
+function getRuleSearchMenuKey(ruleIndex, subRuleIndex) {
+    return `${ruleIndex}:${subRuleIndex}`;
+}
+
+function buildRuleSearchHaystack(sub = {}) {
+    const mode = sub.mode || 'text';
+    const targets = Array.isArray(sub.targets) ? sub.targets.join(mode === 'text' ? ' ' : '\n') : '';
+    const replacements = Array.isArray(sub.replacements) ? sub.replacements.join('\n') : '';
+    return `${targets}\n${replacements}`.toLowerCase();
+}
+
+function buildRuleSearchResults(keyword) {
+    const normalizedKeyword = String(keyword || '').trim().toLowerCase();
+    if (!normalizedKeyword) return [];
+
+    const { extension_settings } = getAppContext();
+    const rules = extension_settings?.[extensionName]?.rules || [];
+    const results = [];
+
+    rules.forEach((rule, ruleIndex) => {
+        (rule.subRules || []).forEach((sub, subRuleIndex) => {
+            if (!buildRuleSearchHaystack(sub).includes(normalizedKeyword)) return;
+            const mode = sub.mode || 'text';
+            results.push({
+                key: getRuleSearchMenuKey(ruleIndex, subRuleIndex),
+                ruleIndex,
+                subRuleIndex,
+                groupName: safeHtml(rule.name || `合集 ${ruleIndex + 1}`),
+                tagText: getRulePreviewTagText(mode),
+                sourcePreview: getRuleSourcePreviewText(sub),
+                replacementPreview: formatReplacementPreview(sub.replacements || [], mode),
+                isEnabled: rule.enabled !== false,
+            });
+        });
+    });
+
+    return results;
+}
+
 function getRegexReplacementEditIndex() {
     const rawIndex = Number($('#bl-modal-sub-rep').data('regex-edit-index'));
     return Number.isInteger(rawIndex) ? rawIndex : -1;
@@ -111,7 +161,7 @@ export function showToast(message) {
 
 export function setupUI() {
     logger.debug('[setupUI] 开始初始化 UI');
-    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-diff-modal, #bl-subrule-edit-modal, #bl-loading-overlay, .bl-toast').remove();
+    $('#bl-purifier-popup, #bl-rule-edit-modal, #bl-confirm-modal, #bl-rule-transfer-modal, #bl-rule-search-modal, #bl-diff-modal, #bl-subrule-edit-modal, #bl-loading-overlay, .bl-toast').remove();
 
     if (!$('#bl-wand-btn').length) {
         $('#data_bank_wand_container').append(`
@@ -144,6 +194,7 @@ export function setupUI() {
                     <button id="bl-preset-save" title="保存"><i class="fas fa-save"></i></button>
                     <button id="bl-preset-new" title="新建"><i class="fas fa-plus"></i></button>
                     <button id="bl-preset-delete" title="删除存档"><i class="fas fa-trash"></i></button>
+                    <button id="bl-preset-search" title="搜索规则"><i class="fas fa-magnifying-glass"></i></button>
                 </div>
             </div>
 
@@ -239,6 +290,27 @@ export function setupUI() {
     `);
 
     $('body').append(`
+        <div id="bl-rule-search-modal" class="bl-modal-shell">
+            <div class="bl-modal-card bl-rule-search-card">
+                <div class="bl-rule-search-header">
+                    <button id="bl-rule-search-back" type="button" class="bl-icon-btn bl-rule-search-back" title="返回搜索页上一级">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="bl-rule-search-field">
+                        <i class="fas fa-magnifying-glass bl-rule-search-field-icon"></i>
+                        <input type="text" id="bl-rule-search-input" class="bl-input bl-rule-search-input" placeholder="搜索内容">
+                        <button id="bl-rule-search-clear" type="button" class="bl-icon-btn bl-rule-search-clear" title="清空关键词" hidden>
+                            <i class="fas fa-circle-xmark"></i>
+                        </button>
+                    </div>
+                    <button id="bl-rule-search-submit" type="button" class="bl-rule-search-submit">搜索</button>
+                </div>
+                <div id="bl-rule-search-body" class="bl-rule-search-body"></div>
+            </div>
+        </div>
+    `);
+
+    $('body').append(`
         <div id="bl-diff-modal" style="display:none;">
             <div class="bl-diff-modal-card">
                 <div class="bl-diff-modal-header">
@@ -311,6 +383,121 @@ export function setupUI() {
     markRulesUiDirty(true);
     markPresetsUiDirty(true);
 } 
+
+export function clearRuleSearchEditFlow() {
+    runtimeState.searchEditFlow.active = false;
+    runtimeState.searchEditFlow.returnMode = '';
+    runtimeState.searchEditFlow.ruleIndex = -1;
+    runtimeState.searchEditFlow.subRuleIndex = -1;
+}
+
+export function resetRuleSearchState() {
+    runtimeState.ruleSearchKeyword = '';
+    runtimeState.ruleSearchDraftKeyword = '';
+    runtimeState.ruleSearchHasSearched = false;
+    runtimeState.ruleSearchExpandedMenuKey = '';
+    clearRuleSearchEditFlow();
+}
+
+export function syncRuleSearchInputUi(options = {}) {
+    const { syncValue = false } = options;
+    const draftKeyword = String(runtimeState.ruleSearchDraftKeyword || '');
+    const $input = $('#bl-rule-search-input');
+    const $clear = $('#bl-rule-search-clear');
+    if (syncValue && $input.length) $input.val(draftKeyword);
+    const hasValue = draftKeyword.length > 0;
+    $clear.prop('hidden', !hasValue).toggleClass('is-visible', hasValue);
+}
+
+export function renderRuleSearchModal() {
+    const $body = $('#bl-rule-search-body');
+    if (!$body.length) return;
+
+    const keyword = String(runtimeState.ruleSearchKeyword || '').trim();
+    syncRuleSearchInputUi();
+
+    if (!runtimeState.ruleSearchHasSearched || !keyword) {
+        $body.html(`
+            <div class="bl-rule-search-empty">
+                <div class="bl-rule-search-empty-icon"><i class="fas fa-magnifying-glass"></i></div>
+                <div class="bl-rule-search-empty-title">请输入关键词</div>
+                <div class="bl-rule-search-empty-text">点击“搜索”查找对应规则</div>
+            </div>
+        `);
+        return;
+    }
+
+    const results = buildRuleSearchResults(keyword);
+    if (results.length === 0) {
+        $body.html(`
+            <div class="bl-rule-search-empty">
+                <div class="bl-rule-search-empty-icon"><i class="fas fa-circle-info"></i></div>
+                <div class="bl-rule-search-empty-title">未找到匹配规则</div>
+                <div class="bl-rule-search-empty-text">当前只搜索每条映射的查找词与替换词</div>
+            </div>
+        `);
+        return;
+    }
+
+    const html = results.map((item) => {
+        const menuHtml = runtimeState.ruleSearchExpandedMenuKey === item.key
+            ? `
+                <div class="bl-rule-search-menu">
+                    <button type="button" class="bl-rule-search-menu-item" data-action="group" data-rule-index="${item.ruleIndex}" data-subrule-index="${item.subRuleIndex}">
+                        分组详情
+                    </button>
+                    <button type="button" class="bl-rule-search-menu-item" data-action="subrule" data-rule-index="${item.ruleIndex}" data-subrule-index="${item.subRuleIndex}">
+                        编辑条目
+                    </button>
+                </div>
+            `
+            : '';
+
+        return `
+            <div class="bl-rule-search-result-card ${item.isEnabled ? '' : 'bl-is-disabled'}" data-rule-index="${item.ruleIndex}" data-subrule-index="${item.subRuleIndex}">
+                <div class="bl-rule-search-result-head">
+                    <div class="bl-rule-search-result-group">
+                        <i class="fas fa-folder-open"></i>
+                        所属分组：${item.groupName}
+                    </div>
+                    <div class="bl-rule-search-menu-wrap">
+                        <button type="button" class="bl-icon-btn bl-rule-search-menu-toggle" data-key="${item.key}" title="更多操作">
+                            <i class="fas fa-ellipsis"></i>
+                        </button>
+                        ${menuHtml}
+                    </div>
+                </div>
+                <div class="bl-rule-search-result-preview">
+                    <span class="bl-tag">${item.tagText}</span>
+                    <span class="bl-source">${item.sourcePreview}</span>
+                    <i class="fas fa-arrow-right bl-arrow"></i>
+                    <span class="bl-target">${item.replacementPreview}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    $body.html(`<div class="bl-rule-search-results">${html}</div>`);
+}
+
+export function openRuleSearchModal() {
+    syncRuleSearchInputUi({ syncValue: true });
+    renderRuleSearchModal();
+    $('#bl-rule-search-modal').css('display', 'flex').hide().fadeIn(150);
+    window.setTimeout(() => {
+        $('#bl-rule-search-input').trigger('focus');
+    }, 20);
+}
+
+export function closeRuleSearchModal(options = {}) {
+    const { reset = false } = options;
+    if (reset) {
+        resetRuleSearchState();
+        syncRuleSearchInputUi({ syncValue: true });
+        renderRuleSearchModal();
+    }
+    $('#bl-rule-search-modal').fadeOut(150);
+}
 
 export function focusLatestRuleCard() {
     const container = document.getElementById('bl-tags-container');
@@ -596,8 +783,8 @@ export function renderTags() {
 
         const subRulesHtml = subRules.slice(0, maxPreview).map((sub) => {
             const mode = sub.mode || 'text';
-            const tagText = mode === 'regex' ? '正则' : mode === 'simple' ? '简易' : '普通';
-            const tPreview = safeHtml((sub.targets || []).join(mode === 'text' ? ', ' : ' | ')) || '（空）';
+            const tagText = getRulePreviewTagText(mode);
+            const tPreview = getRuleSourcePreviewText(sub);
             const rPreview = formatReplacementPreview(sub.replacements || [], mode);
             return `
                 <div class="bl-rule-item">
@@ -671,7 +858,7 @@ export function renderSubrulesToModal() {
         else if (mode === 'simple') badgeHTML = `<span style="${badgeBaseStyle} background:color-mix(in srgb, var(--bl-accent-color) 72%, #3b82f6 28%);">简易</span>`;
         else badgeHTML = `<span style="${badgeBaseStyle} background:var(--bl-text-secondary); color:var(--bl-background-popup);">普通</span>`;
 
-        const tPreview = safeHtml((sub.targets || []).join(mode === 'text' ? ', ' : ' | '));
+        const tPreview = getRuleSourcePreviewText(sub);
         const rPreview = formatReplacementPreview(sub.replacements || [], mode);
 
         let remarkHTML = '';
@@ -710,7 +897,7 @@ export function renderSubrulesToModal() {
     container.html(html);
 }
 
-export function openSingleRuleModal(index) {
+export function openSingleRuleModal(index, options = {}) {
     runtimeState.currentSubruleEditIndex = index;
     let mode = 'simple';
     let tStr = '';
@@ -729,8 +916,9 @@ export function openSingleRuleModal(index) {
     $('#bl-modal-sub-target').val(tStr);
     setSingleRuleReplacementEditor(mode, replacements);
     $('#bl-modal-sub-remark').val(remark);
-    
+
     $('#bl-modal-sub-mode').trigger('change');
+    if (options.hideEditModal === true) $('#bl-rule-edit-modal').hide();
     $('#bl-subrule-edit-modal').css('display', 'flex').hide().fadeIn(150);
 }
 
@@ -805,10 +993,19 @@ export function runRuleTransfer(isMove) {
     if (isMove) renderTags();
 }
 
-export function openEditModal(index = -1) {
+export function openEditModal(index = -1, options = {}) {
     const { extension_settings } = getAppContext();
     const settings = extension_settings[extensionName];
+    const { source = 'main', returnMode = 'group', subRuleIndex = -1 } = options;
     runtimeState.currentEditingIndex = index;
+    if (source === 'search') {
+        runtimeState.searchEditFlow.active = true;
+        runtimeState.searchEditFlow.returnMode = returnMode;
+        runtimeState.searchEditFlow.ruleIndex = index;
+        runtimeState.searchEditFlow.subRuleIndex = subRuleIndex;
+    } else {
+        clearRuleSearchEditFlow();
+    }
     const modal = $('#bl-rule-edit-modal');
 
     if (index === -1) {

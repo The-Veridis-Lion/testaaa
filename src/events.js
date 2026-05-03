@@ -15,6 +15,11 @@ import {
     closeTransferModal,
     runRuleTransfer,
     openEditModal,
+    openRuleSearchModal,
+    closeRuleSearchModal,
+    renderRuleSearchModal,
+    syncRuleSearchInputUi,
+    clearRuleSearchEditFlow,
     showToast,
     removeRegexReplacementInput,
     startEditingRegexReplacementInput,
@@ -386,9 +391,71 @@ export function bindEvents() {
                 applyPresetByName(extension_settings[extensionName].activePreset, { skipRender: true });
             }
         }
+        closeRuleSearchModal({ reset: true });
         $('#bl-purifier-popup').fadeOut(200);
     });
     const settings = extension_settings[extensionName];
+    const isSearchGroupEditFlow = () => runtimeState.searchEditFlow.active === true && runtimeState.searchEditFlow.returnMode === 'group';
+    const isSearchDirectSubruleFlow = () => runtimeState.searchEditFlow.active === true && runtimeState.searchEditFlow.returnMode === 'subrule';
+    const resetRuleSearchQueryState = () => {
+        runtimeState.ruleSearchKeyword = '';
+        runtimeState.ruleSearchDraftKeyword = '';
+        runtimeState.ruleSearchHasSearched = false;
+        runtimeState.ruleSearchExpandedMenuKey = '';
+        clearRuleSearchEditFlow();
+    };
+    const submitRuleSearch = () => {
+        runtimeState.ruleSearchDraftKeyword = String($('#bl-rule-search-input').val() || '');
+        runtimeState.ruleSearchKeyword = runtimeState.ruleSearchDraftKeyword.trim();
+        runtimeState.ruleSearchHasSearched = runtimeState.ruleSearchKeyword.length > 0;
+        runtimeState.ruleSearchExpandedMenuKey = '';
+        renderRuleSearchModal();
+    };
+    const saveCurrentEditingRule = (options = {}) => {
+        const {
+            toastMessage = '合集保存成功',
+            focusLatest = true,
+        } = options;
+        const rules = extension_settings[extensionName].rules || [];
+        const isCreatingNewRule = runtimeState.currentEditingIndex === -1;
+        const nameVal = String($('#bl-edit-name').val() || '').trim();
+        const validSubrules = runtimeState.currentEditingSubrules.filter(sub => sub.targets && sub.targets.length > 0);
+
+        if (validSubrules.length === 0) {
+            showToast('合集内至少需要保留一组有效映射！');
+            return { ok: false };
+        }
+
+        let isEnabled = true;
+        if (runtimeState.currentEditingIndex !== -1 && rules[runtimeState.currentEditingIndex]) {
+            isEnabled = rules[runtimeState.currentEditingIndex].enabled !== false;
+        }
+
+        const fallbackName = runtimeState.currentEditingIndex !== -1
+            ? (rules[runtimeState.currentEditingIndex]?.name || `合集 ${runtimeState.currentEditingIndex + 1}`)
+            : `合集 ${rules.length + 1}`;
+        const newRule = {
+            name: nameVal || fallbackName,
+            subRules: validSubrules,
+            enabled: isEnabled
+        };
+
+        if (runtimeState.currentEditingIndex === -1) rules.push(newRule);
+        else rules[runtimeState.currentEditingIndex] = newRule;
+
+        markRulesDataDirty();
+        saveSettingsDebounced();
+        renderTags();
+        if (isCreatingNewRule && focusLatest) {
+            window.setTimeout(() => {
+                focusLatestRuleCard();
+            }, 50);
+        }
+        performGlobalCleanse();
+        renderRuleSearchModal();
+        if (toastMessage) showToast(toastMessage);
+        return { ok: true, isCreatingNewRule, rule: newRule };
+    };
 
     const applyThemeMode = (mode) => {
         const normalized = ['auto', 'light', 'dark'].includes(mode) ? mode : 'auto';
@@ -417,6 +484,80 @@ export function bindEvents() {
     $(document).off('change', '#bl-skip-user-toggle').on('change', '#bl-skip-user-toggle', function() {
         settings.skipUserMessages = $(this).prop('checked');
         saveSettingsDebounced();
+    });
+
+    $(document).off('click', '#bl-preset-search').on('click', '#bl-preset-search', () => {
+        openRuleSearchModal();
+    });
+
+    $(document).off('click', '#bl-rule-search-back').on('click', '#bl-rule-search-back', () => {
+        closeRuleSearchModal({ reset: true });
+    });
+
+    $(document).off('input', '#bl-rule-search-input').on('input', '#bl-rule-search-input', function() {
+        runtimeState.ruleSearchDraftKeyword = String($(this).val() || '');
+        syncRuleSearchInputUi();
+        if (runtimeState.ruleSearchDraftKeyword.trim() !== '') return;
+        runtimeState.ruleSearchKeyword = '';
+        runtimeState.ruleSearchHasSearched = false;
+        runtimeState.ruleSearchExpandedMenuKey = '';
+        renderRuleSearchModal();
+    });
+
+    $(document).off('keydown', '#bl-rule-search-input').on('keydown', '#bl-rule-search-input', function(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        submitRuleSearch();
+    });
+
+    $(document).off('click', '#bl-rule-search-submit').on('click', '#bl-rule-search-submit', () => {
+        submitRuleSearch();
+    });
+
+    $(document).off('click', '#bl-rule-search-clear').on('click', '#bl-rule-search-clear', () => {
+        resetRuleSearchQueryState();
+        syncRuleSearchInputUi({ syncValue: true });
+        renderRuleSearchModal();
+        $('#bl-rule-search-input').trigger('focus');
+    });
+
+    $(document).off('click', '.bl-rule-search-menu-toggle').on('click', '.bl-rule-search-menu-toggle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextKey = String($(this).data('key') || '');
+        runtimeState.ruleSearchExpandedMenuKey = runtimeState.ruleSearchExpandedMenuKey === nextKey ? '' : nextKey;
+        renderRuleSearchModal();
+    });
+
+    $(document).off('click', '.bl-rule-search-menu-item').on('click', '.bl-rule-search-menu-item', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const action = String($(this).data('action') || '');
+        const ruleIndex = Number($(this).attr('data-rule-index'));
+        const subRuleIndex = Number($(this).attr('data-subrule-index'));
+        const rules = extension_settings[extensionName].rules || [];
+        if (!Number.isInteger(ruleIndex) || ruleIndex < 0 || ruleIndex >= rules.length) return;
+        if (!Number.isInteger(subRuleIndex) || subRuleIndex < 0 || subRuleIndex >= (rules[ruleIndex]?.subRules || []).length) return;
+
+        runtimeState.ruleSearchExpandedMenuKey = '';
+        renderRuleSearchModal();
+
+        if (action === 'group') {
+            openEditModal(ruleIndex, { source: 'search', returnMode: 'group', subRuleIndex });
+            return;
+        }
+
+        if (action === 'subrule') {
+            openEditModal(ruleIndex, { source: 'search', returnMode: 'subrule', subRuleIndex });
+            openSingleRuleModal(subRuleIndex, { hideEditModal: true });
+        }
+    });
+
+    $(document).off('click', '#bl-rule-search-modal').on('click', '#bl-rule-search-modal', function(e) {
+        if ($(e.target).closest('.bl-rule-search-menu-wrap').length > 0) return;
+        if (!runtimeState.ruleSearchExpandedMenuKey) return;
+        runtimeState.ruleSearchExpandedMenuKey = '';
+        renderRuleSearchModal();
     });
 
     $(document).off('click', '#bl-batch-toggle').on('click', '#bl-batch-toggle', function() {
@@ -718,6 +859,7 @@ export function bindEvents() {
         const mode = String($('#bl-modal-sub-mode').val() || 'simple');
         const tStr = String($('#bl-modal-sub-target').val() || '');
         const remarkStr = String($('#bl-modal-sub-remark').val() || '').trim();
+        const isDirectSearchFlow = isSearchDirectSubruleFlow();
 
         if (mode === 'regex') {
             const validation = validateRegexTargetField();
@@ -754,9 +896,20 @@ export function bindEvents() {
         }
 
         clearRegexTargetValidationState();
+        if (isDirectSearchFlow) {
+            const saveResult = saveCurrentEditingRule({ toastMessage: '条目保存成功', focusLatest: false });
+            if (!saveResult.ok) return;
+            $('#bl-subrule-edit-modal').fadeOut(150, () => {
+                $('#bl-rule-edit-modal').hide();
+                clearRuleSearchEditFlow();
+                renderRuleSearchModal();
+            });
+            return;
+        }
+
         $('#bl-subrule-edit-modal').fadeOut(150);
         renderSubrulesToModal();
-        
+
         if (runtimeState.currentSubruleEditIndex === -1) {
             const container = $('#bl-edit-subrules-container');
             container.scrollTop(container[0].scrollHeight);
@@ -765,10 +918,24 @@ export function bindEvents() {
 
     $(document).off('click', '#bl-modal-sub-cancel').on('click', '#bl-modal-sub-cancel', () => {
         clearRegexTargetValidationState();
+        if (isSearchDirectSubruleFlow()) {
+            $('#bl-subrule-edit-modal').fadeOut(150, () => {
+                $('#bl-rule-edit-modal').hide();
+                clearRuleSearchEditFlow();
+                renderRuleSearchModal();
+            });
+            return;
+        }
         $('#bl-subrule-edit-modal').fadeOut(150);
     });
 
-    $(document).off('click', '#bl-edit-cancel-x').on('click', '#bl-edit-cancel-x', () => $('#bl-rule-edit-modal').hide());
+    $(document).off('click', '#bl-edit-cancel-x').on('click', '#bl-edit-cancel-x', () => {
+        $('#bl-rule-edit-modal').hide();
+        if (isSearchGroupEditFlow()) {
+            clearRuleSearchEditFlow();
+            renderRuleSearchModal();
+        }
+    });
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
     $(document).off('click', '#bl-transfer-copy').on('click', '#bl-transfer-copy', () => runRuleTransfer(false));
     $(document).off('click', '#bl-transfer-move').on('click', '#bl-transfer-move', () => runRuleTransfer(true));
@@ -777,40 +944,13 @@ export function bindEvents() {
     });
 
     $(document).off('click', '#bl-edit-save').on('click', '#bl-edit-save', () => {
-        const isCreatingNewRule = runtimeState.currentEditingIndex === -1;
-        const nameVal = $('#bl-edit-name').val().trim();
-        const validSubrules = runtimeState.currentEditingSubrules.filter(sub => sub.targets && sub.targets.length > 0);
-        
-        if (validSubrules.length === 0) {
-            showToast("合集内至少需要保留一组有效映射！");
-            return;
-        }
-
-        let isEnabled = true;
-        if (runtimeState.currentEditingIndex !== -1) {
-            isEnabled = extension_settings[extensionName].rules[runtimeState.currentEditingIndex].enabled !== false;
-        }
-
-        const newRule = {
-            name: nameVal || `合集 ${extension_settings[extensionName].rules.length + 1}`,
-            subRules: validSubrules,
-            enabled: isEnabled
-        };
-
-        if (runtimeState.currentEditingIndex === -1) extension_settings[extensionName].rules.push(newRule);
-        else extension_settings[extensionName].rules[runtimeState.currentEditingIndex] = newRule;
-
-        markRulesDataDirty();
-        saveSettingsDebounced();
-        renderTags();
-        if (isCreatingNewRule) {
-            window.setTimeout(() => {
-                focusLatestRuleCard();
-            }, 50);
-        }
-        performGlobalCleanse();
+        const saveResult = saveCurrentEditingRule({ toastMessage: '合集保存成功', focusLatest: true });
+        if (!saveResult.ok) return;
         $('#bl-rule-edit-modal').hide();
-        showToast("合集保存成功");
+        if (isSearchGroupEditFlow()) {
+            clearRuleSearchEditFlow();
+            renderRuleSearchModal();
+        }
     });
 
     $(document).off('click', '#bl-deep-clean-btn').on('click', '#bl-deep-clean-btn', () => showConfirmModal(() => performDeepCleanse()));
