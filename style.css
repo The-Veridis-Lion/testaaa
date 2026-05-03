@@ -403,6 +403,7 @@
     position: relative !important;
     display: inline-flex !important;
     align-items: center !important;
+    align-self: flex-start !important;
     flex: 0 1 auto !important;
     width: auto !important;
     max-width: 100% !important;
