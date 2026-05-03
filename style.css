@@ -377,13 +377,17 @@
 }
 .bl-ghost-btn { padding: 10px !important; border-radius: 8px !important; background: var(--bl-background-secondary) !important; border: 1px dashed var(--bl-border-color) !important; color: var(--bl-text-primary) !important; cursor: pointer !important; font-size: 13px !important; font-weight: bold !important; transition: background 0.2s ease, border-color 0.2s ease !important; }
 .bl-ghost-btn:hover { background: var(--bl-background-tertiary) !important; border-color: var(--bl-accent-color) !important; }
+.bl-subrule-modal-card {
+    display: flex !important;
+    flex-direction: column !important;
+}
 .bl-subrule-modal-header {
     display: flex !important;
     justify-content: space-between !important;
     align-items: flex-start !important;
-    gap: 12px !important;
-    margin-bottom: 15px !important;
-    padding-bottom: 12px !important;
+    gap: 16px !important;
+    margin-bottom: 18px !important;
+    padding-bottom: 14px !important;
     border-bottom: 1px dotted var(--bl-border-dash) !important;
     flex-wrap: nowrap !important;
     min-width: 0 !important;
@@ -393,35 +397,39 @@
     min-width: 0 !important;
     display: flex !important;
     flex-direction: column !important;
-    gap: 8px !important;
+    gap: 6px !important;
 }
 .bl-subrule-mode-select-wrap {
     position: relative !important;
-    display: block !important;
-    flex: 1 1 auto !important;
-    min-width: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    flex: 0 1 auto !important;
+    width: fit-content !important;
     max-width: 100% !important;
+    min-width: 0 !important;
 }
 .bl-subrule-mode-select {
     margin: 0 !important;
     display: block !important;
-    width: 100% !important;
+    width: auto !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    min-height: 40px !important;
-    padding: 8px 30px 8px 0 !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 0 22px 0 0 !important;
     border: none !important;
     background: transparent !important;
     box-sizing: border-box !important;
     color: var(--bl-text-primary) !important;
-    font-size: 16px !important;
+    font-size: 18px !important;
     font-weight: 700 !important;
-    line-height: 1.25 !important;
+    line-height: 1.3 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     appearance: none !important;
     -webkit-appearance: none !important;
+    cursor: pointer !important;
 }
 .bl-subrule-mode-select:focus {
     border: none !important;
@@ -429,21 +437,25 @@
 }
 .bl-subrule-mode-arrow {
     position: absolute;
-    right: 2px;
+    right: 0;
     top: 50%;
     transform: translateY(-50%);
     color: var(--bl-text-secondary);
     pointer-events: none;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1;
 }
 .bl-subrule-mode-hint {
-    padding: 6px 10px !important;
-    border-radius: 8px !important;
-    background: var(--bl-background-secondary) !important;
-    color: var(--bl-text-secondary) !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    color: var(--bl-text-mute) !important;
     font-size: 12px !important;
-    line-height: 1.45 !important;
+    line-height: 1.55 !important;
+}
+#bl-modal-sub-target-error {
+    margin-top: 0 !important;
+    margin-bottom: 8px !important;
 }
 .bl-subrule-replacement-head {
     display: flex !important;
@@ -520,21 +532,44 @@
     cursor: pointer !important;
 }
 .bl-regex-replacement-chip-remove:hover { color: var(--bl-btn-danger) !important; }
-.bl-subrule-save-btn {
+.bl-subrule-close-btn {
     background: transparent !important;
     border: none !important;
-    color: var(--bl-text-primary) !important;
-    font-size: 24px !important;
+    color: var(--bl-text-mute) !important;
+    font-size: 22px !important;
     padding: 0 !important;
-    min-width: 40px !important;
-    width: 40px !important;
-    min-height: 40px !important;
-    height: 40px !important;
-    flex: 0 0 40px !important;
+    min-width: 36px !important;
+    width: 36px !important;
+    min-height: 36px !important;
+    height: 36px !important;
+    flex: 0 0 36px !important;
     flex-shrink: 0 !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
+}
+.bl-subrule-close-btn:hover {
+    color: var(--bl-text-primary) !important;
+}
+.bl-subrule-footer {
+    margin-top: auto !important;
+    padding-top: 6px !important;
+}
+.bl-subrule-footer-save {
+    width: 100% !important;
+    min-height: 50px !important;
+    border-radius: 10px !important;
+    border: 1px solid color-mix(in srgb, var(--bl-text-primary) 10%, transparent) !important;
+    background: var(--bl-bg-button) !important;
+    color: var(--bl-text-primary) !important;
+    font-size: 16px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.02em !important;
+    box-shadow: none !important;
+}
+.bl-subrule-footer-save:hover {
+    background: color-mix(in srgb, var(--bl-bg-button) 84%, white 16%) !important;
+    border-color: color-mix(in srgb, var(--bl-text-primary) 16%, transparent) !important;
 }
 
 /* ✨ 映射规则精美卡片样式 (非悬浮，完美嵌入列表) */
@@ -792,7 +827,6 @@
         flex: 1 1 0 !important;
         min-width: 0 !important;
     }
-    #bl-modal-sub-cancel,
     .bl-secondary-btn,
     .bl-primary-btn {
         height: auto !important;
@@ -810,15 +844,37 @@
         margin: 10px 0 !important;
     }
     .bl-subrule-modal-header {
-        align-items: center !important;
+        align-items: flex-start !important;
         gap: 10px !important;
     }
     .bl-subrule-mode-block,
     .bl-subrule-mode-select-wrap {
         min-width: 0 !important;
     }
-    .bl-subrule-save-btn {
-        flex: 0 0 40px !important;
+    .bl-subrule-mode-select {
+        font-size: 16px !important;
+        padding-right: 20px !important;
+    }
+    .bl-subrule-mode-hint {
+        font-size: 11px !important;
+    }
+    #bl-modal-sub-target-error {
+        margin-bottom: 7px !important;
+    }
+    .bl-subrule-close-btn {
+        flex: 0 0 34px !important;
+        min-width: 34px !important;
+        width: 34px !important;
+        min-height: 34px !important;
+        height: 34px !important;
+    }
+    .bl-subrule-footer {
+        padding-top: 8px !important;
+    }
+    .bl-subrule-footer-save {
+        min-height: 46px !important;
+        max-height: none !important;
+        font-size: 15px !important;
     }
 }
 

@@ -245,7 +245,7 @@ export function setupUI() {
 
     $('body').append(`
         <div id="bl-subrule-edit-modal" class="bl-modal-shell" style="z-index: 10000005;">
-            <div class="bl-modal-card bl-edit-modal-card" style="padding: 20px !important;">
+            <div class="bl-modal-card bl-edit-modal-card bl-subrule-modal-card" style="padding: 20px !important;">
                 <div class="bl-subrule-modal-header">
                     <div class="bl-subrule-mode-block">
                         <div class="bl-subrule-mode-select-wrap">
@@ -258,7 +258,7 @@ export function setupUI() {
                         </div>
                         <div id="bl-modal-sub-mode-hint" class="bl-subrule-mode-hint" aria-live="polite"></div>
                     </div>
-                    <button id="bl-modal-sub-save" class="bl-icon-btn bl-subrule-save-btn" title="完成保存"><i class="fas fa-check"></i></button>
+                    <button id="bl-modal-sub-cancel" type="button" class="bl-icon-btn bl-subrule-close-btn" title="关闭"><i class="fas fa-times"></i></button>
                 </div>
                 
                 <div class="bl-subrule-field" style="margin-bottom: 12px;">
@@ -268,8 +268,8 @@ export function setupUI() {
                 
                 <div class="bl-subrule-field" style="margin-bottom: 12px;">
                     <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">查找内容</label>
-                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
                     <div id="bl-modal-sub-target-error" class="bl-field-error" aria-live="polite"></div>
+                    <textarea id="bl-modal-sub-target" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
                 </div>
                 
                 <div class="bl-subrule-field" style="margin-bottom: 15px;">
@@ -283,7 +283,9 @@ export function setupUI() {
                     <div id="bl-modal-sub-regex-list" class="bl-regex-replacement-list" hidden></div>
                 </div>
                 
-                <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bl-bg-button) !important;">取消修改</button>
+                <div class="bl-subrule-footer">
+                    <button id="bl-modal-sub-save" type="button" class="bl-primary-btn bl-subrule-footer-save">保存条目</button>
+                </div>
             </div>
         </div>
     `);
