@@ -540,7 +540,7 @@ export function bindEvents() {
         if (!Number.isInteger(subRuleIndex) || subRuleIndex < 0 || subRuleIndex >= (rules[ruleIndex]?.subRules || []).length) return;
 
         runtimeState.ruleSearchExpandedMenuKey = '';
-        renderRuleSearchModal();
+        closeRuleSearchModal();
 
         if (action === 'group') {
             openEditModal(ruleIndex, { source: 'search', returnMode: 'group', subRuleIndex });
@@ -902,7 +902,7 @@ export function bindEvents() {
             $('#bl-subrule-edit-modal').fadeOut(150, () => {
                 $('#bl-rule-edit-modal').hide();
                 clearRuleSearchEditFlow();
-                renderRuleSearchModal();
+                openRuleSearchModal();
             });
             return;
         }
@@ -922,7 +922,7 @@ export function bindEvents() {
             $('#bl-subrule-edit-modal').fadeOut(150, () => {
                 $('#bl-rule-edit-modal').hide();
                 clearRuleSearchEditFlow();
-                renderRuleSearchModal();
+                openRuleSearchModal();
             });
             return;
         }
@@ -933,7 +933,7 @@ export function bindEvents() {
         $('#bl-rule-edit-modal').hide();
         if (isSearchGroupEditFlow()) {
             clearRuleSearchEditFlow();
-            renderRuleSearchModal();
+            openRuleSearchModal();
         }
     });
     $(document).off('click', '#bl-transfer-cancel').on('click', '#bl-transfer-cancel', () => closeTransferModal());
@@ -949,7 +949,7 @@ export function bindEvents() {
         $('#bl-rule-edit-modal').hide();
         if (isSearchGroupEditFlow()) {
             clearRuleSearchEditFlow();
-            renderRuleSearchModal();
+            openRuleSearchModal();
         }
     });
 

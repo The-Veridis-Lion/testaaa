@@ -351,6 +351,8 @@
 }
 
 /* 5.1 编辑合集弹窗 */
+#bl-rule-edit-modal { z-index: 10000005 !important; }
+#bl-subrule-edit-modal { z-index: 10000006 !important; }
 .bl-edit-modal-card {
     width: 95% !important;
     max-width: 480px !important;
