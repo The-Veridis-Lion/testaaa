@@ -26,16 +26,55 @@ function normalizeReplacementList(replacements) {
     return Array.isArray(replacements) ? replacements.map((value) => String(value ?? '')) : [];
 }
 
+function getRegexReplacementEditIndex() {
+    const rawIndex = Number($('#bl-modal-sub-rep').data('regex-edit-index'));
+    return Number.isInteger(rawIndex) ? rawIndex : -1;
+}
+
+function getRegexReplacementChipValues() {
+    return $('#bl-modal-sub-regex-list').children('.bl-regex-replacement-chip').map(function() {
+        return String($(this).data('value') ?? '');
+    }).get();
+}
+
+function buildRegexReplacementChip(value = '') {
+    const normalizedValue = String(value ?? '');
+    const preview = formatReplacementCandidatePreview(normalizedValue);
+    const $chip = $(`
+        <div class="bl-regex-replacement-chip" data-index="0">
+            <button type="button" class="bl-regex-replacement-chip-main" data-index="0" title="点击编辑替换项"></button>
+            <button type="button" class="bl-regex-replacement-chip-remove" data-index="0" title="删除替换项">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+    `);
+    $chip.data('value', normalizedValue);
+    $chip.find('.bl-regex-replacement-chip-main').html(preview).attr('title', normalizedValue || '点击编辑替换项');
+    return $chip;
+}
+
 function syncRegexReplacementInputState() {
     const $container = $('#bl-modal-sub-regex-list');
-    const $items = $container.children('.bl-regex-replacement-item');
+    const $textarea = $('#bl-modal-sub-rep');
+    const $items = $container.children('.bl-regex-replacement-chip');
+    let editIndex = getRegexReplacementEditIndex();
+    if (editIndex >= $items.length) {
+        editIndex = -1;
+        $textarea.data('regex-edit-index', -1);
+    }
     $items.each((index, element) => {
         const $element = $(element);
         $element.attr('data-index', index);
-        $element.find('.bl-regex-replacement-index').text(`替换项 ${index + 1}`);
-        $element.find('.bl-regex-replacement-remove').attr('data-index', index);
+        $element.toggleClass('is-active', index === editIndex);
+        $element.find('.bl-regex-replacement-chip-main').attr('data-index', index);
+        $element.find('.bl-regex-replacement-chip-remove').attr('data-index', index);
     });
     $('#bl-modal-sub-regex-empty').toggleClass('is-visible', $items.length === 0);
+    $('#bl-modal-sub-regex-commit').text(editIndex >= 0 ? '更新该项' : '存为单项');
+    const defaultHelperText = String($('#bl-modal-sub-regex-helper').data('default-text') || '');
+    $('#bl-modal-sub-regex-helper').text(editIndex >= 0
+        ? `正在编辑替换项 ${editIndex + 1}，修改后点“更新该项”。`
+        : defaultHelperText);
 }
 
 export function showToast(message) {
@@ -234,18 +273,17 @@ export function setupUI() {
                 </div>
                 
                 <div class="bl-subrule-field" style="margin-bottom: 15px;">
-                    <label class="bl-field-label" style="margin-bottom: 6px; font-weight: 600;">替换为</label>
-                    <div id="bl-modal-sub-rep-plain-wrap">
-                        <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
-                    </div>
-                    <div id="bl-modal-sub-rep-regex-wrap" class="bl-regex-replacements" style="display:none;">
-                        <div class="bl-regex-replacement-toolbar">
-                            <div id="bl-modal-sub-regex-helper" class="bl-regex-replacement-helper"></div>
-                            <button id="bl-modal-add-regex-replacement" type="button" class="bl-ghost-btn bl-regex-add-btn"><i class="fas fa-plus"></i> 新增替换项</button>
+                    <div class="bl-subrule-replacement-head">
+                        <label class="bl-field-label" style="margin-bottom: 0; font-weight: 600;">替换为</label>
+                        <div id="bl-modal-sub-regex-actions" class="bl-regex-replacement-actions" style="display:none;">
+                            <button id="bl-modal-sub-regex-recognize" type="button" class="bl-subrule-mini-btn">按行识别</button>
+                            <button id="bl-modal-sub-regex-commit" type="button" class="bl-subrule-mini-btn">存为单项</button>
                         </div>
-                        <div id="bl-modal-sub-regex-list" class="bl-regex-replacement-list"></div>
-                        <div id="bl-modal-sub-regex-empty" class="bl-regex-replacement-empty">未添加替换项时，命中后会直接删除。</div>
                     </div>
+                    <textarea id="bl-modal-sub-rep" class="bl-textarea" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
+                    <div id="bl-modal-sub-regex-helper" class="bl-regex-replacement-helper" style="display:none;"></div>
+                    <div id="bl-modal-sub-regex-list" class="bl-regex-replacement-list" style="display:none;"></div>
+                    <div id="bl-modal-sub-regex-empty" class="bl-regex-replacement-empty" style="display:none;">未添加替换项时，命中后会直接删除。</div>
                 </div>
                 
                 <button id="bl-modal-sub-cancel" class="bl-secondary-btn" style="margin-top: auto; border: none !important; background: var(--bl-bg-button) !important;">取消修改</button>
@@ -429,19 +467,7 @@ export function updateToolbarUI() {
 
 export function addRegexReplacementInput(value = '') {
     const $container = $('#bl-modal-sub-regex-list');
-    const placeholder = String($container.data('placeholder') || '');
-    const $item = $(`
-        <div class="bl-regex-replacement-item" data-index="0">
-            <div class="bl-regex-replacement-head">
-                <span class="bl-regex-replacement-index">替换项</span>
-                <button type="button" class="bl-icon-btn bl-regex-replacement-remove" data-index="0" title="删除替换项">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-            <textarea class="bl-textarea bl-regex-replacement-input" rows="4" style="background: var(--bl-bg-button) !important; border: none !important; border-radius: 8px !important; font-size: 14px !important; padding: 10px 14px !important;"></textarea>
-        </div>
-    `);
-    $item.find('.bl-regex-replacement-input').attr('placeholder', placeholder).val(String(value ?? ''));
+    const $item = buildRegexReplacementChip(value);
     $container.append($item);
     syncRegexReplacementInputState();
     return $item;
@@ -449,33 +475,90 @@ export function addRegexReplacementInput(value = '') {
 
 export function removeRegexReplacementInput(index) {
     const normalizedIndex = Number(index);
-    const $items = $('#bl-modal-sub-regex-list').children('.bl-regex-replacement-item');
+    const $items = $('#bl-modal-sub-regex-list').children('.bl-regex-replacement-chip');
     if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0 || normalizedIndex >= $items.length) return;
+    const currentEditIndex = getRegexReplacementEditIndex();
     $items.eq(normalizedIndex).remove();
+    if (currentEditIndex === normalizedIndex) {
+        $('#bl-modal-sub-rep').data('regex-edit-index', -1);
+    } else if (currentEditIndex > normalizedIndex) {
+        $('#bl-modal-sub-rep').data('regex-edit-index', currentEditIndex - 1);
+    }
     syncRegexReplacementInputState();
+}
+
+export function startEditingRegexReplacementInput(index) {
+    const normalizedIndex = Number(index);
+    const values = getRegexReplacementChipValues();
+    if (!Number.isInteger(normalizedIndex) || normalizedIndex < 0 || normalizedIndex >= values.length) return false;
+    $('#bl-modal-sub-rep').val(values[normalizedIndex]).data('regex-edit-index', normalizedIndex);
+    syncRegexReplacementInputState();
+    return true;
+}
+
+export function recognizeRegexReplacementInput() {
+    const draft = String($('#bl-modal-sub-rep').val() ?? '');
+    const lines = draft.replace(/\r/g, '').split('\n').filter((line) => line.trim() !== '');
+    if (lines.length === 0) return { ok: false, reason: 'empty' };
+    lines.forEach((line) => addRegexReplacementInput(line));
+    $('#bl-modal-sub-rep').val('').data('regex-edit-index', -1);
+    syncRegexReplacementInputState();
+    return { ok: true, count: lines.length };
+}
+
+export function commitRegexReplacementInput() {
+    const draft = String($('#bl-modal-sub-rep').val() ?? '');
+    if (draft.trim() === '') return { ok: false, reason: 'empty' };
+
+    const editIndex = getRegexReplacementEditIndex();
+    const $items = $('#bl-modal-sub-regex-list').children('.bl-regex-replacement-chip');
+    if (editIndex >= 0 && editIndex < $items.length) {
+        const $item = $items.eq(editIndex);
+        $item.data('value', draft);
+        $item.find('.bl-regex-replacement-chip-main')
+            .html(formatReplacementCandidatePreview(draft))
+            .attr('title', draft || '点击编辑替换项');
+        $('#bl-modal-sub-rep').val('').data('regex-edit-index', -1);
+        syncRegexReplacementInputState();
+        return { ok: true, mode: 'update' };
+    }
+
+    addRegexReplacementInput(draft);
+    $('#bl-modal-sub-rep').val('').data('regex-edit-index', -1);
+    syncRegexReplacementInputState();
+    return { ok: true, mode: 'append' };
+}
+
+export function hasPendingRegexReplacementInput() {
+    const draft = String($('#bl-modal-sub-rep').val() ?? '');
+    if (draft.trim() === '') return false;
+    const editIndex = getRegexReplacementEditIndex();
+    const values = getRegexReplacementChipValues();
+    return editIndex < 0 || editIndex >= values.length || draft !== values[editIndex];
 }
 
 export function setSingleRuleReplacementEditor(mode, replacements = []) {
     const normalized = normalizeReplacementList(replacements);
     const isRegexMode = mode === 'regex';
-    $('#bl-modal-sub-rep-plain-wrap').toggle(!isRegexMode);
-    $('#bl-modal-sub-rep-regex-wrap').toggle(isRegexMode);
+    $('#bl-modal-sub-rep').data('regex-edit-index', -1);
 
     if (isRegexMode) {
+        $('#bl-modal-sub-rep').val('');
         $('#bl-modal-sub-regex-list').empty();
         normalized.forEach((value) => addRegexReplacementInput(value));
+        $('#bl-modal-sub-regex-actions, #bl-modal-sub-regex-helper, #bl-modal-sub-regex-list, #bl-modal-sub-regex-empty').show();
         syncRegexReplacementInputState();
         return;
     }
 
+    $('#bl-modal-sub-regex-list').empty().hide();
+    $('#bl-modal-sub-regex-actions, #bl-modal-sub-regex-helper, #bl-modal-sub-regex-empty').hide();
     $('#bl-modal-sub-rep').val(normalized.join(mode === 'text' ? ', ' : '\n'));
 }
 
 export function getSingleRuleReplacementValues(mode) {
     if (mode === 'regex') {
-        return $('#bl-modal-sub-regex-list .bl-regex-replacement-input').map(function() {
-            return String($(this).val() ?? '');
-        }).get();
+        return getRegexReplacementChipValues();
     }
 
     const rawValue = String($('#bl-modal-sub-rep').val() ?? '');

@@ -16,8 +16,11 @@ import {
     runRuleTransfer,
     openEditModal,
     showToast,
-    addRegexReplacementInput,
     removeRegexReplacementInput,
+    startEditingRegexReplacementInput,
+    recognizeRegexReplacementInput,
+    commitRegexReplacementInput,
+    hasPendingRegexReplacementInput,
     setSingleRuleReplacementEditor,
     getSingleRuleReplacementValues,
 } from './ui.js';
@@ -318,8 +321,8 @@ export function bindEvents() {
         regex: {
             hint: '适合复杂匹配和捕获组替换；每次命中会从替换项里随机选一个。',
             targetPlaceholder: "正则匹配规则 (每行一条)\n支持裸模式 foo|bar 或 /foo|bar/gmu",
-            replacementPlaceholder: "支持 $1、$2、\\n 与真实换行；留空可作为删除候选",
-            regexHelper: '每个替换项都会作为一个随机候选，项内可以直接输入真实换行。',
+            replacementPlaceholder: "先在这里输入候选内容，再用右侧按钮加入替换项",
+            regexHelper: '按行识别适合常见随机候选；存为单项适合 $1\\n$2 这类多行模板。',
         },
     };
     const validateRegexTargetField = (options = {}) => {
@@ -351,9 +354,14 @@ export function bindEvents() {
         $('#bl-modal-sub-mode').data('current-mode', mode);
         $('#bl-modal-sub-target').attr('placeholder', config.targetPlaceholder);
         $('#bl-modal-sub-rep').attr('placeholder', config.replacementPlaceholder);
-        $('#bl-modal-sub-regex-list').data('placeholder', config.replacementPlaceholder);
-        $('#bl-modal-sub-regex-helper').text(config.regexHelper || '');
-        $('#bl-modal-sub-regex-list .bl-regex-replacement-input').attr('placeholder', config.replacementPlaceholder);
+        $('#bl-modal-sub-regex-helper').data('default-text', config.regexHelper || '');
+        if (mode === 'regex') {
+            const activeEditIndex = Number($('#bl-modal-sub-rep').data('regex-edit-index'));
+            $('#bl-modal-sub-regex-helper').text(activeEditIndex >= 0
+                ? `正在编辑替换项 ${activeEditIndex + 1}，修改后点“更新该项”。`
+                : (config.regexHelper || ''));
+            $('#bl-modal-sub-regex-commit').text(activeEditIndex >= 0 ? '更新该项' : '存为单项');
+        }
         $('#bl-modal-sub-mode-hint').text(config.hint);
         validateRegexTargetField();
     };
@@ -680,12 +688,33 @@ export function bindEvents() {
         if ($('#bl-modal-sub-mode').val() === 'regex') validateRegexTargetField();
     });
 
-    $(document).off('click', '#bl-modal-add-regex-replacement').on('click', '#bl-modal-add-regex-replacement', () => {
-        const $item = addRegexReplacementInput('');
-        $item.find('.bl-regex-replacement-input').trigger('focus');
+    $(document).off('click', '#bl-modal-sub-regex-recognize').on('click', '#bl-modal-sub-regex-recognize', () => {
+        const result = recognizeRegexReplacementInput();
+        if (!result.ok) {
+            showToast('先在替换框里输入内容，再按行识别。');
+            $('#bl-modal-sub-rep').trigger('focus');
+            return;
+        }
     });
 
-    $(document).off('click', '.bl-regex-replacement-remove').on('click', '.bl-regex-replacement-remove', function() {
+    $(document).off('click', '#bl-modal-sub-regex-commit').on('click', '#bl-modal-sub-regex-commit', () => {
+        const result = commitRegexReplacementInput();
+        if (!result.ok) {
+            showToast('替换项内容不能为空。');
+            $('#bl-modal-sub-rep').trigger('focus');
+            return;
+        }
+    });
+
+    $(document).off('click', '.bl-regex-replacement-chip-main').on('click', '.bl-regex-replacement-chip-main', function() {
+        if (startEditingRegexReplacementInput($(this).data('index'))) {
+            $('#bl-modal-sub-rep').trigger('focus');
+        }
+    });
+
+    $(document).off('click', '.bl-regex-replacement-chip-remove').on('click', '.bl-regex-replacement-chip-remove', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         removeRegexReplacementInput($(this).data('index'));
     });
 
@@ -703,6 +732,12 @@ export function bindEvents() {
             }
         } else {
             clearRegexTargetValidationState();
+        }
+
+        if (mode === 'regex' && hasPendingRegexReplacementInput()) {
+            showToast('替换框里还有未加入的内容，请先按右侧按钮处理。');
+            $('#bl-modal-sub-rep').trigger('focus');
+            return;
         }
         
         const targets = parseInputToWords(tStr, mode, { isTarget: true });
