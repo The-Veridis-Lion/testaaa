@@ -3,6 +3,8 @@ import { logger } from './log.js';
 
 const SIMPLE_WILDCARD_STOP_CHARS = ",，。.!?！？；;\n";
 const REGEX_LITERAL_ALLOWED_FLAGS = new Set(['d', 'g', 'i', 'm', 's', 'u', 'v', 'y']);
+const SCOPE_TAG_START_PATTERN = /^<([A-Za-z][A-Za-z0-9:_-]*)>$/;
+const BUILTIN_SCOPE_TAG_START_TAGS = ['<UpdateVariable>', '<horae>', '<horaeevent>', '<tableEdit>'];
 
 export function deepClone(value) {
     return JSON.parse(JSON.stringify(value));
@@ -173,6 +175,90 @@ export function parseInputToWords(text, mode = 'text', options = {}) {
         : noQuotes.split(/[,\n，、]/);
     const words = textWords.map(w => w.trim());
     return isTarget ? words.filter(w => w) : words;
+}
+
+export function createScopeTagId() {
+    return `scope-tag-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export function parseScopeTagInput(input) {
+    const source = String(input ?? '').trim();
+    if (!source) {
+        return { ok: false, error: { message: '请输入完整起始标签，例如 <horae>。' } };
+    }
+
+    const match = source.match(SCOPE_TAG_START_PATTERN);
+    if (!match) {
+        return { ok: false, error: { message: '仅支持无属性的完整起始标签，例如 <horae>。' } };
+    }
+
+    const tagName = match[1];
+    return {
+        ok: true,
+        value: {
+            tagName,
+            startTag: `<${tagName}>`,
+            endTag: `</${tagName}>`,
+        },
+    };
+}
+
+export function normalizeScopeTagEntry(entry, fallbackId = '') {
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) return null;
+    const parsed = parseScopeTagInput(entry.startTag);
+    if (!parsed.ok) return null;
+    return {
+        id: String(entry.id || fallbackId || createScopeTagId()),
+        startTag: parsed.value.startTag,
+        endTag: parsed.value.endTag,
+        enabled: entry.enabled !== false,
+        builtin: entry.builtin === true,
+    };
+}
+
+export function normalizeScopeTagList(entries) {
+    if (!Array.isArray(entries)) return [];
+    const seen = new Set();
+    const normalized = [];
+
+    entries.forEach((entry, index) => {
+        const scopeTag = normalizeScopeTagEntry(entry, `scope-tag-${index + 1}`);
+        if (!scopeTag || seen.has(scopeTag.startTag)) return;
+        seen.add(scopeTag.startTag);
+        normalized.push(scopeTag);
+    });
+
+    return normalized;
+}
+
+export function getBuiltinScopeTags() {
+    return BUILTIN_SCOPE_TAG_START_TAGS.map((startTag, index) => {
+        const parsed = parseScopeTagInput(startTag);
+        return {
+            id: `builtin-scope-tag-${index + 1}`,
+            startTag: parsed.value.startTag,
+            endTag: parsed.value.endTag,
+            enabled: false,
+            builtin: true,
+        };
+    });
+}
+
+export function mergeScopeTagsWithBuiltins(entries) {
+    const builtinMap = new Map(getBuiltinScopeTags().map((scopeTag) => [scopeTag.startTag, scopeTag]));
+    const merged = normalizeScopeTagList(entries).map((scopeTag) => (
+        builtinMap.has(scopeTag.startTag)
+            ? { ...scopeTag, builtin: true }
+            : scopeTag
+    ));
+    const seen = new Set(merged.map((tag) => tag.startTag));
+
+    builtinMap.forEach((scopeTag, startTag) => {
+        if (seen.has(startTag)) return;
+        merged.push(scopeTag);
+    });
+
+    return merged;
 }
 
 function isRuleLikeObject(value) {

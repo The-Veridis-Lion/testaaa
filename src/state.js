@@ -8,6 +8,7 @@ export const defaultSettings = {
     activePreset: "",
     defaultPreset: "",
     characterBindings: {},
+    scopeTags: [],
     enableVisualDiff: true,
     diffViewMode: "snippet",
     diffButtonInExtraMenu: false,

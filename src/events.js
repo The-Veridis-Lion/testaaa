@@ -1,9 +1,12 @@
 import { extensionName, getAppContext, runtimeState, markRulesDataDirty, markPresetsUiDirty } from './state.js';
 import { logger } from './log.js';
-import { deepClone, parseInputToWords, getCurrentCharacterContext, validateRegexTargetInput, normalizeImportedRulesPayload } from './utils.js';
+import { createScopeTagId, deepClone, mergeScopeTagsWithBuiltins, normalizeImportedRulesPayload, parseInputToWords, parseScopeTagInput, getCurrentCharacterContext, validateRegexTargetInput } from './utils.js';
 import {
     applyPresetByName,
+    closeScopeTagsModal,
+    openScopeTagsModal,
     renderTags,
+    renderScopeTagsModal,
     updateToolbarUI,
     renderSubrulesToModal,
     showConfirmModal,
@@ -31,7 +34,7 @@ import {
 import {
     buildProcessors,
     performGlobalCleanse,
-    applyReplacements,
+    applyScopedReplacements,
     applyVisualMask,
     performIncrementalCleanse,
     getMessageIndexFromEvent,
@@ -223,7 +226,7 @@ export function initRealtimeInterceptor() {
                         if (node.parentNode && isProtectedNode(node.parentNode)) continue;
                         if (node.parentNode && getAppContext().extension_settings?.[extensionName]?.skipUserMessages && isUserMessageDomNode(node.parentNode)) continue;
                         const original = node.nodeValue;
-                        const nextValue = isStreaming ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+                        const nextValue = isStreaming ? applyVisualMask(original) : applyScopedReplacements(original, { deterministic: true });
                         if (original !== nextValue) node.nodeValue = nextValue;
                         } else if (node.nodeType === 1) {
                             purifyDOM(node);
@@ -239,7 +242,7 @@ export function initRealtimeInterceptor() {
                     if (m.target.parentNode && isProtectedNode(m.target.parentNode)) continue;
                     if (m.target.parentNode && getAppContext().extension_settings?.[extensionName]?.skipUserMessages && isUserMessageDomNode(m.target.parentNode)) continue;
                     const original = m.target.nodeValue;
-                    const nextValue = isStreaming ? applyVisualMask(original) : applyReplacements(original, { deterministic: true });
+                    const nextValue = isStreaming ? applyVisualMask(original) : applyScopedReplacements(original, { deterministic: true });
                     if (original !== nextValue) m.target.nodeValue = nextValue;
                 }
             }
@@ -275,7 +278,7 @@ export function initRealtimeInterceptor() {
         buildProcessors();
         if (runtimeState.activeProcessors.length === 0) return;
         const originalVal = el.value || '';
-        const cleanedVal = applyReplacements(originalVal, { deterministic: true });
+        const cleanedVal = applyScopedReplacements(originalVal, { deterministic: true });
         if (originalVal !== cleanedVal) {
             const start = el.selectionStart;
             isPurifying = true;
@@ -375,6 +378,61 @@ export function bindEvents() {
         $('#bl-modal-sub-mode-hint').text(config.hint);
         validateRegexTargetField();
     };
+    const clearScopeTagValidationState = () => {
+        $('#bl-scope-tag-input').removeClass('bl-invalid').removeAttr('aria-invalid');
+        $('#bl-scope-tag-error').removeClass('is-visible').text('');
+    };
+    const applyScopeTagValidationError = (message) => {
+        $('#bl-scope-tag-input').addClass('bl-invalid').attr('aria-invalid', 'true');
+        $('#bl-scope-tag-error').addClass('is-visible').text(message);
+    };
+    const getScopeTagEditId = () => String($('#bl-scope-tag-input').data('scope-edit-id') || '');
+    const resetScopeTagEditor = () => {
+        $('#bl-scope-tag-input').val('').data('scope-edit-id', '');
+        clearScopeTagValidationState();
+        renderScopeTagsModal();
+    };
+    const persistScopeTags = (scopeTags, options = {}) => {
+        const normalized = mergeScopeTagsWithBuiltins(scopeTags);
+        settings.scopeTags = normalized;
+        saveSettingsDebounced();
+        renderScopeTagsModal();
+        if (options.skipCleanse !== true) performGlobalCleanse();
+        return normalized;
+    };
+    const saveScopeTag = () => {
+        const rawInput = String($('#bl-scope-tag-input').val() || '').trim();
+        const parsed = parseScopeTagInput(rawInput);
+        if (!parsed.ok) {
+            applyScopeTagValidationError(parsed.error.message);
+            $('#bl-scope-tag-input').trigger('focus');
+            return false;
+        }
+
+        const editId = getScopeTagEditId();
+        const scopeTags = mergeScopeTagsWithBuiltins(settings.scopeTags);
+        const duplicate = scopeTags.find((tag) => tag.startTag === parsed.value.startTag && tag.id !== editId);
+        if (duplicate) {
+            applyScopeTagValidationError('该范围标签已存在，无需重复添加。');
+            $('#bl-scope-tag-input').trigger('focus');
+            return false;
+        }
+
+        const nextScopeTag = {
+            id: editId || createScopeTagId(),
+            startTag: parsed.value.startTag,
+            endTag: parsed.value.endTag,
+            enabled: true,
+        };
+        const updated = editId
+            ? scopeTags.map((tag) => (tag.id === editId ? { ...tag, ...nextScopeTag, enabled: tag.enabled !== false } : tag))
+            : [...scopeTags, nextScopeTag];
+
+        persistScopeTags(updated);
+        showToast(editId ? '范围标签已更新' : '范围标签已添加');
+        resetScopeTagEditor();
+        return true;
+    };
 
     $(document).off('click', '#bl-wand-btn').on('click', '#bl-wand-btn', () => {
         updateToolbarUI();
@@ -392,6 +450,7 @@ export function bindEvents() {
             }
         }
         closeRuleSearchModal({ reset: true });
+        closeScopeTagsModal({ reset: true });
         $('#bl-purifier-popup').fadeOut(200);
     });
     const settings = extension_settings[extensionName];
@@ -484,6 +543,7 @@ export function bindEvents() {
     $(document).off('change', '#bl-skip-user-toggle').on('change', '#bl-skip-user-toggle', function() {
         settings.skipUserMessages = $(this).prop('checked');
         saveSettingsDebounced();
+        performGlobalCleanse();
     });
 
     $(document).off('click', '#bl-preset-search').on('click', '#bl-preset-search', () => {
@@ -519,6 +579,28 @@ export function bindEvents() {
         syncRuleSearchInputUi({ syncValue: true });
         renderRuleSearchModal();
         $('#bl-rule-search-input').trigger('focus');
+    });
+
+    $(document).off('click', '#bl-scope-tags-btn').on('click', '#bl-scope-tags-btn', () => {
+        openScopeTagsModal();
+    });
+
+    $(document).off('click', '#bl-scope-tags-close').on('click', '#bl-scope-tags-close', () => {
+        closeScopeTagsModal({ reset: true });
+    });
+
+    $(document).off('click', '#bl-scope-tag-reset').on('click', '#bl-scope-tag-reset', () => {
+        resetScopeTagEditor();
+    });
+
+    $(document).off('click', '#bl-scope-tag-save').on('click', '#bl-scope-tag-save', () => {
+        saveScopeTag();
+    });
+
+    $(document).off('keydown', '#bl-scope-tag-input').on('keydown', '#bl-scope-tag-input', function(e) {
+        if (e.key !== 'Enter') return;
+        e.preventDefault();
+        saveScopeTag();
     });
 
     $(document).off('click', '.bl-rule-search-menu-toggle').on('click', '.bl-rule-search-menu-toggle', function(e) {
@@ -558,6 +640,45 @@ export function bindEvents() {
         if (!runtimeState.ruleSearchExpandedMenuKey) return;
         runtimeState.ruleSearchExpandedMenuKey = '';
         renderRuleSearchModal();
+    });
+
+    $(document).off('click', '#bl-scope-tags-modal').on('click', '#bl-scope-tags-modal', function(e) {
+        if (e.target && e.target.id === 'bl-scope-tags-modal') closeScopeTagsModal({ reset: true });
+    });
+
+    $(document).off('click', '.bl-scope-tag-chip-main, .bl-scope-tag-edit').on('click', '.bl-scope-tag-chip-main, .bl-scope-tag-edit', function(e) {
+        e.preventDefault();
+        const tagId = String($(this).attr('data-id') || '');
+        const scopeTag = mergeScopeTagsWithBuiltins(settings.scopeTags).find((tag) => tag.id === tagId);
+        if (!scopeTag || scopeTag.builtin) return;
+        $('#bl-scope-tag-input').val(scopeTag.startTag).data('scope-edit-id', scopeTag.id).trigger('focus');
+        clearScopeTagValidationState();
+        renderScopeTagsModal();
+    });
+
+    $(document).off('change', '.bl-scope-tag-toggle').on('change', '.bl-scope-tag-toggle', function() {
+        const tagId = String($(this).attr('data-id') || '');
+        const checked = $(this).prop('checked');
+        const scopeTags = mergeScopeTagsWithBuiltins(settings.scopeTags).map((tag) => (
+            tag.id === tagId ? { ...tag, enabled: checked } : tag
+        ));
+        persistScopeTags(scopeTags);
+    });
+
+    $(document).off('click', '.bl-scope-tag-del').on('click', '.bl-scope-tag-del', function(e) {
+        e.preventDefault();
+        const tagId = String($(this).attr('data-id') || '');
+        const scopeTags = mergeScopeTagsWithBuiltins(settings.scopeTags);
+        const scopeTag = scopeTags.find((tag) => tag.id === tagId);
+        if (!scopeTag) return;
+        if (scopeTag.builtin) {
+            showToast('内置范围标签不能删除，可直接开关启用。');
+            return;
+        }
+        if (!confirm(`确定删除范围标签 ${scopeTag.startTag} 吗？`)) return;
+        persistScopeTags(scopeTags.filter((tag) => tag.id !== tagId));
+        if (getScopeTagEditId() === tagId) resetScopeTagEditor();
+        showToast('范围标签已删除');
     });
 
     $(document).off('click', '#bl-batch-toggle').on('click', '#bl-batch-toggle', function() {
